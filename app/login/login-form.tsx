@@ -41,7 +41,8 @@ export default function LoginForm() {
 
     try {
       const result = await signIn("credentials", {
-        redirect: false,
+        redirect: true, // On laisse Next-Auth gérer
+        callbackUrl: "/dashboard", // Ou ta page d'accueil après connexion
         email: email.trim(),
         password,
       });
