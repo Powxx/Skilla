@@ -61,7 +61,7 @@ export const authOptions: NextAuthOptions = {
             role: user.role,
             
           };
-          console.log(`DEBUG AUTH: Connexion réussie en tant que ${user.role} pour ${email}`);
+          console.log(`DEBUG AUTH: Connexion réussie en tant que ${role} pour ${email}`);
         } catch (error) {
           console.error("DEBUG AUTH ERROR:", error);
           return null;
