@@ -76,7 +76,7 @@ export default function LoginForm() {
           SP
         </div>
         <p className="text-lg font-semibold tracking-tight text-slate-900">
-          Skilla Pronote
+          Skilla
         </p>
         <p className="mt-2 text-sm text-slate-500">
           Connectez-vous à votre espace scolaire
