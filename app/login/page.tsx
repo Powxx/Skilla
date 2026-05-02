@@ -17,7 +17,7 @@ export default function LoginPage() {
       <div className="relative flex min-h-screen flex-col items-center justify-center px-4 py-12 sm:px-6">
         <LoginForm />
         <p className="mt-10 max-w-md text-center text-xs text-slate-500">
-          Plateforme de démonstration. Comptes créés avec le seed ou l’administration.
+          Plateforme de connexion à Skilla.
         </p>
       </div>
     </div>
