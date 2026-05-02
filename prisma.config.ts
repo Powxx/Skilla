@@ -6,4 +6,8 @@ export default defineConfig({
   datasource: {
     url: process.env.DATABASE_URL!,
   },
+  // On ajoute explicitement l'engine pour satisfaire le type strict de Prisma
+  engine: {
+    type: 'library' // ou 'binary' selon ta config, mais 'library' est le standard actuel
+  }
 });
