@@ -3,11 +3,10 @@ import type { DefaultSession } from "next-auth";
 
 declare module "next-auth" {
   interface Session {
-    user: DefaultSession["user"] & {
+    user: {
       id: string;
-      /** Aligné sur `User.role` (Prisma). Présent dès que le JWT contient `role`. */
-      role?: Role;
-    };
+      role: Role;
+    } & DefaultSession["user"];
   }
 
   /** Objet utilisateur renvoyé par Credentials `authorize`. */
@@ -18,6 +17,7 @@ declare module "next-auth" {
 
 declare module "next-auth/jwt" {
   interface JWT {
-    role?: Role;
+    id: string;
+    role: Role;
   }
 }
