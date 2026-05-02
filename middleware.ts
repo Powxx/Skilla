@@ -51,10 +51,15 @@ export default withAuth(
 
 export const config = {
   matcher: [
-    "/admin/:path*",
-    "/prof/:path*",
+    "/admin/:path*", 
+    "/admin", // Important : sans le :path* pour la page racine du dossier
+    "/prof/:path*", 
+    "/prof",
     "/student/:path*",
+    "/student",
     "/parent/:path*",
+    "/parent",
     "/employer/:path*",
+    "/employer",
   ],
 };
