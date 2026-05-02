@@ -40,6 +40,7 @@ export default withAuth(
         return true;
       },
     },
+    secret: process.env.NEXTAUTH_SECRET,
     pages: {
       signIn: "/login",
     },
