@@ -12,7 +12,10 @@ export default async function ParentLayout({
 }) {
   const session = await getServerSession(authOptions);
 
-  if (!session?.user?.id || session.user.role !== "PARENT") {
+  if (
+    !session?.user?.id ||
+    (session.user.role !== "PARENT" && session.user.role !== "EMPLOYER")
+  ) {
     redirect("/login");
   }
 

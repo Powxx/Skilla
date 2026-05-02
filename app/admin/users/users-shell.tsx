@@ -41,6 +41,7 @@ const ROLE_OPTIONS: { value: Role | ""; label: string }[] = [
   { value: Role.TEACHER, label: "Professeur" },
   { value: Role.STUDENT, label: "Élève" },
   { value: Role.PARENT, label: "Parent" },
+  { value: Role.EMPLOYER, label: "Employeur" },
 ];
 
 const ROLE_EDIT_OPTIONS = ROLE_OPTIONS.filter((o) => o.value !== "");
@@ -55,6 +56,8 @@ function roleBadgeClasses(role: Role) {
       return "bg-emerald-100 text-emerald-900 ring-emerald-200";
     case Role.PARENT:
       return "bg-amber-100 text-amber-950 ring-amber-200";
+    case Role.EMPLOYER:
+      return "bg-yellow-100 text-yellow-950 ring-yellow-200";
     default:
       return "bg-slate-100 text-slate-800 ring-slate-200";
   }
@@ -110,7 +113,7 @@ export default function UsersShell(props: Props) {
             Utilisateurs & droits
           </h1>
           <p className="mt-2 max-w-2xl text-sm text-slate-600">
-            Recherche, filtre par rôle (ADMIN, TEACHER, STUDENT, PARENT) et gestion des comptes.
+            Recherche, filtre par rôle (ADMIN, TEACHER, STUDENT, PARENT, EMPLOYER) et gestion des comptes.
           </p>
         </div>
         <button
@@ -427,6 +430,7 @@ function CreateUserModal({
             <option value={Role.TEACHER}>Professeur</option>
             <option value={Role.STUDENT}>Élève</option>
             <option value={Role.PARENT}>Parent</option>
+            <option value={Role.EMPLOYER}>Employeur</option>
           </select>
         </Field>
 

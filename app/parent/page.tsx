@@ -11,7 +11,10 @@ export const metadata = {
 export default async function ParentHomePage() {
   const session = await getServerSession(authOptions);
 
-  if (!session?.user?.id || session.user.role !== "PARENT") {
+  if (
+    !session?.user?.id ||
+    (session.user.role !== "PARENT" && session.user.role !== "EMPLOYER")
+  ) {
     redirect("/login");
   }
 
@@ -37,7 +40,7 @@ export default async function ParentHomePage() {
       {!firstId ? (
         <div className="mt-10 rounded-xl border border-amber-200 bg-amber-50 px-5 py-4 text-sm text-amber-950">
           Aucun élève n’est encore rattaché à votre compte. Contactez l’administration pour
-          assurer la liaison parent / élève.
+          assurer la liaison famille / élève (parent ou employeur).
         </div>
       ) : (
         <ul className="mt-8 space-y-3">

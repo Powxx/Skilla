@@ -31,7 +31,7 @@ export default withAuth(
         }
 
         if (pathname.startsWith("/parent")) {
-          return token.role === "PARENT";
+          return token.role === "PARENT" || token.role === "EMPLOYER";
         }
 
         return true;

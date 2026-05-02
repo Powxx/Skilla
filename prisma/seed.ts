@@ -111,6 +111,24 @@ async function main() {
     },
   });
 
+  const employerPasswordHash = await bcrypt.hash("employeurpassword", SALT_ROUNDS);
+  const employerUser = await prisma.user.upsert({
+    where: { email: "employeur@ecole.fr" },
+    update: {
+      password: employerPasswordHash,
+      role: Role.EMPLOYER,
+      firstName: "Mme",
+      lastName: "Entreprise",
+    },
+    create: {
+      email: "employeur@ecole.fr",
+      password: employerPasswordHash,
+      role: Role.EMPLOYER,
+      firstName: "Mme",
+      lastName: "Entreprise",
+    },
+  });
+
   const demoStudentRows = await prisma.student.findMany({
     where: {
       user: {
@@ -135,6 +153,19 @@ async function main() {
         studentId: row.id,
       },
     });
+    await prisma.parentStudent.upsert({
+      where: {
+        parentUserId_studentId: {
+          parentUserId: employerUser.id,
+          studentId: row.id,
+        },
+      },
+      update: {},
+      create: {
+        parentUserId: employerUser.id,
+        studentId: row.id,
+      },
+    });
   }
 
   console.log(
@@ -143,6 +174,7 @@ async function main() {
       "  • Admin   : admin@ecole.fr  (mot de passe : adminpassword, stocké hashé bcrypt)",
       "  • Élèves : eleve1@ecole.fr, eleve2@ecole.fr  (mot de passe : elevepassword)",
       "  • Parent  : parent@ecole.fr  (mot de passe : parentpassword) — lien aux 2 élèves démo",
+      "  • Employeur : employeur@ecole.fr  (mot de passe : employeurpassword) — mêmes accès famille",
       "  • Classe : CAPE 1",
       "  • Matières (5) : Pratique Esthétique, Français, Pratique Coiffure, Anglais, Chef d'oeuvre (IDs seed_subj_*)",
     ].join("\n"),

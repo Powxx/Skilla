@@ -12,7 +12,7 @@ model User {
   id            String    @id @default(cuid())
   email         String    @unique
   password      String    // Hashé pour la sécurité
-  role          Role      @default(STUDENT) // ADMIN, TEACHER, STUDENT, PARENT
+  role          Role      @default(STUDENT) // ADMIN, TEACHER, STUDENT, PARENT, EMPLOYER
   firstName     String
   lastName      String
   
@@ -28,6 +28,7 @@ enum Role {
   TEACHER
   STUDENT
   PARENT
+  EMPLOYER
 }
 
 // --- CLASSES & MATIÈRES ---

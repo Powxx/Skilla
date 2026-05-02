@@ -14,6 +14,8 @@ function pathAfterLogin(role: string): string {
       return "/student";
     case "PARENT":
       return "/parent";
+    case "EMPLOYER":
+      return "/parent";
     default:
       return "/";
   }

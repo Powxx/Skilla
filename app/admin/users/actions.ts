@@ -12,6 +12,7 @@ const ADMIN_ROLES: Role[] = [
   Role.TEACHER,
   Role.STUDENT,
   Role.PARENT,
+  Role.EMPLOYER,
 ];
 
 async function requireAdmin() {
@@ -28,6 +29,7 @@ function roleLabelsFr(r: Role): string {
     TEACHER: "Professeur",
     STUDENT: "Élève",
     PARENT: "Parent",
+    EMPLOYER: "Employeur",
   };
   return map[r];
 }
