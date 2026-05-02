@@ -3,18 +3,18 @@ import type { Role } from "@prisma/client";
 import CredentialsProvider from "next-auth/providers/credentials";
 import bcrypt from "bcrypt";
 import prisma from "@/lib/prisma";
-if (process.env.NODE_ENV === "production" && process.env.NEXTAUTH_URL) {
-  if (!process.env.NEXTAUTH_URL.startsWith('http')) {
-    process.env.NEXTAUTH_URL = `https://${process.env.NEXTAUTH_URL}`;
-  }
-}
+
 export const authOptions: NextAuthOptions = {
   pages: {
     signIn: "/login",
+    error: "/login", // Redirige les erreurs vers la page de login
   },
-  session: { strategy: "jwt", maxAge: 30 * 24 * 60 * 60 },
+  session: { 
+    strategy: "jwt", 
+    maxAge: 30 * 24 * 60 * 60 // 30 jours
+  },
   secret: process.env.NEXTAUTH_SECRET,
-  useSecureCookies: process.env.NODE_ENV === "production",
+  
   providers: [
     CredentialsProvider({
       name: "Identifiants",
@@ -23,33 +23,72 @@ export const authOptions: NextAuthOptions = {
         password: { label: "Mot de passe", type: "password" },
       },
       async authorize(credentials) {
-        const emailRaw = credentials?.email?.trim();
-        const password = credentials?.password;
-        if (!emailRaw || typeof password !== "string") {
+        try {
+          const emailRaw = credentials?.email?.trim();
+          const password = credentials?.password;
+
+          if (!emailRaw || !password) {
+            console.log("DEBUG AUTH: Email ou mot de passe manquant");
+            return null;
+          }
+
+          const email = emailRaw.toLowerCase();
+          
+          // 1. Recherche de l'utilisateur
+          const user = await prisma.user.findUnique({ 
+            where: { email } 
+          });
+
+          if (!user) {
+            console.log(`DEBUG AUTH: Aucun utilisateur trouvé pour ${email}`);
+            return null;
+          }
+
+          // 2. Vérification du mot de passe
+          const isPasswordValid = await bcrypt.compare(password, user.password);
+          
+          if (!isPasswordValid) {
+            console.log(`DEBUG AUTH: Mot de passe incorrect pour ${email}`);
+            return null;
+          }
+
+          // 3. Retourne l'objet user si tout est OK
+          console.log(`DEBUG AUTH: Connexion réussie pour ${email}`);
+          return {
+            id: user.id,
+            email: user.email,
+            name: `${user.firstName} ${user.lastName}`.trim(),
+            role: user.role,
+          };
+        } catch (error) {
+          console.error("DEBUG AUTH ERROR:", error);
           return null;
         }
-
-        const email = emailRaw.toLowerCase();
-        const user = await prisma.user.findUnique({ where: { email } });
-
-        if (!user) {
-          return null;
-        }
-
-        const valid = await bcrypt.compare(password, user.password);
-        if (!valid) {
-          return null;
-        }
-
-        return {
-          id: user.id,
-          email: user.email,
-          name: `${user.firstName} ${user.lastName}`.trim(),
-          role: user.role,
-        };
       },
     }),
   ],
+
+  callbacks: {
+    async jwt({ token, user }) {
+      // S'exécute lors de la connexion initiale
+      if (user) {
+        token.role = user.role as Role;
+        token.id = user.id;
+      }
+      return token;
+    },
+    async session({ session, token }) {
+      // Transmet les infos du JWT vers la session accessible côté client
+      if (session.user) {
+        session.user.id = token.id as string;
+        session.user.role = token.role as Role;
+      }
+      return session;
+    },
+  },
+
+  // Configuration des cookies pour la production (HTTPS)
+  useSecureCookies: process.env.NODE_ENV === "production",
   cookies: {
     sessionToken: {
       name: process.env.NODE_ENV === "production" 
@@ -63,30 +102,4 @@ export const authOptions: NextAuthOptions = {
       },
     },
   },
-  callbacks: {
-    /**
-     * Persiste le `role` Prisma dans le JWT pour le middleware `withAuth`
-     * et pour la reconstruction de la session.
-     */
-    async jwt({ token, user }) {
-      if (user) {
-        token.role = user.role as Role;
-        token.sub = user.id;
-      }
-      return token;
-    },
-    /**
-     * Expose `user.role` côté client (`useSession`) et serveur (`getServerSession`).
-     */
-    async session({ session, token }) {
-      if (session.user) {
-        session.user.id = token.sub ?? "";
-        if (token.role) {
-          session.user.role = token.role as Role;
-        }
-      }
-      return session;
-    },
-  },
-  
 };
