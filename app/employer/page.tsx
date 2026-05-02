@@ -5,7 +5,7 @@ import { authOptions } from "@/lib/auth-options";
 import { listParentChildrenSerialized } from "@/lib/parent-access";
 
 export const metadata = {
-  title: "Espace famille",
+  title: "Espace employeur",
 };
 
 export default async function ParentHomePage() {
@@ -25,7 +25,7 @@ export default async function ParentHomePage() {
   return (
     <div className="mx-auto max-w-2xl px-4 py-12">
       <h1 className="text-2xl font-semibold tracking-tight text-slate-900">
-        Espace famille
+        Espace employeur
       </h1>
       <p className="mt-2 text-sm text-slate-600">
         Consultez le suivi scolaire.{" "}
@@ -40,7 +40,7 @@ export default async function ParentHomePage() {
       {!firstId ? (
         <div className="mt-10 rounded-xl border border-amber-200 bg-amber-50 px-5 py-4 text-sm text-amber-950">
           Aucun élève n’est encore rattaché à votre compte. Contactez l’administration pour
-          assurer la liaison famille / élève.
+          assurer la liaison employeur / élève .
         </div>
       ) : (
         <ul className="mt-8 space-y-3">
