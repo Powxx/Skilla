@@ -121,7 +121,7 @@ export default function Home() {
 
       <footer className="relative z-10 border-t border-slate-200 bg-white/80 py-6 text-center text-xs text-slate-500 backdrop-blur-md">
         <div className="mx-auto max-w-5xl px-6">
-          Noptima — clone à usage personnel. Données d&apos;exemple non reliées à une
+          Skilla  Données d&apos;exemple non reliées à une
           base réelle sur cette page.
         </div>
       </footer>

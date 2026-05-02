@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import LoginForm from "./login-form";
 
 export const metadata: Metadata = {
-  title: "Connexion — Skilla Pronote",
+  title: "Connexion — Skilla",
   description: "Accédez à votre espace élève, enseignant ou administration.",
 };
 
