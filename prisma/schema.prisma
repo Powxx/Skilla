@@ -1,0 +1,110 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL") // On remet "url"
+}
+
+// --- UTILISATEURS & ROLES ---
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  password      String    // Hashé pour la sécurité
+  role          Role      @default(STUDENT) // ADMIN, TEACHER, STUDENT, PARENT
+  firstName     String
+  lastName      String
+  
+  // Relations optionnelles selon le rôle
+  studentProfile Student?
+  teacherProfile Teacher?
+  /** Enfants rattachés (compte parent). */
+  parentOf      ParentStudent[]
+}
+
+enum Role {
+  ADMIN
+  TEACHER
+  STUDENT
+  PARENT
+}
+
+// --- CLASSES & MATIÈRES ---
+model Class {
+  id        String    @id @default(cuid())
+  name      String    // ex: "3ème A"
+  students  Student[]
+  courses   Course[]
+}
+
+model Subject {
+  id      String   @id @default(cuid())
+  name    String   // ex: "Mathématiques"
+  courses Course[]
+}
+
+// --- VIE SCOLAIRE ---
+model Student {
+  id         String    @id @default(cuid())
+  userId     String    @unique
+  user       User      @relation(fields: [userId], references: [id])
+  classId    String
+  class      Class     @relation(fields: [classId], references: [id])
+  grades     Grade[]
+  attendances Attendance[]
+  parentLinks ParentStudent[]
+}
+
+model ParentStudent {
+  id           String @id @default(cuid())
+  parentUserId String
+  studentId    String
+  parent       User    @relation(fields: [parentUserId], references: [id], onDelete: Cascade)
+  student      Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([parentUserId, studentId])
+}
+
+model Teacher {
+  id         String    @id @default(cuid())
+  userId     String    @unique
+  user       User      @relation(fields: [userId], references: [id])
+  courses    Course[]
+}
+
+model Course {
+  id          String    @id @default(cuid())
+  subjectId   String
+  subject     Subject   @relation(fields: [subjectId], references: [id])
+  teacherId   String
+  teacher     Teacher   @relation(fields: [teacherId], references: [id])
+  classId     String
+  class       Class     @relation(fields: [classId], references: [id])
+  schedule    DateTime  // Heure du cours
+  homework    String?   // Cahier de texte
+}
+
+// --- NOTES ---
+model Grade {
+  id          String   @id @default(cuid())
+  value       Float    // La note (ex: 15.5)
+  coefficient Float    @default(1.0)
+  comment     String?
+  date        DateTime @default(now())
+  studentId   String
+  student     Student  @relation(fields: [studentId], references: [id])
+  subjectName String   // Pour simplifier l'affichage
+}
+
+// --- ABSENCES ---
+
+model Attendance {
+  id        String   @id @default(cuid())
+  date      DateTime @default(now())
+  type      String   // "ABSENCE" ou "RETARD"
+  status    String   // "JUSTIFIE" ou "NON_JUSTIFIE"
+  reason    String?  // Motif (ex: "Rendez-vous médical")
+  studentId String
+  student   Student  @relation(fields: [studentId], references: [id])
+}
