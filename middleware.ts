@@ -13,7 +13,7 @@ export default withAuth(
     callbacks: {
       authorized({ req, token }) {
         const { pathname } = req.nextUrl;
-
+        console.log(`[Middleware] Path: ${pathname} | Role: ${token?.role}`);
         if (!token) {
           return false;
         }
@@ -31,7 +31,10 @@ export default withAuth(
         }
 
         if (pathname.startsWith("/parent")) {
-          return token.role === "PARENT" || token.role === "EMPLOYER";
+          return token.role === "PARENT";
+        }
+        if (pathname.startsWith("/employer")) {
+          return token.role === "EMPLOYER";
         }
 
         return true;
@@ -53,5 +56,7 @@ export const config = {
     "/student/:path*",
     "/parent",
     "/parent/:path*",
+    "/employer",
+    "/employer/:path*",
   ],
 };
