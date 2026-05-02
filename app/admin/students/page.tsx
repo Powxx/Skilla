@@ -1,7 +1,7 @@
 import Link from "next/link";
 import prisma from "@/lib/prisma";
 import AddStudentModal from "./add-student-modal";
-
+export const dynamic = 'force-dynamic';
 export const metadata = {
   title: "Élèves — Administration",
 };
