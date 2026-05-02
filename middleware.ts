@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import type { NextRequest } from 'next/request';
+import type { NextRequest } from 'next/server'; // Correction ici
 
 export function middleware(request: NextRequest) {
   console.log("!!! MIDDLEWARE EN VIE SUR :", request.nextUrl.pathname);
@@ -7,5 +7,5 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: '/:path*', // On écoute TOUT pour tester
+  matcher: '/:path*', 
 };
