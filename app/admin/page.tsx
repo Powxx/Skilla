@@ -1,5 +1,7 @@
 import Link from "next/link";
 
+export const dynamic = 'force-dynamic';
+
 export default function AdminHomePage() {
   return (
     <div className="mx-auto max-w-2xl px-4 py-16 font-sans text-slate-900">

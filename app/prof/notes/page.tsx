@@ -1,6 +1,8 @@
 import prisma from "@/lib/prisma";
 import GradeEntryClient from "./grade-entry-client";
 
+export const dynamic = 'force-dynamic';
+
 export const metadata = {
   title: "Saisie des notes — Professeur",
 };

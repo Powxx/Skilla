@@ -1,6 +1,8 @@
 import prisma from "@/lib/prisma";
 import AppelClient from "./appel-client";
 
+export const dynamic = 'force-dynamic';
+
 export const metadata = {
   title: "Appel — Professeur",
 };

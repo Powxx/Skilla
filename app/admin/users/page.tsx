@@ -2,6 +2,8 @@ import type { Prisma, Role } from "@prisma/client";
 import prisma from "@/lib/prisma";
 import UsersShell, { type ListedUserRow } from "./users-shell";
 
+export const dynamic = 'force-dynamic';
+
 export const metadata = {
   title: "Utilisateurs — Administration",
 };
