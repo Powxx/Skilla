@@ -34,10 +34,22 @@ export async function middleware(req: NextRequest) {
   if (pathname.startsWith("/admin") && token.role !== "ADMIN") {
     return NextResponse.redirect(new URL("/login", req.url));
   }
+  if (pathname.startsWith("/teacher") && token.role !== "TEACHER") {
+    return NextResponse.redirect(new URL("/login", req.url));
+  }
+  if (pathname.startsWith("/student") && token.role !== "STUDENT") {
+    return NextResponse.redirect(new URL("/login", req.url));
+  }
+  if (pathname.startsWith("/parent") && token.role !== "PARENT") {
+    return NextResponse.redirect(new URL("/login", req.url));
+  }
+  if (pathname.startsWith("/employer") && token.role !== "EMPLOYER") {
+    return NextResponse.redirect(new URL("/login", req.url));
+  }
 
   return NextResponse.next();
 }
 
 export const config = {
-  matcher: ["/admin/:path*", "/prof/:path*", "/student/:path*", "/parent/:path*"],
+  matcher: ["/admin/:path*", "/prof/:path*", "/student/:path*", "/parent/:path*", "/employer/:path*"],
 };
