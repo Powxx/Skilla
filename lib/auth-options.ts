@@ -59,7 +59,9 @@ export const authOptions: NextAuthOptions = {
             email: user.email,
             name: `${user.firstName} ${user.lastName}`.trim(),
             role: user.role,
+            
           };
+          console.log(`DEBUG AUTH: Connexion réussie en tant que ${user.role} pour ${email}`);
         } catch (error) {
           console.error("DEBUG AUTH ERROR:", error);
           return null;
@@ -72,7 +74,8 @@ export const authOptions: NextAuthOptions = {
     async jwt({ token, user }) {
       // S'exécute lors de la connexion initiale
       if (user) {
-        token.role = user.role;
+        console.log("DEBUG JWT: User trouvé lors de la connexion, role =", user.role);
+        token.role = user.role as Role;
         token.id = user.id;
       }
       return token;
@@ -80,6 +83,7 @@ export const authOptions: NextAuthOptions = {
     async session({ session, token }) {
       // Transmet les infos du JWT vers la session accessible côté client
       if (session.user) {
+        console.log("DEBUG SESSION: Token reçu dans la session, role =", token.role);
         session.user.id = token.id as string;
         session.user.role = token.role as Role;
       }
