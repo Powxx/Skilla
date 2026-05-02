@@ -3,13 +3,18 @@ import type { Role } from "@prisma/client";
 import CredentialsProvider from "next-auth/providers/credentials";
 import bcrypt from "bcrypt";
 import prisma from "@/lib/prisma";
-
+if (process.env.NODE_ENV === "production" && process.env.NEXTAUTH_URL) {
+  if (!process.env.NEXTAUTH_URL.startsWith('http')) {
+    process.env.NEXTAUTH_URL = `https://${process.env.NEXTAUTH_URL}`;
+  }
+}
 export const authOptions: NextAuthOptions = {
   pages: {
     signIn: "/login",
   },
   session: { strategy: "jwt", maxAge: 30 * 24 * 60 * 60 },
   secret: process.env.NEXTAUTH_SECRET,
+  trustHost: true,
   providers: [
     CredentialsProvider({
       name: "Identifiants",
@@ -70,4 +75,5 @@ export const authOptions: NextAuthOptions = {
       return session;
     },
   },
+  
 };
