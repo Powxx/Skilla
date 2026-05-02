@@ -1,50 +1,46 @@
-import { withAuth } from "next-auth/middleware";
+import { getToken } from "next-auth/jwt";
 import { NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
 
-export default withAuth(
-  function middleware(req) {
-    const token = req.nextauth.token;
-    const { pathname } = req.nextUrl;
+export async function middleware(req: NextRequest) {
+  const { pathname } = req.nextUrl;
 
-    console.log("--- DEBUG ROLE MIDDLEWARE ---");
-    console.log("Path visité:", pathname);
-    console.log("Rôle trouvé:", token?.role);
+  // 1. On récupère le token manuellement sans passer par withAuth
+  // Cela permet de voir le log même si le token est invalide
+  const token = await getToken({ 
+    req, 
+    secret: process.env.NEXTAUTH_SECRET 
+  });
 
-    // Protection Admin
-    if (pathname.startsWith("/admin") && token?.role !== "ADMIN") {
-      return NextResponse.redirect(new URL("/login", req.url));
-    }
-    
-    // Protection Prof
-    if (pathname.startsWith("/prof") && token?.role !== "TEACHER") {
-      return NextResponse.redirect(new URL("/login", req.url));
-    }
-    if (pathname.startsWith("/parent") && token?.role !== "PARENT") {
-      return NextResponse.redirect(new URL("/login", req.url));
-    }
-    if (pathname.startsWith("/student") && token?.role !== "STUDENT") {
-      return NextResponse.redirect(new URL("/login", req.url));
-    }
-    if (pathname.startsWith("/employer") && token?.role !== "EMPLOYER") {
-      return NextResponse.redirect(new URL("/login", req.url));
-    }
+  console.log("--- MIDDLEWARE LIVE DEBUG ---");
+  console.log("Path:", pathname);
+  console.log("Token trouvé:", !!token);
+  console.log("Rôle dans le token:", token?.role);
 
-    return NextResponse.next();
-  },
-  {
-    callbacks: {
-      authorized: ({ token }) => !!token,
-    },
-    secret: process.env.NEXTAUTH_SECRET,
+  // 2. Si l'utilisateur n'est pas connecté du tout
+  if (!token) {
+    console.log("=> Redirection : Pas de session");
+    return NextResponse.redirect(new URL("/login", req.url));
   }
-);
+
+  // 3. Protection par rôles
+  if (pathname.startsWith("/admin") && token.role !== "ADMIN") {
+    console.log("=> Redirection : Rôle ADMIN manquant");
+    return NextResponse.redirect(new URL("/login", req.url));
+  }
+
+  if (pathname.startsWith("/prof") && token.role !== "TEACHER") {
+    console.log("=> Redirection : Rôle TEACHER manquant");
+    return NextResponse.redirect(new URL("/login", req.url));
+  }
+
+  return NextResponse.next();
+}
 
 export const config = {
   matcher: [
     "/admin/:path*",
     "/prof/:path*",
     "/student/:path*",
-    "/parent/:path*",
-    "/employer/:path*",
   ],
 };
