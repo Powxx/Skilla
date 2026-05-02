@@ -81,7 +81,7 @@ export const authOptions: NextAuthOptions = {
       // Transmet les infos du JWT vers la session accessible côté client
       if (session.user) {
         session.user.id = token.id as string;
-        session.user.role = token.role as string;
+        session.user.role = token.role as Role;
       }
       return session;
     },
