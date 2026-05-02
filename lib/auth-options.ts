@@ -72,7 +72,7 @@ export const authOptions: NextAuthOptions = {
     async jwt({ token, user }) {
       // S'exécute lors de la connexion initiale
       if (user) {
-        token.role = user.role as Role;
+        token.role = user.role;
         token.id = user.id;
       }
       return token;
@@ -81,7 +81,7 @@ export const authOptions: NextAuthOptions = {
       // Transmet les infos du JWT vers la session accessible côté client
       if (session.user) {
         session.user.id = token.id as string;
-        session.user.role = token.role as Role;
+        session.user.role = token.role as string;
       }
       return session;
     },
