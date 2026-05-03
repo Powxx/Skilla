@@ -1,5 +1,6 @@
 import "./globals.css";
 import type { Metadata } from "next";
+import { Providers } from "@/components/Providers";
 
 export const metadata: Metadata = {
   title: "Skilla - Gestion de Planning",
@@ -14,7 +15,7 @@ export default function RootLayout({
   return (
     <html lang="fr">
       <body>
-        {children}
+        <Providers>{children}</Providers>
       </body>
     </html>
   );
