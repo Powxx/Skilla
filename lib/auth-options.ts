@@ -75,13 +75,33 @@ export const authOptions: NextAuthOptions = {
   ],
 
   callbacks: {
-    async jwt({ token, user }) {
+    async jwt({ token, user, trigger, session }) {
       // S'exécute lors de la connexion initiale
       if (user) {
         console.log("DEBUG JWT: User trouvé lors de la connexion, role =", user.role);
         token.role = user.role as Role;
         token.id = user.id;
       }
+
+      // Impersonation logic via session update
+      if (trigger === "update" && session?.impersonateUser) {
+        token.originalUserId = token.originalUserId || token.id;
+        token.originalUserRole = token.originalUserRole || token.role;
+        token.id = session.impersonateUser.id;
+        token.role = session.impersonateUser.role;
+        token.impersonated = true;
+      }
+
+      if (trigger === "update" && session?.stopImpersonation) {
+        if (token.originalUserId) {
+          token.id = token.originalUserId as string;
+          token.role = token.originalUserRole as Role;
+          token.impersonated = false;
+          token.originalUserId = undefined;
+          token.originalUserRole = undefined;
+        }
+      }
+
       return token;
     },
     async session({ session, token }) {
@@ -90,6 +110,8 @@ export const authOptions: NextAuthOptions = {
         console.log("DEBUG SESSION: Token reçu dans la session, role =", token.role);
         session.user.id = token.id as string;
         session.user.role = token.role as Role;
+        (session as any).impersonated = !!token.impersonated;
+        (session as any).originalUserId = token.originalUserId as string | undefined;
       }
       return session;
     },

@@ -1,12 +1,13 @@
 // @ts-nocheck
 import { PrismaClient, Role, AttendanceStatus, RhythmType, InternshipType } from '@prisma/client'
+import bcrypt from "bcryptjs"; // Assure-toi d'avoir installé bcryptjs pour hacher les mots de passe
+
 const prisma = new PrismaClient()
 
 async function main() {
   console.log("🧹 Nettoyage de la base de données...")
-  
-  // L'ordre est CRUCIAL à cause des relations (clés étrangères)
-  // On supprime d'abord les enfants, puis les parents
+
+  // Suppression dans l'ordre pour respecter les contraintes de clés étrangères
   await prisma.attendance.deleteMany()
   await prisma.lesson.deleteMany()
   await prisma.attendanceSheet.deleteMany()
@@ -17,14 +18,16 @@ async function main() {
   await prisma.companyContract.deleteMany()
   await prisma.teacherContract.deleteMany()
   await prisma.skillMatrix.deleteMany()
-  
-  // Enfin, on supprime les entités principales
+  await prisma.studentProfile.deleteMany()
   await prisma.user.deleteMany()
   await prisma.subject.deleteMany()
   await prisma.class.deleteMany()
   await prisma.semester.deleteMany()
 
   console.log("🚀 Début du seeding...")
+
+  // Fonction utilitaire pour hacher les mots de passe
+  const hashPassword = (pw: string) => bcrypt.hashSync(pw, 10);
 
   // 1. SEMESTRE
   const semester = await prisma.semester.create({
@@ -38,160 +41,113 @@ async function main() {
   // 2. MATIÈRES
   const math = await prisma.subject.create({ data: { name: "Mathématiques" } })
   const dev = await prisma.subject.create({ data: { name: "Développement Fullstack" } })
-  const gestion = await prisma.subject.create({ data: { name: "Gestion de Projet" } })
 
-  // 3. UTILISATEURS : ADMIN & PROFS
+  // 3. CRÉATION DES DIFFÉRENTS TYPES D'UTILISATEURS
+
+  // --- ADMIN ---
   const admin = await prisma.user.create({
     data: {
       name: "Admin Skilla",
       email: "admin@skilla.edu",
+      password: hashPassword("admin"), // Mot de passe : admin
       role: Role.ADMIN,
-      address: "123 Rue de l'Innovation, 75001 Paris",
-    }
-  })
-  const contractPayload: any = {
-    hourlyRate: 55.5,
-    monthlyHours: 120,
-  };
-  const profTitulaire = await prisma.user.create({
-    data: {
-      name: "M. Jean Titulaire",
-      email: "jean@skilla.edu",
-      role: Role.TEACHER,
-      phone: "0601020304",
-      subjects: { connect: [{ id: math.id }, { id: gestion.id }] },
-      contract: {create: contractPayload}
     }
   })
 
-  const profSubstitute = await prisma.user.create({
+  // --- TEACHER (Professeur) ---
+  const teacher = await prisma.user.create({
     data: {
-      name: "Mme Sarah Remplaçante",
-      email: "sarah@skilla.edu",
+      name: "Jean Enseignant",
+      email: "teacher@skilla.edu",
+      password: hashPassword("teacher"), // Mot de passe : teacher
       role: Role.TEACHER,
-      subjects: { connect: [{ id: dev.id }] },
-      contract: { create: { hourlyRate: 48.0, monthlyHours: 40 } }
+      subjects: { connect: [{ id: math.id }] },
+      contract: { create: { hourlyRate: 50.0, monthlyHours: 100 } }
     }
   })
 
-  // 4. ENTREPRISE & TUTEUR
+  // --- COMPANY_TUTOR (Tuteur en entreprise) ---
   const tutor = await prisma.user.create({
     data: {
-      name: "Marc Expert",
-      email: "m.expert@tech-corp.fr",
+      name: "Marc Tuteur",
+      email: "tutor@tech.fr",
+      password: hashPassword("company_tutor"), // Mot de passe : company_tutor
       role: Role.COMPANY_TUTOR,
-      address: "Technopole, 31000 Toulouse",
     }
   })
 
-  // 5. CLASSE & ÉLÈVES
+  // --- RESPONSIBLE (Parent / Responsable légal) ---
+  const parent = await prisma.user.create({
+    data: {
+      name: "Mme Responsable",
+      email: "parent@mail.com",
+      password: hashPassword("responsible"), // Mot de passe : responsible
+      role: Role.RESPONSIBLE,
+    }
+  })
+
+  // 4. CLASSE
   const btsClass = await prisma.class.create({
     data: {
       name: "Bachelor Dev 2026",
-      rhythm: RhythmType.ALTERNANCE_1_3 // Rythme CFA
+      rhythm: RhythmType.ALTERNANCE_1_3
     }
   })
 
-  const parent = await prisma.user.create({
-    data: {
-      name: "Mme Durand (Responsable)",
-      email: "parent.durand@mail.com",
-      role: Role.RESPONSIBLE,
-      phone: "0788990011"
-    }
-  })
-
+  // --- STUDENT (Élève) ---
   const student = await prisma.user.create({
     data: {
       name: "Lucas Durand",
-      email: "l.durand@student.fr",
+      email: "student@skilla.edu",
+      password: hashPassword("student"),
       role: Role.STUDENT,
-      birthday: new Date("2005-05-15"),
-      address: "10 Avenue des Étudiants, 31000 Toulouse",
-      classId: btsClass.id,
+      classId: btsClass.id, // ID pour le modèle User
       responsibles: { connect: [{ id: parent.id }] },
-      studentContracts: {
+      studentProfile: {
         create: {
-          companyName: "Tech Corp",
-          type: InternshipType.APPRENTICESHIP,
-          startDate: new Date("2025-09-01"),
-          endDate: new Date("2027-08-31"),
-          tutorId: tutor.id
+          id: "prof_lucas_2026",
+          classId: btsClass.id // AJOUTE CETTE LIGNE : c'est l'ID obligatoire pour StudentProfile
         }
       }
     }
   })
 
-  // 6. PLANNING : COURS NORMAL & COURS REMPLACÉ
-  const lesson1 = await prisma.lesson.create({
+  // 5. PLANNING & EXEMPLES DE DONNÉES
+  const lesson = await prisma.lesson.create({
     data: {
       startTime: new Date("2026-05-10T08:00:00Z"),
       endTime: new Date("2026-05-10T10:00:00Z"),
       subjectId: math.id,
-      teacherId: profTitulaire.id,
+      teacherId: teacher.id,
       classId: btsClass.id
-    }
-  })
-
-  const lesson2 = await prisma.lesson.create({
-    data: {
-      startTime: new Date("2026-05-10T10:30:00Z"),
-      endTime: new Date("2026-05-10T12:30:00Z"),
-      subjectId: dev.id,
-      teacherId: profTitulaire.id, // Titulaire habituel
-      substituteId: profSubstitute.id, // MAIS remplacé par Sarah
-      replacementNote: "Absence exceptionnelle du titulaire",
-      classId: btsClass.id
-    }
-  })
-
-  // 7. ÉMARGEMENT & APPEL
-  const sheet = await prisma.attendanceSheet.create({
-    data: {
-      date: new Date("2026-05-10"),
-      classId: btsClass.id,
-      lessons: { connect: [{ id: lesson1.id }, { id: lesson2.id }] }
     }
   })
 
   await prisma.attendance.create({
     data: {
-      status: AttendanceStatus.LATE,
-      lateDuration: 20,
-      reason: "Panne de tram",
+      status: AttendanceStatus.PRESENT,
       studentId: student.id,
-      lessonId: lesson1.id
+      lessonId: lesson.id
     }
   })
 
-  // 8. NOTES (Obligatoire + Bonus)
-  await prisma.grade.createMany({
-    data: [
-      { value: 12.5, weight: 2, studentId: student.id, subjectId: math.id, semesterId: semester.id },
-      { value: 19, weight: 1, isOptional: true, studentId: student.id, subjectId: math.id, semesterId: semester.id }
-    ]
-  })
-
-  // 9. LIVRET D'APPRENTISSAGE & QUALIOPI
-  await prisma.evaluation.create({
+  await prisma.grade.create({
     data: {
-      competency: "Installer un environnement de dev",
-      level: 3,
-      source: "ENTREPRISE",
-      studentId: student.id
+      value: 15,
+      coefficient: 2.0,
+      studentId: student.id,
+      subjectId: math.id,
+      semesterId: semester.id
     }
   })
 
-  await prisma.complaint.create({
-    data: {
-      subject: "Problème accès WiFi",
-      description: "Le wifi ne fonctionne pas en salle 204",
-      status: "OPEN",
-      senderId: student.id
-    }
-  })
-
-  console.log("✅ Base de données Skilla peuplée avec succès !")
+  console.log("✅ Base de données peuplée avec succès !");
+  console.log("🔑 Comptes créés :");
+  console.log("- admin@skilla.edu / admin");
+  console.log("- teacher@skilla.edu / teacher");
+  console.log("- student@skilla.edu / student");
+  console.log("- parent@mail.com / responsible");
+  console.log("- tutor@tech.fr / company_tutor");
 }
 
 main()

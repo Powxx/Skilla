@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { signOut } from "next-auth/react";
+import { useSession, signOut } from "next-auth/react";
 
 export type PortalParentChild = { id: string; label: string };
 
@@ -25,6 +25,14 @@ export default function PortalHeader({ variant, parentChildren = [] }: Props) {
   const pathname = usePathname() ?? "";
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { data: session, update } = useSession();
+
+  const isImpersonated = (session as any)?.impersonated === true;
+
+  const handleStopImpersonation = async () => {
+    await update({ stopImpersonation: true });
+    window.location.href = "/admin";
+  };
 
   const qStudent = searchParams.get("studentId");
   const resolvedChildId =
@@ -58,16 +66,19 @@ export default function PortalHeader({ variant, parentChildren = [] }: Props) {
     if (pathname === "/prof") currentCrumb = "Accueil";
     else if (pathname === "/prof/notes") currentCrumb = "Notes";
     else if (pathname === "/prof/appel") currentCrumb = "Appel";
+    else if (pathname === "/prof/planning") currentCrumb = "Planning";
   } else if (variant === "student") {
     if (pathname === "/student") currentCrumb = "Accueil";
     else if (pathname === "/student/dashboard") currentCrumb = "Tableau de bord";
     else if (pathname === "/student/grades") currentCrumb = "Mes notes";
     else if (pathname === "/student/absences") currentCrumb = "Absences & retards";
+    else if (pathname === "/student/planning") currentCrumb = "Planning";
   } else {
     if (pathname === "/parent") currentCrumb = "Accueil";
     else if (pathname === "/parent/dashboard") currentCrumb = "Tableau de bord";
     else if (pathname === "/parent/grades") currentCrumb = "Notes de l’élève";
     else if (pathname === "/parent/absences") currentCrumb = "Absences & retards";
+    else if (pathname === "/parent/planning") currentCrumb = "Planning";
   }
 
   const onHub = pathname === "/prof" || pathname === "/student" || pathname === "/parent";
@@ -83,6 +94,17 @@ export default function PortalHeader({ variant, parentChildren = [] }: Props) {
 
   return (
     <header className="sticky top-0 z-20 border-b border-slate-200/90 bg-white/95 shadow-sm shadow-slate-900/[0.03] backdrop-blur-sm">
+      {isImpersonated && (
+        <div className="bg-orange-500 text-white text-sm font-medium px-4 py-2 flex items-center justify-between">
+          <span>Mode Impersonnalisation activé : Vous voyez l'application en tant que {(session?.user as any)?.name}</span>
+          <button 
+            onClick={handleStopImpersonation}
+            className="px-3 py-1 bg-white text-orange-600 rounded shadow-sm hover:bg-orange-50 transition"
+          >
+            Retour Admin
+          </button>
+        </div>
+      )}
       <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-6 lg:px-8">
         <nav className="flex flex-wrap items-center gap-x-1.5 gap-y-1 text-sm text-slate-500">
           <Link href="/" className="font-medium hover:text-slate-800">
@@ -149,6 +171,9 @@ export default function PortalHeader({ variant, parentChildren = [] }: Props) {
               <Link href="/prof/appel" className={cx(subLinkClass(pathname === "/prof/appel"))}>
                 Appel
               </Link>
+              <Link href="/prof/planning" className={cx(subLinkClass(pathname === "/prof/planning"))}>
+                Planning
+              </Link>
             </>
           ) : null}
 
@@ -171,6 +196,9 @@ export default function PortalHeader({ variant, parentChildren = [] }: Props) {
                 className={cx(subLinkClass(pathname === "/student/absences"))}
               >
                 Absences
+              </Link>
+              <Link href="/student/planning" className={cx(subLinkClass(pathname === "/student/planning"))}>
+                Planning
               </Link>
             </>
           ) : null}
@@ -197,6 +225,12 @@ export default function PortalHeader({ variant, parentChildren = [] }: Props) {
                 className={cx(subLinkClass(pathname === "/parent/absences"))}
               >
                 Absences
+              </Link>
+              <Link
+                href={resolvedChildId ? parentHref("/parent/planning") : "/parent"}
+                className={cx(subLinkClass(pathname === "/parent/planning"))}
+              >
+                Planning
               </Link>
             </>
           ) : null}
