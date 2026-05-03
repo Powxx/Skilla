@@ -99,6 +99,13 @@ model Class {
   attendanceSheets AttendanceSheet[]
 }
 
+model Room {
+  id       String   @id @default(cuid())
+  name     String   @unique
+  capacity Int?
+  lessons  Lesson[]
+}
+
 model Subject {
   id          String        @id @default(cuid())
   name        String        @unique
@@ -136,6 +143,9 @@ model Lesson {
 
   classId           String
   class             Class            @relation(fields: [classId], references: [id])
+  
+  roomId            String?
+  room              Room?            @relation(fields: [roomId], references: [id])
   
   attendances       Attendance[]
   attendanceSheetId String?

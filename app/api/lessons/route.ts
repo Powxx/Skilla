@@ -48,25 +48,28 @@ export async function GET(request: Request) {
   const lessons = await prisma.lesson.findMany({
     where: whereClause,
     include: {
-      subject: true,
-      teacher: true,
-      class: true,
+      subject: { select: { id: true, name: true } },
+      teacher: { select: { id: true, firstName: true, lastName: true } },
+      class: { select: { id: true, name: true } },
+      room: { select: { id: true, name: true } }
     },
   });
 
   const formattedEvents = lessons.map((lesson) => ({
     id: lesson.id,
-    title: `${lesson.subject.name} - ${lesson.teacher.name} (${lesson.class.name})`,
+    title: `${lesson.subject.name} - ${lesson.teacher.firstName} ${lesson.teacher.lastName} (${lesson.class.name})`,
     start: lesson.startTime.toISOString(),
     end: lesson.endTime.toISOString(),
     backgroundColor: "#3b82f6", // Default color
     extendedProps: {
-      teacher: lesson.teacher.name,
+      teacher: `${lesson.teacher.firstName} ${lesson.teacher.lastName}`,
       teacherId: lesson.teacherId,
       subject: lesson.subject.name,
       subjectId: lesson.subjectId,
       class: lesson.class.name,
       classId: lesson.classId,
+      room: lesson.room?.name,
+      roomId: lesson.roomId
     }
   }));
 
@@ -88,6 +91,7 @@ export async function POST(request: Request) {
         classId: data.classId,
         subjectId: data.subjectId,
         teacherId: data.teacherId,
+        roomId: data.roomId || null,
       }
     });
     return NextResponse.json(newLesson);

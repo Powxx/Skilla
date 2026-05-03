@@ -1,0 +1,461 @@
+"use client";
+
+import React, { useState, useEffect, useRef } from 'react';
+import FullCalendar from '@fullcalendar/react';
+import timeGridPlugin from '@fullcalendar/timegrid';
+import interactionPlugin, { Draggable } from '@fullcalendar/interaction';
+import frLocale from '@fullcalendar/core/locales/fr';
+import { startOfWeek, format, isWithinInterval, parseISO, endOfWeek } from 'date-fns';
+
+interface AdvancedPlanningClientProps {
+  classes: { id: string; name: string }[];
+  teachers: { id: string; firstName: string | null; lastName: string | null; subjects: any[] }[];
+  subjects: { id: string; name: string }[];
+  rooms: { id: string; name: string }[];
+}
+
+export default function AdvancedPlanningClient({ classes, teachers, subjects, rooms }: AdvancedPlanningClientProps) {
+  // Left Column: Configuration Form
+  const [config, setConfig] = useState({
+    duration: "02:00",
+    teacherId: "",
+    subjectId: "",
+    classId: "",
+    roomId: ""
+  });
+
+  const selectedTeacher = teachers.find(t => t.id === config.teacherId);
+  const selectedSubject = subjects.find(s => s.id === config.subjectId);
+  const selectedClass = classes.find(c => c.id === config.classId);
+  const selectedRoom = rooms.find(r => r.id === config.roomId);
+
+  // Middle Column: Calendar state
+  const calendarRef = useRef<FullCalendar>(null);
+  const [currentDate, setCurrentDate] = useState(new Date());
+  const [events, setEvents] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState("");
+
+  // Right Column: Filters and Stats
+  const [viewFilter, setViewFilter] = useState({ type: 'class', id: '' });
+
+  // Init Draggable
+  useEffect(() => {
+    let draggableEl = document.getElementById('external-events');
+    if (draggableEl) {
+      const draggable = new Draggable(draggableEl, {
+        itemSelector: '.fc-event',
+        eventData: function(eventEl) {
+          const duration = eventEl.getAttribute('data-duration');
+          const propsStr = eventEl.getAttribute('data-props');
+          if (!propsStr) return false;
+          
+          const props = JSON.parse(propsStr);
+          
+          return {
+            title: eventEl.innerText,
+            duration: duration || "02:00",
+            create: true,
+            extendedProps: props
+          };
+        }
+      });
+      return () => draggable.destroy();
+    }
+  }, [config]);
+
+  // Fetch events based on current date
+  const fetchLessons = async (date: Date) => {
+    setLoading(true);
+    const monday = format(startOfWeek(date, { weekStartsOn: 1 }), 'yyyy-MM-dd');
+    
+    try {
+      const params = new URLSearchParams();
+      params.set('date', monday);
+      // Fetch ALL lessons to compute stats and detect conflicts
+      // we do not filter server side here to allow the client to know everything about the week
+      
+      const response = await fetch(`/api/lessons?${params.toString()}`);
+      const data = await response.json();
+      if (Array.isArray(data)) {
+        setEvents(data);
+      }
+    } catch (error) {
+      console.error("Erreur planning:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchLessons(currentDate);
+  }, [currentDate]);
+
+  // Conflict Checking logic
+  const checkConflicts = (start: Date, end: Date, teacherId: string, classId: string, roomId: string, excludeEventId?: string) => {
+    for (const event of events) {
+      if (excludeEventId && event.id === excludeEventId) continue;
+      
+      const eventStart = parseISO(event.start);
+      const eventEnd = parseISO(event.end);
+      
+      const overlaps = (start < eventEnd && end > eventStart);
+      
+      if (overlaps) {
+        if (event.extendedProps.teacherId === teacherId) return `Le professeur est déjà pris à cet horaire.`;
+        if (event.extendedProps.classId === classId) return `La classe a déjà cours à cet horaire.`;
+        if (roomId && event.extendedProps.roomId === roomId) return `La salle est déjà occupée à cet horaire.`;
+      }
+    }
+    return null; // No conflict
+  };
+
+  const handleEventReceive = async (info: any) => {
+    const { event } = info;
+    const start = event.start;
+    const end = event.end;
+    const props = event.extendedProps;
+
+    const conflictError = checkConflicts(start, end, props.teacherId, props.classId, props.roomId);
+    
+    if (conflictError) {
+      info.revert();
+      setErrorMsg(conflictError);
+      setTimeout(() => setErrorMsg(""), 5000);
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const payload = {
+        startTime: start.toISOString(),
+        endTime: end.toISOString(),
+        subjectId: props.subjectId,
+        teacherId: props.teacherId,
+        classId: props.classId,
+        roomId: props.roomId || null
+      };
+
+      const res = await fetch("/api/lessons", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+      
+      if (res.ok) {
+        const newLesson = await res.json();
+        // Trigger refetch to get proper formatted event from server
+        fetchLessons(currentDate);
+        info.revert(); // Remove the temp event, let the fetch replace it
+      } else {
+        info.revert();
+        setErrorMsg("Erreur lors de l'enregistrement du cours.");
+      }
+    } catch (err) {
+      info.revert();
+      setErrorMsg("Erreur réseau");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleEventChange = async (info: any) => {
+    const { event, revert } = info;
+    const start = event.start;
+    const end = event.end;
+    const props = event.extendedProps;
+
+    const conflictError = checkConflicts(start, end, props.teacherId, props.classId, props.roomId, event.id);
+    
+    if (conflictError) {
+      revert();
+      setErrorMsg(conflictError);
+      setTimeout(() => setErrorMsg(""), 5000);
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const payload = {
+        id: event.id,
+        startTime: start.toISOString(),
+        endTime: end.toISOString(),
+      };
+
+      const res = await fetch("/api/lessons", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+      
+      if (!res.ok) {
+        revert();
+        setErrorMsg("Erreur lors de la modification.");
+      }
+    } catch (err) {
+      revert();
+      setErrorMsg("Erreur réseau");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleEventClick = async (info: any) => {
+    if (confirm(`Voulez-vous supprimer ce cours : ${info.event.title} ?`)) {
+      try {
+        const res = await fetch(`/api/lessons?id=${info.event.id}`, { method: 'DELETE' });
+        if (res.ok) {
+          info.event.remove();
+          setEvents(events.filter(e => e.id !== info.event.id));
+        }
+      } catch (err) {
+        alert("Erreur de suppression");
+      }
+    }
+  };
+
+  // Filter events based on selected view
+  const visibleEvents = events.filter(e => {
+    if (!viewFilter.id) return true;
+    if (viewFilter.type === 'class') return e.extendedProps.classId === viewFilter.id;
+    if (viewFilter.type === 'teacher') return e.extendedProps.teacherId === viewFilter.id;
+    if (viewFilter.type === 'room') return e.extendedProps.roomId === viewFilter.id;
+    return true;
+  });
+
+  // Calculate Stats
+  const calculateStats = () => {
+    const stats: any = { teachers: {}, classes: {} };
+    events.forEach(e => {
+      const start = parseISO(e.start);
+      const end = parseISO(e.end);
+      const durationHours = (end.getTime() - start.getTime()) / (1000 * 60 * 60);
+
+      const tName = e.extendedProps.teacher;
+      const cName = e.extendedProps.class;
+
+      if (!stats.teachers[tName]) stats.teachers[tName] = 0;
+      stats.teachers[tName] += durationHours;
+
+      if (!stats.classes[cName]) stats.classes[cName] = 0;
+      stats.classes[cName] += durationHours;
+    });
+    return stats;
+  };
+  const stats = calculateStats();
+
+  const isConfigComplete = config.teacherId && config.subjectId && config.classId;
+
+  return (
+    <div className="flex flex-col lg:flex-row gap-6 items-start h-[calc(100vh-200px)]">
+      
+      {/* LEFT COLUMN: Config & Draggable */}
+      <div className="w-full lg:w-72 flex-shrink-0 bg-white border border-slate-200 rounded-2xl shadow-sm flex flex-col h-full overflow-hidden">
+        <div className="p-4 border-b border-slate-100 bg-slate-50">
+          <h2 className="font-semibold text-slate-800">1. Configuration</h2>
+          <p className="text-xs text-slate-500 mt-1">Préparez le cours à glisser</p>
+        </div>
+        <div className="p-4 space-y-4 overflow-y-auto flex-1">
+          <div>
+            <label className="block text-xs font-medium text-slate-700 mb-1">Classe *</label>
+            <select className="w-full text-sm rounded-lg border-slate-300" value={config.classId} onChange={e => setConfig({...config, classId: e.target.value})}>
+              <option value="">-- Choisir --</option>
+              {classes.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-slate-700 mb-1">Professeur *</label>
+            <select className="w-full text-sm rounded-lg border-slate-300" value={config.teacherId} onChange={e => {
+              // Reset subject when teacher changes
+              setConfig({...config, teacherId: e.target.value, subjectId: ""});
+            }}>
+              <option value="">-- Choisir --</option>
+              {teachers.map(t => <option key={t.id} value={t.id}>{t.lastName} {t.firstName}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-slate-700 mb-1">Matière *</label>
+            <select className="w-full text-sm rounded-lg border-slate-300" value={config.subjectId} onChange={e => setConfig({...config, subjectId: e.target.value})}>
+              <option value="">-- Choisir --</option>
+              {selectedTeacher ? selectedTeacher.subjects.map(s => <option key={s.id} value={s.id}>{s.name}</option>) : subjects.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+            </select>
+            {selectedTeacher && selectedTeacher.subjects.length === 0 && (
+              <p className="text-[10px] text-orange-600 mt-1">Ce professeur n'a aucune matière assignée.</p>
+            )}
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-slate-700 mb-1">Salle (Optionnel)</label>
+            <select className="w-full text-sm rounded-lg border-slate-300" value={config.roomId} onChange={e => setConfig({...config, roomId: e.target.value})}>
+              <option value="">-- Aucune --</option>
+              {rooms.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-slate-700 mb-1">Durée (Par défaut)</label>
+            <select className="w-full text-sm rounded-lg border-slate-300" value={config.duration} onChange={e => setConfig({...config, duration: e.target.value})}>
+              <option value="01:00">1 Heure</option>
+              <option value="01:30">1h30</option>
+              <option value="02:00">2 Heures</option>
+              <option value="03:00">3 Heures</option>
+              <option value="04:00">4 Heures</option>
+            </select>
+          </div>
+
+          <div className="pt-4 border-t border-slate-100" id="external-events">
+            <h3 className="text-xs font-semibold text-slate-800 mb-2 uppercase tracking-wide">2. Glisser & Déposer</h3>
+            {isConfigComplete ? (
+              <div 
+                className="fc-event cursor-grab active:cursor-grabbing p-3 rounded-xl bg-blue-600 text-white shadow-md hover:bg-blue-700 transition transform hover:-translate-y-0.5"
+                data-duration={config.duration}
+                data-props={JSON.stringify({
+                  teacherId: config.teacherId,
+                  subjectId: config.subjectId,
+                  classId: config.classId,
+                  roomId: config.roomId,
+                  teacher: `${selectedTeacher?.lastName} ${selectedTeacher?.firstName}`,
+                  subject: selectedSubject?.name,
+                  class: selectedClass?.name,
+                  room: selectedRoom?.name
+                })}
+              >
+                <div className="font-semibold text-sm">{selectedSubject?.name}</div>
+                <div className="text-xs text-blue-100 mt-1">{selectedTeacher?.lastName} • {selectedClass?.name}</div>
+                {selectedRoom && <div className="text-[10px] bg-blue-800/50 inline-block px-1.5 py-0.5 rounded mt-1">{selectedRoom.name}</div>}
+              </div>
+            ) : (
+              <div className="p-3 rounded-xl border border-dashed border-slate-300 bg-slate-50 text-slate-500 text-xs text-center">
+                Remplissez la classe, le professeur et la matière pour activer la carte.
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* MIDDLE COLUMN: Calendar */}
+      <div className="flex-1 bg-white border border-slate-200 rounded-2xl shadow-sm flex flex-col h-full overflow-hidden relative">
+        {loading && (
+          <div className="absolute inset-0 z-10 bg-white/50 backdrop-blur-sm flex items-center justify-center">
+            <span className="px-4 py-2 bg-slate-900 text-white rounded-lg shadow-lg font-medium text-sm animate-pulse">Synchronisation...</span>
+          </div>
+        )}
+        {errorMsg && (
+          <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-20 bg-red-600 text-white px-4 py-2 rounded-lg shadow-lg text-sm font-medium">
+            {errorMsg}
+          </div>
+        )}
+        
+        <div className="p-3 border-b border-slate-100 bg-slate-50 flex items-center gap-4">
+          <span className="text-sm font-medium text-slate-700">Filtre d'affichage :</span>
+          <select 
+            className="text-sm rounded-lg border-slate-300 py-1.5"
+            value={viewFilter.type}
+            onChange={(e) => setViewFilter({ type: e.target.value, id: "" })}
+          >
+            <option value="class">Classe</option>
+            <option value="teacher">Professeur</option>
+            <option value="room">Salle</option>
+            <option value="all">Tout voir (Déconseillé)</option>
+          </select>
+
+          {viewFilter.type === 'class' && (
+            <select className="text-sm rounded-lg border-slate-300 py-1.5" value={viewFilter.id} onChange={e => setViewFilter({...viewFilter, id: e.target.value})}>
+              <option value="">Sélectionner une classe...</option>
+              {classes.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
+          )}
+          {viewFilter.type === 'teacher' && (
+            <select className="text-sm rounded-lg border-slate-300 py-1.5" value={viewFilter.id} onChange={e => setViewFilter({...viewFilter, id: e.target.value})}>
+              <option value="">Sélectionner un professeur...</option>
+              {teachers.map(t => <option key={t.id} value={t.id}>{t.lastName}</option>)}
+            </select>
+          )}
+          {viewFilter.type === 'room' && (
+            <select className="text-sm rounded-lg border-slate-300 py-1.5" value={viewFilter.id} onChange={e => setViewFilter({...viewFilter, id: e.target.value})}>
+              <option value="">Sélectionner une salle...</option>
+              {rooms.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
+            </select>
+          )}
+        </div>
+
+        <div className="flex-1 p-2 overflow-auto" id="calendar-container">
+          <FullCalendar
+            ref={calendarRef}
+            plugins={[timeGridPlugin, interactionPlugin]}
+            initialView="timeGridWeek"
+            locales={[frLocale]}
+            locale="fr"
+            headerToolbar={{
+              left: 'prev,next today',
+              center: 'title',
+              right: ''
+            }}
+            allDaySlot={false}
+            slotMinTime="08:00:00"
+            slotMaxTime="20:00:00"
+            hiddenDays={[0]} // Hide Sunday
+            height="100%"
+            editable={true} // Allow drag to move, resize
+            droppable={true} // Allow dropping external events
+            events={visibleEvents}
+            datesSet={(arg) => setCurrentDate(arg.view.currentStart)}
+            eventReceive={handleEventReceive}
+            eventDrop={handleEventChange}
+            eventResize={handleEventChange}
+            eventClick={handleEventClick}
+            eventContent={(arg) => {
+              const { extendedProps } = arg.event;
+              // If viewing by class, show teacher. If viewing by teacher, show class.
+              let subtitle = extendedProps.teacher;
+              if (viewFilter.type === 'teacher') subtitle = extendedProps.class;
+              
+              return (
+                <div className="flex flex-col text-xs leading-tight p-0.5 overflow-hidden w-full h-full">
+                  <span className="font-semibold truncate">{arg.event.title.split(' - ')[0]}</span>
+                  <span className="truncate opacity-90">{subtitle}</span>
+                  {extendedProps.room && <span className="truncate opacity-75 mt-auto">{extendedProps.room}</span>}
+                </div>
+              );
+            }}
+          />
+        </div>
+      </div>
+
+      {/* RIGHT COLUMN: Stats */}
+      <div className="w-full lg:w-64 flex-shrink-0 bg-white border border-slate-200 rounded-2xl shadow-sm flex flex-col h-full overflow-hidden">
+        <div className="p-4 border-b border-slate-100 bg-slate-50">
+          <h2 className="font-semibold text-slate-800">3. Indicateurs</h2>
+          <p className="text-xs text-slate-500 mt-1">Semaine en cours</p>
+        </div>
+        
+        <div className="p-4 flex-1 overflow-y-auto space-y-6">
+          <div>
+            <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">Par Classe</h3>
+            <ul className="space-y-2">
+              {Object.entries(stats.classes).sort((a: any, b: any) => b[1] - a[1]).map(([name, hours]: any) => (
+                <li key={name} className="flex justify-between items-center text-sm">
+                  <span className="text-slate-700 truncate pr-2">{name}</span>
+                  <span className="font-medium text-slate-900 bg-slate-100 px-2 py-0.5 rounded text-xs">{hours}h</span>
+                </li>
+              ))}
+              {Object.keys(stats.classes).length === 0 && <li className="text-xs text-slate-400">Aucun cours</li>}
+            </ul>
+          </div>
+          
+          <div className="border-t border-slate-100 pt-4">
+            <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">Par Professeur</h3>
+            <ul className="space-y-2">
+              {Object.entries(stats.teachers).sort((a: any, b: any) => b[1] - a[1]).map(([name, hours]: any) => (
+                <li key={name} className="flex justify-between items-center text-sm">
+                  <span className="text-slate-700 truncate pr-2">{name}</span>
+                  <span className="font-medium text-blue-700 bg-blue-50 px-2 py-0.5 rounded text-xs">{hours}h</span>
+                </li>
+              ))}
+              {Object.keys(stats.teachers).length === 0 && <li className="text-xs text-slate-400">Aucun cours</li>}
+            </ul>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  );
+}

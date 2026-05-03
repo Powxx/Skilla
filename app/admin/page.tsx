@@ -25,10 +25,26 @@ export default function AdminHomePage() {
             </li>
             <li>
               <Link
+                href="/admin/teachers/subjects"
+                className="block rounded-xl border border-slate-200 bg-white px-5 py-4 text-sm font-medium shadow-sm ring-1 ring-slate-900/[0.04] transition hover:border-slate-300 hover:bg-slate-50"
+              >
+                Matières des Professeurs →
+              </Link>
+            </li>
+            <li>
+              <Link
                 href="/admin/students"
                 className="block rounded-xl border border-slate-200 bg-white px-5 py-4 text-sm font-medium shadow-sm ring-1 ring-slate-900/[0.04] transition hover:border-slate-300 hover:bg-slate-50"
               >
                 Gestion des élèves →
+              </Link>
+            </li>
+            <li>
+              <Link
+                href="/admin/rooms"
+                className="block rounded-xl border border-slate-200 bg-white px-5 py-4 text-sm font-medium shadow-sm ring-1 ring-slate-900/[0.04] transition hover:border-slate-300 hover:bg-slate-50"
+              >
+                Salles de Classe →
               </Link>
             </li>
             <li>
