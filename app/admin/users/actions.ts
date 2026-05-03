@@ -244,7 +244,7 @@ export async function updateUser(input: {
 
     /** Si élève existe : mettre à jour la classe uniquement lorsque reste STUDENT et fourni classId différent intention */
     if (newRole === Role.STUDENT && existing.studentProfile && studentClassId?.trim()) {
-      await prisma.student.updateMany({
+      await prisma.user.updateMany({
         where: { userId },
         data: { classId: studentClassId.trim() },
       });

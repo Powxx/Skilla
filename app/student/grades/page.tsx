@@ -16,7 +16,7 @@ export default async function StudentGradesPage() {
   }
 
   const [student, subjectsFromDb] = await Promise.all([
-    prisma.student.findUnique({
+    prisma.user.findUnique({
       where: { userId: session.user.id },
       include: {
         user: true,

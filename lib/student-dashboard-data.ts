@@ -26,7 +26,7 @@ function weightedAverage(grades: GradeLite[]): number | null {
 export async function loadStudentDashboardPayload(
   where: { id: string } | { userId: string },
 ): Promise<DashboardBuildPayload | null> {
-  const student = await prisma.student.findUnique({
+  const student = await prisma.user.findUnique({
     where,
     include: {
       user: true,

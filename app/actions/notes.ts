@@ -73,7 +73,7 @@ export async function saveGradesBatch(
     }
 
     const distinctStudentIds = [...new Set(entries.map((e) => e.studentId))];
-    const studentRows = await prisma.student.findMany({
+    const studentRows = await prisma.user.findMany({
       where: { id: { in: distinctStudentIds } },
       select: { id: true },
     });

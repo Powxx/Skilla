@@ -15,7 +15,7 @@ export default async function StudentAbsencesPage() {
     redirect("/login");
   }
 
-  const student = await prisma.student.findUnique({
+  const student = await prisma.user.findUnique({
     where: { userId: session.user.id },
     include: {
       user: true,

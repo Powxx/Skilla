@@ -28,7 +28,7 @@ export default async function ParentGradesPage({
   }
 
   const [student, subjectsFromDb] = await Promise.all([
-    prisma.student.findUnique({
+    prisma.user.findUnique({
       where: { id: studentId },
       include: {
         user: true,

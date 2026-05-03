@@ -27,7 +27,7 @@ export default async function ParentAbsencesPage({
     redirect("/parent");
   }
 
-  const student = await prisma.student.findUnique({
+  const student = await prisma.user.findUnique({
     where: { id: studentId },
     include: {
       user: true,

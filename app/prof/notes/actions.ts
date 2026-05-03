@@ -12,7 +12,7 @@ export async function getStudentsByClass(
 ): Promise<StudentForGradeEntry[]> {
   if (!classId.trim()) return [];
 
-  return prisma.student.findMany({
+  return prisma.user.findMany({
     where: { classId },
     select: {
       id: true,

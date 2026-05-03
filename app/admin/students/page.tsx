@@ -7,7 +7,7 @@ export const metadata = {
 };
 
 export default async function AdminStudentsPage() {
-  const students = await prisma.student.findMany({
+  const students = await prisma.user.findMany({
     include: {
       user: true,
       class: true,
@@ -55,7 +55,7 @@ export default async function AdminStudentsPage() {
             <p className="mt-2 max-w-xl text-sm text-slate-600">
               Liste des profils élèves issue de{" "}
               <code className="rounded-md bg-white px-1.5 py-0.5 text-xs font-medium text-slate-800 ring-1 ring-slate-200">
-                prisma.student.findMany()
+                prisma.user.findMany()
               </code>
               .
             </p>
