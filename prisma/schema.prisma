@@ -8,105 +8,220 @@ datasource db {
   directUrl = env("DIRECT_URL")
 }
 
-// --- UTILISATEURS & ROLES ---
-model User {
-  id            String    @id @default(cuid())
-  email         String    @unique
-  password      String    // Hashé pour la sécurité
-  role          Role      @default(STUDENT) // ADMIN, TEACHER, STUDENT, PARENT, EMPLOYER
-  firstName     String
-  lastName      String
-  
-  // Relations optionnelles selon le rôle
-  studentProfile Student?
-  teacherProfile Teacher?
-  /** Enfants rattachés (compte parent). */
-  parentOf      ParentStudent[]
-}
-
+// --- ENUMS ---
 enum Role {
   ADMIN
   TEACHER
   STUDENT
-  PARENT
-  EMPLOYER
+  RESPONSIBLE
+  COMPANY_TUTOR
 }
 
-// --- CLASSES & MATIÈRES ---
+enum AttendanceStatus {
+  PRESENT
+  ABSENT
+  LATE
+  EXCUSED
+}
+
+enum InternshipType {
+  APPRENTICESHIP
+  INTERNSHIP
+}
+
+enum RhythmType {
+  WEEKLY
+  ALTERNANCE_1_3
+}
+
+// --- UTILISATEURS ---
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String?   @unique
+  password      String?
+  phone         String?
+  address       String?
+  birthday      DateTime?
+  role          Role      @default(STUDENT)
+  createdAt     DateTime  @default(now())
+
+  // Relations Responsables
+  students      User[]    @relation("UserToResponsible")
+  responsibles  User[]    @relation("UserToResponsible")
+  
+  // Relations Entreprises
+  studentContracts CompanyContract[] @relation("StudentInCompany")
+  tutorContracts   CompanyContract[] @relation("TutorInCompany")
+
+  // Relations Profs / RH
+  subjects      Subject[] 
+  lessons       Lesson[]  @relation("TeacherLessons")
+  substitutions Lesson[]  @relation("SubstituteTeacher")
+  contract      TeacherContract?
+  skillMatrix   SkillMatrix[]
+
+  // Relations Élèves
+  classId       String?
+  class         Class?    @relation(fields: [classId], references: [id])
+  grades        Grade[]
+  absences      Attendance[]
+  reportCards   ReportCard[]
+  evaluations   Evaluation[] 
+  
+  // Qualiopi & Feedback
+  complaints    Complaint[] @relation("Sender")
+  surveys       SatisfactionSurvey[]
+}
+
+// --- STRUCTURE PÉDAGOGIQUE ---
 model Class {
-  id        String    @id @default(cuid())
-  name      String    // ex: "3ème A"
-  students  Student[]
-  courses   Course[]
+  id              String           @id @default(cuid())
+  name            String           @unique
+  rhythm          RhythmType       @default(WEEKLY)
+  students        User[]
+  lessons         Lesson[]
+  attendanceSheets AttendanceSheet[]
 }
 
 model Subject {
-  id      String   @id @default(cuid())
-  name    String   // ex: "Mathématiques"
-  courses Course[]
-}
-
-// --- VIE SCOLAIRE ---
-model Student {
-  id         String    @id @default(cuid())
-  userId     String    @unique
-  user       User      @relation(fields: [userId], references: [id])
-  classId    String
-  class      Class     @relation(fields: [classId], references: [id])
-  grades     Grade[]
-  attendances Attendance[]
-  parentLinks ParentStudent[]
-}
-
-model ParentStudent {
-  id           String @id @default(cuid())
-  parentUserId String
-  studentId    String
-  parent       User    @relation(fields: [parentUserId], references: [id], onDelete: Cascade)
-  student      Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
-
-  @@unique([parentUserId, studentId])
-}
-
-model Teacher {
-  id         String    @id @default(cuid())
-  userId     String    @unique
-  user       User      @relation(fields: [userId], references: [id])
-  courses    Course[]
-}
-
-model Course {
-  id          String    @id @default(cuid())
-  subjectId   String
-  subject     Subject   @relation(fields: [subjectId], references: [id])
-  teacherId   String
-  teacher     Teacher   @relation(fields: [teacherId], references: [id])
-  classId     String
-  class       Class     @relation(fields: [classId], references: [id])
-  schedule    DateTime  // Heure du cours
-  homework    String?   // Cahier de texte
-}
-
-// --- NOTES ---
-model Grade {
   id          String   @id @default(cuid())
-  value       Float    // La note (ex: 15.5)
-  coefficient Float    @default(1.0)
-  comment     String?
-  date        DateTime @default(now())
-  studentId   String
-  student     Student  @relation(fields: [studentId], references: [id])
-  subjectName String   // Pour simplifier l'affichage
+  name        String   @unique
+  teachers    User[]
+  lessons     Lesson[]
+  grades      Grade[]
+  skillMatrix SkillMatrix[]
 }
 
-// --- ABSENCES ---
+model Semester {
+  id          String       @id @default(cuid())
+  name        String
+  startDate   DateTime
+  endDate     DateTime
+  grades      Grade[]
+  reportCards ReportCard[]
+}
+
+// --- PLANNING & ÉMARGEMENT ---
+model Lesson {
+  id                String   @id @default(cuid())
+  startTime         DateTime
+  endTime           DateTime
+  isCancelled       Boolean  @default(false)
+  
+  subjectId         String
+  subject           Subject  @relation(fields: [subjectId], references: [id])
+  
+  teacherId         String
+  teacher           User     @relation("TeacherLessons", fields: [teacherId], references: [id])
+  
+  substituteId      String?
+  substitute        User?    @relation("SubstituteTeacher", fields: [substituteId], references: [id])
+  replacementNote   String?
+
+  classId           String
+  class             Class    @relation(fields: [classId], references: [id])
+  
+  attendances       Attendance[]
+  attendanceSheetId String?
+  attendanceSheet   AttendanceSheet? @relation(fields: [attendanceSheetId], references: [id])
+}
+
+model AttendanceSheet {
+  id          String   @id @default(cuid())
+  date        DateTime @default(now())
+  classId     String
+  class       Class    @relation(fields: [classId], references: [id])
+  lessons     Lesson[]
+}
 
 model Attendance {
-  id        String   @id @default(cuid())
-  date      DateTime @default(now())
-  type      String   // "ABSENCE" ou "RETARD"
-  status    String   // "JUSTIFIE" ou "NON_JUSTIFIE"
-  reason    String?  // Motif (ex: "Rendez-vous médical")
-  studentId String
-  student   Student  @relation(fields: [studentId], references: [id])
+  id           String           @id @default(cuid())
+  status       AttendanceStatus @default(PRESENT)
+  lateDuration Int?
+  reason       String?
+  lessonId     String
+  lesson       Lesson           @relation(fields: [lessonId], references: [id])
+  studentId    String
+  student      User             @relation(fields: [studentId], references: [id])
+}
+
+// --- NOTES & BULLETINS ---
+model Grade {
+  id            String   @id @default(cuid())
+  value         Float
+  weight        Float    @default(1.0)
+  isOptional    Boolean  @default(false)
+  studentId     String
+  student       User     @relation(fields: [studentId], references: [id])
+  subjectId     String
+  subject       Subject  @relation(fields: [subjectId], references: [id])
+  semesterId    String
+  semester      Semester @relation(fields: [semesterId], references: [id])
+}
+
+model ReportCard {
+  id                String   @id @default(cuid())
+  generalAppraisal  String?
+  distinction       String?  
+  semesterId        String
+  semester          Semester @relation(fields: [semesterId], references: [id])
+  studentId         String
+  student           User     @relation(fields: [studentId], references: [id])
+}
+
+// --- ENTREPRISE & RH ---
+model CompanyContract {
+  id            String         @id @default(cuid())
+  companyName   String
+  type          InternshipType
+  startDate     DateTime
+  endDate       DateTime
+  studentId     String
+  student       User           @relation("StudentInCompany", fields: [studentId], references: [id])
+  tutorId       String
+  tutor         User           @relation("TutorInCompany", fields: [tutorId], references: [id])
+}
+
+model TeacherContract {
+  id              String @id @default(cuid())
+  hourlyRate      Float
+  monthlyHours    Float  // <--- AJOUTÉ POUR LE SEED
+  teacherId       String @unique
+  teacher         User   @relation(fields: [teacherId], references: [id])
+}
+
+// --- MODULES QUALIOPI ---
+model Evaluation {
+  id          String   @id @default(cuid())
+  competency  String
+  level       Int      
+  source      String   
+  studentId   String
+  student     User     @relation(fields: [studentId], references: [id])
+}
+
+model SkillMatrix {
+  id              String   @id @default(cuid())
+  teacherId       String
+  teacher         User     @relation(fields: [teacherId], references: [id])
+  subjectId       String
+  subject         Subject  @relation(fields: [subjectId], references: [id])
+}
+
+model Complaint {
+  id          String    @id @default(cuid())
+  subject     String
+  description String
+  status      String    @default("OPEN")
+  senderId    String
+  sender      User      @relation("Sender", fields: [senderId], references: [id])
+  createdAt   DateTime  @default(now())
+}
+
+model SatisfactionSurvey {
+  id          String   @id @default(cuid())
+  rating      Int
+  studentId   String
+  student     User     @relation(fields: [studentId], references: [id])
 }
