@@ -2,26 +2,38 @@
 import FullCalendar from "@fullcalendar/react";
 import timeGridPlugin from "@fullcalendar/timegrid";
 import interactionPlugin from "@fullcalendar/interaction";
+import frLocale from '@fullcalendar/core/locales/fr';
 
-export default function WeeklyCalendar({ initialEvents }: { initialEvents: any[] }) {
+interface WeeklyCalendarProps {
+  events: any[];
+  onDateChange: (date: Date) => void;
+}
+
+export default function WeeklyCalendar({ events, onDateChange }: WeeklyCalendarProps) {
   return (
-    <div className="p-4 bg-white rounded-lg shadow">
+    <div className="calendar-container">
       <FullCalendar
         plugins={[timeGridPlugin, interactionPlugin]}
-        initialView="timeGridWeek" // Vue hebdomadaire avec heures
+        initialView="timeGridWeek"
+        locales={[frLocale]}
+        locale="fr"
         headerToolbar={{
           left: "prev,next today",
           center: "title",
           right: "timeGridWeek,timeGridDay",
         }}
-        locale="fr"
-        slotMinTime="08:00:00" // Début des cours
-        slotMaxTime="19:00:00" // Fin des cours
+        datesSet={(arg) => onDateChange(arg.start)}
+        slotMinTime="08:00:00"
+        slotMaxTime="19:00:00"
         allDaySlot={false}
-        weekends={false} // On cache le Samedi/Dimanche
-        events={initialEvents} // Les données de ton API Prisma
-        eventClick={(info) => alert("Cours de : " + info.event.title)}
-        height="auto"
+        weekends={false}
+        events={events}
+        height="650px"
+        expandRows={true}
+        eventClassNames="cursor-pointer hover:opacity-80 transition-opacity"
+        eventClick={(info) => {
+          alert(`Cours: ${info.event.title}\nProf: ${info.event.extendedProps.teacher}`);
+        }}
       />
     </div>
   );
