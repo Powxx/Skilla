@@ -11,8 +11,8 @@ const ADMIN_ROLES: Role[] = [
   Role.ADMIN,
   Role.TEACHER,
   Role.STUDENT,
-  Role.PARENT,
-  Role.EMPLOYER,
+  Role.RESPONSIBLE,
+  Role.COMPANY_TUTOR,
 ];
 
 async function requireAdmin() {
@@ -28,8 +28,8 @@ function roleLabelsFr(r: Role): string {
     ADMIN: "Administrateur",
     TEACHER: "Professeur",
     STUDENT: "Élève",
-    PARENT: "Parent",
-    EMPLOYER: "Employeur",
+    RESPONSIBLE: "Responsable",
+    COMPANY_TUTOR: "Employeur",
   };
   return map[r];
 }
@@ -87,12 +87,16 @@ export async function createUser(input: {
     } else if (role === Role.TEACHER) {
       await prisma.user.create({
         data: {
-          email,
-          password: passwordHash,
-          role,
+          name: `${firstName} ${lastName}`,
           firstName,
           lastName,
-          teacherProfile: { create: {} },
+          // Remplacer teacherProfile par contract
+          contract: { 
+            create: { 
+              hourlyRate: 0,    // Valeur par défaut requise par ton schéma
+              monthlyHours: 0   // Valeur par défaut requise par ton schéma
+            } 
+          },
         },
       });
     } else {
@@ -154,7 +158,7 @@ export async function updateUser(input: {
     where: { id: userId },
     include: {
       studentProfile: true,
-      teacherProfile: true,
+      contract: true,
     },
   });
 
@@ -183,10 +187,11 @@ export async function updateUser(input: {
     };
   }
 
-  if (existing.teacherProfile && newRole !== Role.TEACHER) {
-    const courseCount = await prisma.course.count({
-      where: { teacher: { userId: existing.id } },
+  if (existing.contract && newRole !== Role.TEACHER) {
+    const courseCount = await prisma.lesson.count({
+      where: { teacherId: existing.id },
     });
+    
     if (courseCount > 0) {
       return {
         ok: false,
@@ -220,8 +225,13 @@ export async function updateUser(input: {
   }
 
   /** Passage ADMIN/PARENT … → PROF : création profil enseignant. */
-  if (newRole === Role.TEACHER && !existing.teacherProfile) {
-    data.teacherProfile = { create: {} };
+  if (newRole === Role.TEACHER && !existing.contract) {
+    data.contract = { 
+      create: { 
+        hourlyRate: 0, 
+        monthlyHours: 0 
+      } 
+    };
   }
 
   /** Passage sans profil → ÉLÈVE. */
@@ -232,8 +242,8 @@ export async function updateUser(input: {
   }
 
   /** Professeur sans cours → autre rôle : retirer le profil Teacher. */
-  if (existing.teacherProfile && newRole !== Role.TEACHER) {
-    data.teacherProfile = { delete: true };
+  if (existing.contract && newRole !== Role.TEACHER) {
+    data.contract = { delete: true };
   }
 
   try {
@@ -245,7 +255,7 @@ export async function updateUser(input: {
     /** Si élève existe : mettre à jour la classe uniquement lorsque reste STUDENT et fourni classId différent intention */
     if (newRole === Role.STUDENT && existing.studentProfile && studentClassId?.trim()) {
       await prisma.user.updateMany({
-        where: { userId },
+        where: { id: userId }, // On cherche l'utilisateur dont l'ID correspond à userId
         data: { classId: studentClassId.trim() },
       });
     }
@@ -275,9 +285,17 @@ export async function deleteUserSafe(userId: string): Promise<MutationResult> {
   const existing = await prisma.user.findUnique({
     where: { id: userId },
     include: {
-      studentProfile: true,
-      teacherProfile: {
-        include: { _count: { select: { courses: true } } },
+      // Relation 1 : Le profil étudiant (directement sur User)
+      studentProfile: true, 
+    
+      // Relation 2 : Le contrat prof (directement sur User)
+      contract: true, 
+    
+      // Relation 3 : Le décompte (directement sur User)
+      _count: {
+        select: {
+          lessons: true, 
+        },
       },
     },
   });
@@ -292,7 +310,7 @@ export async function deleteUserSafe(userId: string): Promise<MutationResult> {
       error: "Les comptes avec profil élève ne peuvent pas être supprimés depuis cet écran.",
     };
   }
-  if (existing.teacherProfile && existing.teacherProfile._count.courses > 0) {
+  if (existing.contract && existing._count?.lessons > 0) {
     return {
       ok: false,
       error: "Ce professeur a encore des cours : suppression impossible.",
@@ -308,8 +326,10 @@ export async function deleteUserSafe(userId: string): Promise<MutationResult> {
   }
 
   await prisma.$transaction(async (tx) => {
-    if (existing.teacherProfile) {
-      await tx.teacher.delete({ where: { userId } });
+    if (existing.contract) {
+      await tx.teacherContract.delete({ 
+        where: { teacherId: userId } 
+      });
     }
     await tx.user.delete({ where: { id: userId } });
   });

@@ -1,4 +1,4 @@
-import type { Grade } from "@prisma/client";
+import type { Grade, User, Class } from "@prisma/client";
 
 type GradeLite = {
   value: number;
@@ -46,9 +46,8 @@ function formatFrAvg(n: number) {
 export type SubjectLite = { id: string; name: string };
 
 type Props = {
-  student: {
-    user: { firstName: string; lastName: string; email: string };
-    class: { name: string };
+  student: User & {
+    class: Class | null;
     grades: Grade[];
   };
   subjectsFromDb: SubjectLite[];
@@ -70,7 +69,7 @@ export default function GradesBody({
 
   const bySubjectLabel = new Map<string, typeof grades>();
   for (const g of grades) {
-    const key = g.subjectName.trim();
+    const key = g.subjectName?.trim() ?? "Inconnue";
     const list = bySubjectLabel.get(key) ?? [];
     list.push(g);
     bySubjectLabel.set(key, list);
@@ -104,13 +103,13 @@ export default function GradesBody({
         </h1>
         <p className="mt-3 text-sm text-slate-600">
           <span className="font-medium text-slate-800">
-            {student.user.lastName} {student.user.firstName}
+            {student.lastName} {student.firstName}
           </span>
           {" · "}
-          <span className="text-slate-500">{student.user.email}</span>
+          <span className="text-slate-500">{student.email}</span>
           {" · "}
           <span className="inline-flex rounded-full bg-sky-50 px-2 py-0.5 text-xs font-medium text-sky-900 ring-1 ring-sky-200">
-            Classe : {student.class.name}
+            Classe : {student.class?.name ?? "Non assignée"}
           </span>
         </p>
       </header>
@@ -233,7 +232,7 @@ export default function GradesBody({
                     {grades.map((g) => (
                       <tr key={g.id} className="hover:bg-slate-50/80">
                         <td className="whitespace-nowrap px-5 py-3.5 tabular-nums text-slate-600">
-                          {g.date.toLocaleDateString("fr-FR", {
+                          {new Date(g.createdAt).toLocaleDateString("fr-FR", {
                             day: "numeric",
                             month: "short",
                             year: "numeric",
@@ -241,9 +240,9 @@ export default function GradesBody({
                         </td>
                         <td className="px-5 py-3.5">
                           <span className="font-medium text-slate-900">
-                            {subjectByExactName.has(g.subjectName.trim())
+                            {g.subjectName && subjectByExactName.has(g.subjectName.trim())
                               ? subjectByExactName.get(g.subjectName.trim())!.name
-                              : g.subjectName}
+                              : (g.subjectName || "Inconnue")}
                           </span>
                         </td>
                         <td className="px-5 py-3.5 text-right">

@@ -14,7 +14,7 @@ export default async function ParentLayout({
 
   if (
     !session?.user?.id ||
-    (session.user.role !== "PARENT" && session.user.role !== "EMPLOYER")
+    (session.user.role !== "RESPONSIBLE" && session.user.role !== "COMPANY_TUTOR")
   ) {
     redirect("/login");
   }

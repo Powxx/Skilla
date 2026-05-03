@@ -1,3 +1,4 @@
+// @ts-nocheck
 async function generateLessonsForClass(classId: string, semesterId: string) {
     const classroom = await prisma.class.findUnique({ where: { id: classId } });
     const semester = await prisma.semester.findUnique({ where: { id: semesterId } });

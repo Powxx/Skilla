@@ -34,16 +34,16 @@ export async function middleware(req: NextRequest) {
   if (pathname.startsWith("/admin") && token.role !== "ADMIN") {
     return NextResponse.redirect(new URL("/login", req.url));
   }
-  if (pathname.startsWith("/teacher") && token.role !== "TEACHER") {
+  if (pathname.startsWith("/prof") && token.role !== "TEACHER") {
     return NextResponse.redirect(new URL("/login", req.url));
   }
   if (pathname.startsWith("/student") && token.role !== "STUDENT") {
     return NextResponse.redirect(new URL("/login", req.url));
   }
-  if (pathname.startsWith("/parent") && token.role !== "PARENT") {
+  if (pathname.startsWith("/parent") && token.role !== "RESPONSIBLE") {
     return NextResponse.redirect(new URL("/login", req.url));
   }
-  if (pathname.startsWith("/employer") && token.role !== "EMPLOYER") {
+  if (pathname.startsWith("/employer") && token.role !== "COMPANY_TUTOR") {
     return NextResponse.redirect(new URL("/login", req.url));
   }
 

@@ -45,6 +45,10 @@ export const authOptions: NextAuthOptions = {
           }
 
           // 2. Vérification du mot de passe
+          if (!user.password) {
+            console.log(`DEBUG AUTH: Mot de passe manquant pour ${email}`);
+            return null;
+          }
           const isPasswordValid = await bcrypt.compare(password, user.password);
           
           if (!isPasswordValid) {

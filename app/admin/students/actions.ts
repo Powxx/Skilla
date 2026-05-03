@@ -36,8 +36,7 @@ export async function createStudent(
         email,
         password: passwordHash,
         role: Role.STUDENT,
-        firstName,
-        lastName,
+        name: `${firstName} ${lastName}`,
         studentProfile: {
           create: { classId },
         },

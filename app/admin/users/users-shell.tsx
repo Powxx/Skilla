@@ -40,8 +40,8 @@ const ROLE_OPTIONS: { value: Role | ""; label: string }[] = [
   { value: Role.ADMIN, label: "Administrateur" },
   { value: Role.TEACHER, label: "Professeur" },
   { value: Role.STUDENT, label: "Élève" },
-  { value: Role.PARENT, label: "Parent" },
-  { value: Role.EMPLOYER, label: "Employeur" },
+  { value: Role.RESPONSIBLE, label: "Responsable" },
+  { value: Role.COMPANY_TUTOR, label: "Employeur" },
 ];
 
 const ROLE_EDIT_OPTIONS = ROLE_OPTIONS.filter((o) => o.value !== "");
@@ -54,9 +54,9 @@ function roleBadgeClasses(role: Role) {
       return "bg-sky-100 text-sky-900 ring-sky-200";
     case Role.STUDENT:
       return "bg-emerald-100 text-emerald-900 ring-emerald-200";
-    case Role.PARENT:
+    case Role.RESPONSIBLE:
       return "bg-amber-100 text-amber-950 ring-amber-200";
-    case Role.EMPLOYER:
+    case Role.COMPANY_TUTOR:
       return "bg-yellow-100 text-yellow-950 ring-yellow-200";
     default:
       return "bg-slate-100 text-slate-800 ring-slate-200";
@@ -429,8 +429,8 @@ function CreateUserModal({
             <option value={Role.ADMIN}>Administrateur</option>
             <option value={Role.TEACHER}>Professeur</option>
             <option value={Role.STUDENT}>Élève</option>
-            <option value={Role.PARENT}>Parent</option>
-            <option value={Role.EMPLOYER}>Employeur</option>
+            <option value={Role.RESPONSIBLE}>Responsable</option>
+            <option value={Role.COMPANY_TUTOR}>Employeur</option>
           </select>
         </Field>
 

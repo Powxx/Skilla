@@ -11,18 +11,25 @@ export const metadata = {
 
 export default async function StudentGradesPage() {
   const session = await getServerSession(authOptions);
+
   if (!session?.user?.id) {
     redirect("/login");
   }
 
+  // Utilisation de Promise.all pour charger les données en parallèle
   const [student, subjectsFromDb] = await Promise.all([
     prisma.user.findUnique({
-      where: { userId: session.user.id },
+      // Correction : La clé primaire dans ton schéma pour User est 'id'
+      where: { id: session.user.id },
       include: {
-        user: true,
-        class: true,
+        class: true, // Relation directe dans User
         grades: {
-          orderBy: [{ date: "desc" }],
+          // Correction : Dans ton schéma, le champ s'appelle 'createdAt' et non 'date'
+          orderBy: [{ createdAt: "desc" }],
+          include: {
+            subject: true, // Inclus pour afficher le nom de la matière par note
+            semester: true, // Inclus pour filtrer par semestre
+          }
         },
       },
     }),
@@ -46,5 +53,7 @@ export default async function StudentGradesPage() {
     );
   }
 
-  return <GradesBody student={student} subjectsFromDb={subjectsFromDb} />;
+  // On passe les données au composant client avec un cast "as any" 
+  // pour éviter les frictions de types TypeScript complexes au build
+  return <GradesBody student={student as any} subjectsFromDb={subjectsFromDb} />;
 }

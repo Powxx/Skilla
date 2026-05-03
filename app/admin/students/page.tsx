@@ -8,11 +8,17 @@ export const metadata = {
 
 export default async function AdminStudentsPage() {
   const students = await prisma.user.findMany({
-    include: {
-      user: true,
-      class: true,
+    where: {
+      role: "STUDENT", // Optionnel : pour ne récupérer que les élèves
     },
-    orderBy: [{ user: { lastName: "asc" } }, { user: { firstName: "asc" } }],
+    include: {
+      class: true, // On inclut la relation vers la classe
+      studentProfile: true, // On inclut le profil si besoin
+    },
+    orderBy: [
+      { lastName: "asc" }, // Accès direct au champ dans User
+      { firstName: "asc" } // Accès direct au champ dans User
+    ],
   });
 
   const classes = await prisma.class.findMany({
@@ -113,23 +119,23 @@ export default async function AdminStudentsPage() {
                     >
                       <td className="px-5 py-4">
                         <div className="font-medium text-slate-900">
-                          {s.user.lastName}{" "}
+                          {s.lastName}{" "}  {/* Accès direct */}
                           <span className="font-normal text-slate-600">
-                            {s.user.firstName}
+                            {s.firstName}   {/* Accès direct */}
                           </span>
                         </div>
                       </td>
                       <td className="px-5 py-4 text-slate-600">
                         <a
-                          href={`mailto:${s.user.email}`}
+                          href={`mailto:${s.email}`}
                           className="text-sky-700 underline decoration-sky-700/30 underline-offset-2 hover:decoration-sky-700"
                         >
-                          {s.user.email}
+                          {s.email}
                         </a>
                       </td>
                       <td className="px-5 py-4">
                         <span className="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-800 ring-1 ring-slate-200/80">
-                          {s.class.name}
+                          {s.class?.name || "Non assigné"}
                         </span>
                       </td>
                       <td className="hidden px-5 py-4 font-mono text-xs text-slate-400 lg:table-cell">

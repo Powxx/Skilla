@@ -24,34 +24,33 @@ function weightedAverage(grades: GradeLite[]): number | null {
 }
 
 export async function loadStudentDashboardPayload(
-  where: { id: string } | { userId: string },
+  where: { id: string },
 ): Promise<DashboardBuildPayload | null> {
   const student = await prisma.user.findUnique({
     where,
     include: {
-      user: true,
       class: true,
       grades: {
-        orderBy: { date: "asc" },
+        orderBy: { createdAt: "asc" },
       },
-      attendances: true,
+      absences: true,
     },
   });
 
   if (!student) return null;
 
-  const absenceCount = student.attendances.filter(
-    (a) => a.type.toUpperCase() === "ABSENCE",
+  const absenceCount = student.absences.filter(
+    (a) => a.status === "ABSENT" || a.status === "EXCUSED",
   ).length;
-  const delayCount = student.attendances.filter(
-    (a) => a.type.toUpperCase() === "RETARD",
+  const delayCount = student.absences.filter(
+    (a) => a.status === "LATE",
   ).length;
 
   const grades = student.grades;
   const generalAverage = weightedAverage(grades.map((g) => g));
 
   const chartRows: DashboardChartRow[] = grades.map((g) => {
-    const d = g.date;
+    const d = g.createdAt;
     return {
       isoDate: d.toISOString(),
       dateLabel: d.toLocaleDateString("fr-FR", {
@@ -60,7 +59,7 @@ export async function loadStudentDashboardPayload(
       }),
       note: g.value,
       coefficient: g.coefficient,
-      subjectName: g.subjectName,
+      subjectName: g.subjectName ?? "Inconnue",
     };
   });
 
@@ -83,9 +82,9 @@ export async function loadStudentDashboardPayload(
   });
 
   return {
-    studentDisplayName: `${student.user.lastName} ${student.user.firstName}`,
-    studentEmail: student.user.email,
-    classLabel: student.class.name,
+    studentDisplayName: `${student.lastName} ${student.firstName}`,
+    studentEmail: student.email ?? "",
+    classLabel: student.class?.name ?? "Non assignée",
     generalAverage,
     chartRows: chartRowsUniqueX,
     absenceCount,

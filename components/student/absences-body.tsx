@@ -1,38 +1,39 @@
-import type { Attendance } from "@prisma/client";
+import type { Attendance, User, Class, Lesson, Subject } from "@prisma/client";
 
-function statusLabel(raw: string) {
-  const s = raw?.toUpperCase() ?? "";
-  if (s === "JUSTIFIE" || s === "JUSTIFIÉ") return "Justifié";
+function statusLabel(status: string) {
+  if (status === "EXCUSED") return "Justifié";
   return "Non justifié";
 }
 
 function isJustifiedAttendance(status: string) {
-  const s = status?.toUpperCase() ?? "";
-  return s === "JUSTIFIE" || s === "JUSTIFIÉ";
+  return status === "EXCUSED";
 }
 
-function typeLabel(t: string) {
-  const u = (t ?? "").toUpperCase();
-  if (u === "ABSENCE") return "Absence";
-  if (u === "RETARD") return "Retard";
-  return t;
+function typeLabel(status: string) {
+  if (status === "ABSENT") return "Absence";
+  if (status === "LATE") return "Retard";
+  if (status === "EXCUSED") return "Absence justifiée";
+  return status;
 }
+
+type AttendanceWithLesson = Attendance & {
+  lesson: Lesson & { subject: Subject };
+};
 
 type Props = {
-  student: {
-    user: { firstName: string; lastName: string };
-    class: { name: string };
-    attendances: Attendance[];
+  student: User & {
+    class: Class | null;
+    attendances: AttendanceWithLesson[];
   };
   contextNote?: string;
 };
 
 export default function AbsencesBody({ student, contextNote }: Props) {
   const absencesOnly = student.attendances.filter(
-    (a) => a.type.toUpperCase() === "ABSENCE",
+    (a) => a.status === "ABSENT" || a.status === "EXCUSED",
   );
   const retardsOnly = student.attendances.filter(
-    (a) => a.type.toUpperCase() === "RETARD",
+    (a) => a.status === "LATE",
   );
 
   return (
@@ -48,7 +49,7 @@ export default function AbsencesBody({ student, contextNote }: Props) {
           Absences & retards
         </h1>
         <p className="mt-2 text-sm text-slate-600">
-          {student.user.lastName} {student.user.firstName} · {student.class.name}
+          {student.lastName} {student.firstName} · {student.class?.name ?? "Non assignée"}
         </p>
       </div>
 
@@ -82,6 +83,8 @@ export default function AbsencesBody({ student, contextNote }: Props) {
           </div>
           <ul className="divide-y divide-slate-100">
             {student.attendances.map((a) => {
+              if (a.status === "PRESENT") return null;
+
               const justified = isJustifiedAttendance(a.status);
               const unjustifiedVis = !justified ? (
                 <span
@@ -106,7 +109,7 @@ export default function AbsencesBody({ student, contextNote }: Props) {
                     {unjustifiedVis}
                   </div>
                   <div className="min-w-[6.5rem] text-sm tabular-nums text-slate-600">
-                    {a.date.toLocaleDateString("fr-FR", {
+                    {new Date(a.lesson.startTime).toLocaleDateString("fr-FR", {
                       weekday: "short",
                       day: "numeric",
                       month: "short",
@@ -114,14 +117,19 @@ export default function AbsencesBody({ student, contextNote }: Props) {
                     })}
                   </div>
                   <div className="flex min-w-[6rem] flex-1 flex-col gap-0.5">
-                    <span
-                      className={`inline-flex w-fit rounded-full px-2 py-0.5 text-xs font-semibold uppercase tracking-wide ring-1 ${a.type.toUpperCase() === "ABSENCE"
-                        ? "bg-red-50 text-red-900 ring-red-200/90"
-                        : "bg-orange-50 text-orange-950 ring-orange-200/90"}`}
-                    >
-                      {typeLabel(a.type)}
-                    </span>
-                    <span className="text-sm font-medium text-slate-900">
+                    <div className="flex items-center gap-2">
+                      <span
+                        className={`inline-flex w-fit rounded-full px-2 py-0.5 text-xs font-semibold uppercase tracking-wide ring-1 ${a.status === "ABSENT" || a.status === "EXCUSED"
+                          ? "bg-red-50 text-red-900 ring-red-200/90"
+                          : "bg-orange-50 text-orange-950 ring-orange-200/90"}`}
+                      >
+                        {typeLabel(a.status)}
+                      </span>
+                      <span className="text-sm font-medium text-slate-600">
+                        {a.lesson.subject.name}
+                      </span>
+                    </div>
+                    <span className="text-sm font-medium text-slate-900 mt-1">
                       {statusLabel(a.status)}
                     </span>
                     {a.reason ? (

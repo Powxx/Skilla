@@ -15,7 +15,7 @@ export default async function StudentDashboardPage() {
     redirect("/login");
   }
 
-  const data = await loadStudentDashboardPayload({ userId: session.user.id });
+  const data = await loadStudentDashboardPayload({ id: session.user.id });
 
   if (!data) {
     return (

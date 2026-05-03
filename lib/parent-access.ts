@@ -6,40 +6,36 @@ function firstParam(v: string | string[] | undefined): string | undefined {
 }
 
 export async function listParentChildrenSerialized(parentUserId: string) {
-  const rows = await prisma.parentStudent.findMany({
-    where: { parentUserId },
+  const rows = await prisma.user.findMany({
+    where: { responsibles: { some: { id: parentUserId } } },
     orderBy: {
-      student: { user: { lastName: "asc" } },
+      lastName: "asc",
     },
     select: {
-      student: {
-        select: {
-          id: true,
-          user: { select: { firstName: true, lastName: true } },
-        },
-      },
+      id: true,
+      firstName: true,
+      lastName: true,
     },
   });
 
   return rows.map((r) => ({
-    id: r.student.id,
-    label: `${r.student.user.lastName} ${r.student.user.firstName}`,
+    id: r.id,
+    label: `${r.lastName} ${r.firstName}`,
   }));
 }
 
-/** Retourne l’id élève sélectionné (query) ou le premier lié au parent ; `null` si aucun enfant. */
 export async function resolveParentStudentId(
   parentUserId: string,
   studentIdParam: string | string[] | undefined,
 ): Promise<string | null> {
-  const rows = await prisma.parentStudent.findMany({
-    where: { parentUserId },
+  const rows = await prisma.user.findMany({
+    where: { responsibles: { some: { id: parentUserId } } },
     orderBy: {
-      student: { user: { lastName: "asc" } },
+      lastName: "asc",
     },
-    select: { studentId: true },
+    select: { id: true },
   });
-  const ids = rows.map((r) => r.studentId);
+  const ids = rows.map((r) => r.id);
   if (ids.length === 0) return null;
   const pref = firstParam(studentIdParam);
   if (pref && ids.includes(pref)) return pref;
@@ -50,9 +46,10 @@ export async function parentOwnsStudent(
   parentUserId: string,
   studentId: string,
 ): Promise<boolean> {
-  const row = await prisma.parentStudent.findUnique({
+  const row = await prisma.user.findUnique({
     where: {
-      parentUserId_studentId: { parentUserId, studentId },
+      id: studentId,
+      responsibles: { some: { id: parentUserId } },
     },
     select: { id: true },
   });

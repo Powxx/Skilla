@@ -27,25 +27,42 @@ export default async function ParentAbsencesPage({
     redirect("/parent");
   }
 
-  const student = await prisma.user.findUnique({
-    where: { id: studentId },
-    include: {
-      user: true,
-      class: true,
-      attendances: {
-        orderBy: { date: "desc" },
-      },
-    },
+  const [student, attendances] = await Promise.all([
+    // 1. On récupère l'élève et sa classe
+    prisma.user.findUnique({
+      where: { id: studentId },
+      include: { class: true }
+    }),
+    // 2. On récupère ses absences via le champ de liaison (souvent studentId)
+    prisma.attendance.findMany({
+      where: { studentId: studentId }, 
+      include: {
+        lesson: {
+          include: { subject: true }
+        }
+      }
+    })
+  ]);
+  
+  if (!student) redirect("/parent");
+  
+  // 3. On trie manuellement en JS puisque Prisma ne peut pas trier 
+  // sur un champ d'une relation imbriquée (lesson.date) dans un findMany de base
+  const sortedAttendances = attendances.sort((a, b) => {
+    return new Date(b.lesson.startTime).getTime() - new Date(a.lesson.startTime).getTime();
   });
-
-  if (!student) {
-    redirect("/parent");
-  }
-
+  
+  const studentWithAbsences = {
+    ...student,
+    attendances: sortedAttendances
+  };
+  
   return (
     <AbsencesBody
-      student={student}
-      contextNote="Vue famille : données en lecture seule pour l’élève sélectionné."
+      // On utilise "any" temporairement si l'interface est trop complexe à aligner,
+      // ou on passe l'objet formaté
+      student={studentWithAbsences as any} 
+      contextNote="Vue famille : données en lecture seule."
     />
   );
 }

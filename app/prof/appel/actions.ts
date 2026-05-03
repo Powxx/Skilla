@@ -4,9 +4,12 @@ import { getServerSession } from "next-auth/next";
 import { revalidatePath } from "next/cache";
 import { authOptions } from "@/lib/auth-options";
 import prisma from "@/lib/prisma";
+import { AttendanceStatus } from "@prisma/client";
 
+// Types pour le payload
 export type SubmitRollPayload = {
   classId: string;
+  lessonId: string; // Ajouté pour corriger l'erreur lessonId manquant
   markings: Record<string, "present" | "absent" | "late">;
 };
 
@@ -15,20 +18,23 @@ export type SubmitRollResult =
   | { ok: false; error: string };
 
 /**
- * Crée uniquement les `Attendance` pour les élèves marqués absent ou retard.
- * Par défaut côté UI : tous « présents » ne sont pas envoyés ou envoyés présents ignorés.
+ * Crée les entrées Attendance pour les élèves.
  */
 export async function submitRollCall(payload: SubmitRollPayload): Promise<SubmitRollResult> {
   const session = await getServerSession(authOptions);
+  
+  // 1. Vérification de sécurité
   if (!session?.user || session.user.role !== "TEACHER") {
     return { ok: false, error: "Accès réservé aux enseignants." };
   }
 
-  const classId = payload.classId?.trim();
-  if (!classId) {
-    return { ok: false, error: "Classe requise." };
+  const { classId, lessonId, markings } = payload;
+
+  if (!classId || !lessonId) {
+    return { ok: false, error: "Classe et Leçon requises." };
   }
 
+  // 2. Vérification de l'existence de la classe et de ses élèves
   const classe = await prisma.class.findUnique({
     where: { id: classId },
     select: {
@@ -40,44 +46,40 @@ export async function submitRollCall(payload: SubmitRollPayload): Promise<Submit
     return { ok: false, error: "Classe introuvable." };
   }
 
-  const toCreate: Array<{
-    studentId: string;
-    type: string;
-    status: string;
-    date: Date;
-  }> = [];
-
-  const now = new Date();
-
-  for (const { id } of classe.students) {
-    const mark = payload.markings[id] ?? "present";
-    if (mark === "present") continue;
-
-    const typeStr = mark === "absent" ? "ABSENCE" : "RETARD";
-    toCreate.push({
-      studentId: id,
-      type: typeStr,
-      status: "NON_JUSTIFIE",
-      date: now,
+  // 3. Préparation des données pour createMany
+  // On ne garde que ceux qui ne sont pas présents (absents ou en retard)
+  const toCreate = classe.students
+    .filter((student) => markings[student.id] && markings[student.id] !== "present")
+    .map((student) => {
+      const mark = markings[student.id];
+      
+      return {
+        studentId: student.id,
+        lessonId: lessonId,
+        // Conversion du marquage UI vers l'Enum Prisma AttendanceStatus
+        // On force le type 'as AttendanceStatus' pour TypeScript
+        status: (mark === "late" ? "LATE" : "ABSENT") as AttendanceStatus,
+      };
     });
-  }
 
   if (toCreate.length === 0) {
     return { ok: true, created: 0 };
   }
 
-  await prisma.attendance.createMany({
-    data: toCreate.map((row) => ({
-      studentId: row.studentId,
-      type: row.type,
-      status: row.status,
-      date: row.date,
-    })),
-  });
+  try {
+    // 4. Insertion en base de données
+    await prisma.attendance.createMany({
+      data: toCreate,
+      skipDuplicates: true, // Évite les erreurs si on soumet deux fois
+    });
 
-  revalidatePath("/prof/appel");
-  revalidatePath("/student/dashboard");
-  revalidatePath("/student/absences");
+    // 5. Revalidation du cache pour mettre à jour les interfaces
+    revalidatePath("/prof/appel");
+    revalidatePath("/student/absences");
 
-  return { ok: true, created: toCreate.length };
+    return { ok: true, created: toCreate.length };
+  } catch (error) {
+    console.error("Erreur lors de la création des absences:", error);
+    return { ok: false, error: "Erreur lors de l'enregistrement en base de données." };
+  }
 }

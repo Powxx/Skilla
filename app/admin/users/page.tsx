@@ -56,57 +56,63 @@ export default async function AdminUsersPage({
       ? { AND: clauses }
       : {};
 
-  const [total, rawUsers, classes] = await Promise.all([
-    prisma.user.count({ where }),
-    prisma.user.findMany({
-      where,
-      orderBy: [{ lastName: "asc" }, { firstName: "asc" }],
-      skip: (page - 1) * PAGE_SIZE,
-      take: PAGE_SIZE,
-      select: {
-        id: true,
-        email: true,
-        firstName: true,
-        lastName: true,
-        role: true,
-        studentProfile: {
-          select: {
-            class: { select: { id: true, name: true } },
-          },
-        },
-        teacherProfile: {
+      const [total, rawUsers, classes] = await Promise.all([
+        prisma.user.count({ where }),
+        prisma.user.findMany({
+          where,
+          orderBy: [{ lastName: "asc" }, { firstName: "asc" }],
+          skip: (page - 1) * PAGE_SIZE,
+          take: PAGE_SIZE,
           select: {
             id: true,
-            _count: { select: { courses: true } },
+            email: true,
+            firstName: true,
+            lastName: true,
+            role: true,
+            // 1. On utilise classId directement sur l'User (ou via studentProfile selon ton schéma)
+            class: { select: { id: true, name: true } }, 
+            studentProfile: {
+              select: { id: true }
+            },
+            // 2. On remplace teacherProfile par contract
+            contract: {
+              select: {
+                id: true,
+              },
+            },
+            // 3. On compte les leçons (lessons) directement depuis l'User
+            _count: {
+              select: { lessons: true },
+            },
           },
-        },
-      },
-    }),
-    prisma.class.findMany({
-      orderBy: { name: "asc" },
-      select: { id: true, name: true },
-    }),
-  ]);
-
-  const users: ListedUserRow[] = rawUsers.map((u) => {
-    const hasStudentProfile = !!u.studentProfile;
-    const hasTeacherProfile = !!u.teacherProfile;
-
-    const teacherCourseCount = u.teacherProfile?._count.courses ?? 0;
-
-    return {
-      id: u.id,
-      email: u.email,
-      firstName: u.firstName,
-      lastName: u.lastName,
-      role: u.role,
-      lockedRole:
-        hasStudentProfile ||
-        (hasTeacherProfile && teacherCourseCount > 0),
-      hasStudentProfile,
-      hasTeacherProfile,
-      studentClass: u.studentProfile?.class ?? null,
-      teacherCourseCount,
+        }),
+        prisma.class.findMany({
+          orderBy: { name: "asc" },
+          select: { id: true, name: true },
+        }),
+      ]);
+      
+      const users: ListedUserRow[] = rawUsers.map((u) => {
+        const hasStudentProfile = !!u.studentProfile;
+        const hasTeacherProfile = !!u.contract;
+      
+        const teacherCourseCount = u._count?.lessons ?? 0;
+      
+        return {
+          id: u.id,
+          // ⬇️ ICI : On ajoute "|| ''" pour transformer null en chaîne vide
+          email: u.email || "", 
+          firstName: u.firstName || "",
+          lastName: u.lastName || "",
+          
+          role: u.role,
+          lockedRole:
+            hasStudentProfile ||
+            (hasTeacherProfile && teacherCourseCount > 0),
+          hasStudentProfile,
+          hasTeacherProfile,
+          studentClass: u.class ?? null,
+          teacherCourseCount,
     };
   });
 

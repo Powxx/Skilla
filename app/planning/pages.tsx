@@ -5,7 +5,7 @@ import WeeklyCalendar from '@/components/WeeklyCalendar';
 import { startOfWeek, format } from 'date-fns';
 
 export default function PlanningPage() {
-  const [events, setEvents] = useState([]);
+  const [events, setEvents] = useState<any[]>([]);
   const [currentDate, setCurrentDate] = useState(new Date());
   const [loading, setLoading] = useState(false);
 

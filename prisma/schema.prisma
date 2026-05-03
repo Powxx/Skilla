@@ -37,16 +37,26 @@ enum RhythmType {
 // --- UTILISATEURS ---
 model User {
   id            String    @id @default(cuid())
-  name          String?
   email         String?   @unique
   password      String?
+  role          Role      @default(STUDENT)
+  
+  // Noms : On garde les deux pour supporter ton code de création et de login
+  name          String?   // Format combiné "Prénom Nom"
+  firstName     String?
+  lastName      String?
+  
   phone         String?
   address       String?
   birthday      DateTime?
-  role          Role      @default(STUDENT)
   createdAt     DateTime  @default(now())
 
-  // Relations Responsables
+  // Relations Profil & Classe
+  studentProfile StudentProfile?
+  classId        String?
+  class          Class?          @relation(fields: [classId], references: [id])
+
+  // Relations Responsables (Self-relation pour les parents/tuteurs)
   students      User[]    @relation("UserToResponsible")
   responsibles  User[]    @relation("UserToResponsible")
   
@@ -54,39 +64,44 @@ model User {
   studentContracts CompanyContract[] @relation("StudentInCompany")
   tutorContracts   CompanyContract[] @relation("TutorInCompany")
 
-  // Relations Profs / RH
+  // Relations Enseignement
   subjects      Subject[] 
-  lessons       Lesson[]  @relation("TeacherLessons")
-  substitutions Lesson[]  @relation("SubstituteTeacher")
+  lessons       Lesson[]          @relation("TeacherLessons")
+  substitutions Lesson[]          @relation("SubstituteTeacher")
   contract      TeacherContract?
   skillMatrix   SkillMatrix[]
 
-  // Relations Élèves
-  classId       String?
-  class         Class?    @relation(fields: [classId], references: [id])
+  // Relations Pédagogiques
   grades        Grade[]
   absences      Attendance[]
   reportCards   ReportCard[]
   evaluations   Evaluation[] 
   
   // Qualiopi & Feedback
-  complaints    Complaint[] @relation("Sender")
+  complaints    Complaint[]       @relation("Sender")
   surveys       SatisfactionSurvey[]
+}
+
+model StudentProfile {
+  id      String @id @default(cuid())
+  userId  String @unique
+  user    User   @relation(fields: [userId], references: [id])
+  classId String
 }
 
 // --- STRUCTURE PÉDAGOGIQUE ---
 model Class {
-  id              String           @id @default(cuid())
-  name            String           @unique
-  rhythm          RhythmType       @default(WEEKLY)
-  students        User[]
-  lessons         Lesson[]
+  id               String            @id @default(cuid())
+  name             String            @unique
+  rhythm           RhythmType        @default(WEEKLY)
+  students         User[]
+  lessons          Lesson[]
   attendanceSheets AttendanceSheet[]
 }
 
 model Subject {
-  id          String   @id @default(cuid())
-  name        String   @unique
+  id          String        @id @default(cuid())
+  name        String        @unique
   teachers    User[]
   lessons     Lesson[]
   grades      Grade[]
@@ -104,23 +119,23 @@ model Semester {
 
 // --- PLANNING & ÉMARGEMENT ---
 model Lesson {
-  id                String   @id @default(cuid())
+  id                String           @id @default(cuid())
   startTime         DateTime
   endTime           DateTime
-  isCancelled       Boolean  @default(false)
+  isCancelled       Boolean          @default(false)
   
   subjectId         String
-  subject           Subject  @relation(fields: [subjectId], references: [id])
+  subject           Subject          @relation(fields: [subjectId], references: [id])
   
   teacherId         String
-  teacher           User     @relation("TeacherLessons", fields: [teacherId], references: [id])
+  teacher           User             @relation("TeacherLessons", fields: [teacherId], references: [id])
   
   substituteId      String?
-  substitute        User?    @relation("SubstituteTeacher", fields: [substituteId], references: [id])
+  substitute        User?            @relation("SubstituteTeacher", fields: [substituteId], references: [id])
   replacementNote   String?
 
   classId           String
-  class             Class    @relation(fields: [classId], references: [id])
+  class             Class            @relation(fields: [classId], references: [id])
   
   attendances       Attendance[]
   attendanceSheetId String?
@@ -128,11 +143,11 @@ model Lesson {
 }
 
 model AttendanceSheet {
-  id          String   @id @default(cuid())
-  date        DateTime @default(now())
-  classId     String
-  class       Class    @relation(fields: [classId], references: [id])
-  lessons     Lesson[]
+  id      String   @id @default(cuid())
+  date    DateTime @default(now())
+  classId String
+  class   Class    @relation(fields: [classId], references: [id])
+  lessons Lesson[]
 }
 
 model Attendance {
@@ -148,17 +163,21 @@ model Attendance {
 
 // --- NOTES & BULLETINS ---
 model Grade {
-  id            String   @id @default(cuid())
-  value         Float
-  weight        Float    @default(1.0)
-  isOptional    Boolean  @default(false)
-  coefficient   Float    @default(1.0)
-  studentId     String
-  student       User     @relation(fields: [studentId], references: [id])
-  subjectId     String
-  subject       Subject  @relation(fields: [subjectId], references: [id])
-  semesterId    String
-  semester      Semester @relation(fields: [semesterId], references: [id])
+  id           String   @id @default(cuid())
+  value        Float
+  coefficient  Float    @default(1.0)
+  subjectName  String?  // Stockage du nom pour historique
+  comment      String?  
+  createdAt    DateTime @default(now())
+
+  studentId    String
+  student      User     @relation(fields: [studentId], references: [id])
+  
+  subjectId    String
+  subject      Subject  @relation(fields: [subjectId], references: [id])
+  
+  semesterId   String
+  semester     Semester @relation(fields: [semesterId], references: [id])
 }
 
 model ReportCard {
@@ -173,56 +192,56 @@ model ReportCard {
 
 // --- ENTREPRISE & RH ---
 model CompanyContract {
-  id            String         @id @default(cuid())
-  companyName   String
-  type          InternshipType
-  startDate     DateTime
-  endDate       DateTime
-  studentId     String
-  student       User           @relation("StudentInCompany", fields: [studentId], references: [id])
-  tutorId       String
-  tutor         User           @relation("TutorInCompany", fields: [tutorId], references: [id])
+  id          String         @id @default(cuid())
+  companyName String
+  type        InternshipType
+  startDate   DateTime
+  endDate     DateTime
+  studentId   String
+  student     User           @relation("StudentInCompany", fields: [studentId], references: [id])
+  tutorId     String
+  tutor       User           @relation("TutorInCompany", fields: [tutorId], references: [id])
 }
 
 model TeacherContract {
-  id              String @id @default(cuid())
-  hourlyRate      Float
-  monthlyHours    Float  // <--- AJOUTÉ POUR LE SEED
-  teacherId       String @unique
-  teacher         User   @relation(fields: [teacherId], references: [id])
+  id           String @id @default(cuid())
+  hourlyRate   Float
+  monthlyHours Float
+  teacherId    String @unique
+  teacher      User   @relation(fields: [teacherId], references: [id])
 }
 
 // --- MODULES QUALIOPI ---
 model Evaluation {
-  id          String   @id @default(cuid())
+  id          String @id @default(cuid())
   competency  String
   level       Int      
   source      String   
   studentId   String
-  student     User     @relation(fields: [studentId], references: [id])
+  student     User   @relation(fields: [studentId], references: [id])
 }
 
 model SkillMatrix {
-  id              String   @id @default(cuid())
-  teacherId       String
-  teacher         User     @relation(fields: [teacherId], references: [id])
-  subjectId       String
-  subject         Subject  @relation(fields: [subjectId], references: [id])
+  id        String  @id @default(cuid())
+  teacherId String
+  teacher   User    @relation(fields: [teacherId], references: [id])
+  subjectId String
+  subject   Subject @relation(fields: [subjectId], references: [id])
 }
 
 model Complaint {
-  id          String    @id @default(cuid())
+  id          String   @id @default(cuid())
   subject     String
   description String
-  status      String    @default("OPEN")
+  status      String   @default("OPEN")
   senderId    String
-  sender      User      @relation("Sender", fields: [senderId], references: [id])
-  createdAt   DateTime  @default(now())
+  sender      User     @relation("Sender", fields: [senderId], references: [id])
+  createdAt   DateTime @default(now())
 }
 
 model SatisfactionSurvey {
-  id          String   @id @default(cuid())
-  rating      Int
-  studentId   String
-  student     User     @relation(fields: [studentId], references: [id])
+  id        String @id @default(cuid())
+  rating    Int
+  studentId String
+  student   User   @relation(fields: [studentId], references: [id])
 }

@@ -101,6 +101,8 @@ export async function saveGradesBatch(
             coefficient: e.coefficient === undefined ? 1 : Number(e.coefficient),
             subjectName: subjectNameById.get(e.matiereId) ?? "",
             comment: commentTrimmed,
+            subjectId: e.matiereId, // Utilise l'ID de la matière provenant de ton itération
+            semesterId: "TON_ID_DE_SEMESTRE_ICI", // Il faut un ID de semestre valide
           },
         });
       }),
