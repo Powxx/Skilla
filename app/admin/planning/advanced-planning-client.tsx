@@ -397,7 +397,11 @@ export default function AdvancedPlanningClient({ classes, teachers, subjects, ro
             editable={true} // Allow drag to move, resize
             droppable={true} // Allow dropping external events
             events={visibleEvents}
-            datesSet={(arg) => setCurrentDate(arg.view.currentStart)}
+            datesSet={(arg) => {
+              if (currentDate.getTime() !== arg.view.currentStart.getTime()) {
+                setCurrentDate(arg.view.currentStart);
+              }
+            }}
             eventReceive={handleEventReceive}
             eventDrop={handleEventChange}
             eventResize={handleEventChange}
