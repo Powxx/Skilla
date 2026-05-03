@@ -152,6 +152,7 @@ model Grade {
   value         Float
   weight        Float    @default(1.0)
   isOptional    Boolean  @default(false)
+  coefficient   Float    @default(1.0)
   studentId     String
   student       User     @relation(fields: [studentId], references: [id])
   subjectId     String
