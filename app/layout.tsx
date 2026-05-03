@@ -2,7 +2,19 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import Providers from "./providers";
 import "./globals.css";
+// app/layout.tsx
+// On importe le CSS des librairies via JS, c'est la méthode recommandée en Next.js
+import "@fullcalendar/common/main.css";
+import "@fullcalendar/daygrid/main.css";
+import "@fullcalendar/timegrid/main.css";
 
+export default function RootLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <html lang="fr">
+      <body>{children}</body>
+    </html>
+  );
+}
 const geistSans = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin"],

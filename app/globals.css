@@ -1,13 +1,6 @@
 /* 1. TOUS les imports doivent être en haut du fichier */
 @import "tailwindcss";
 
-/* 
-   CONSEIL : Si le build échoue encore, retire les 3 lignes ci-dessous 
-   et déplace-les dans ton fichier app/layout.tsx (import JS).
-*/
-@import "@fullcalendar/common/main.css";
-@import "@fullcalendar/daygrid/main.css";
-@import "@fullcalendar/timegrid/main.css";
 
 :root {
   --background: #ffffff;
