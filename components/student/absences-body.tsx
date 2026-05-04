@@ -18,6 +18,7 @@ function typeLabel(status: string) {
 
 type AttendanceWithLesson = Attendance & {
   lesson: Lesson & { subject: Subject };
+  lateDuration?: number | null;
 };
 
 type Props = {
@@ -132,9 +133,15 @@ export default function AbsencesBody({ student, contextNote }: Props) {
                     <span className="text-sm font-medium text-slate-900 mt-1">
                       {statusLabel(a.status)}
                     </span>
+                    {a.status === "LATE" && a.lateDuration ? (
+                      <span className="mt-1 inline-flex items-center gap-1.5 text-xs font-bold text-orange-700 bg-orange-100/50 w-fit px-2 py-0.5 rounded-md border border-orange-200">
+                        <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                        Retard de {a.lateDuration} min
+                      </span>
+                    ) : null}
                     {a.reason ? (
-                      <span className="line-clamp-2 text-xs text-slate-500">
-                        {a.reason}
+                      <span className="line-clamp-2 text-xs text-slate-500 mt-1 italic">
+                        &ldquo;{a.reason}&rdquo;
                       </span>
                     ) : null}
                   </div>

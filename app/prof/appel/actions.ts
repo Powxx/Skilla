@@ -9,8 +9,9 @@ import { AttendanceStatus } from "@prisma/client";
 // Types pour le payload
 export type SubmitRollPayload = {
   classId: string;
-  lessonId: string; // Ajouté pour corriger l'erreur lessonId manquant
+  lessonId: string;
   markings: Record<string, "present" | "absent" | "late">;
+  lateDurations?: Record<string, number>; // Durée en minutes pour les retards
 };
 
 export type SubmitRollResult =
@@ -28,7 +29,7 @@ export async function submitRollCall(payload: SubmitRollPayload): Promise<Submit
     return { ok: false, error: "Accès réservé aux enseignants." };
   }
 
-  const { classId, lessonId, markings } = payload;
+  const { classId, lessonId, markings, lateDurations = {} } = payload;
 
   if (!classId || !lessonId) {
     return { ok: false, error: "Classe et Leçon requises." };
@@ -56,9 +57,8 @@ export async function submitRollCall(payload: SubmitRollPayload): Promise<Submit
       return {
         studentId: student.id,
         lessonId: lessonId,
-        // Conversion du marquage UI vers l'Enum Prisma AttendanceStatus
-        // On force le type 'as AttendanceStatus' pour TypeScript
         status: (mark === "late" ? "LATE" : "ABSENT") as AttendanceStatus,
+        lateDuration: mark === "late" ? (lateDurations[student.id] || 0) : null,
       };
     });
 

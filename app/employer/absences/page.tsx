@@ -6,7 +6,7 @@ import { resolveParentStudentId } from "@/lib/parent-access";
 import prisma from "@/lib/prisma";
 
 export const metadata = {
-  title: "Absences — Famille",
+  title: "Assiduité Alternant — Entreprise",
 };
 
 export default async function ParentAbsencesPage({
@@ -24,16 +24,14 @@ export default async function ParentAbsencesPage({
     searchParams?.studentId,
   );
   if (!studentId) {
-    redirect("/parent");
+    redirect("/employer");
   }
 
   const [student, attendances] = await Promise.all([
-    // 1. On récupère l'élève et sa classe
     prisma.user.findUnique({
       where: { id: studentId },
       include: { class: true }
     }),
-    // 2. On récupère ses absences via le champ de liaison (souvent studentId)
     prisma.attendance.findMany({
       where: { studentId: studentId }, 
       include: {
@@ -44,7 +42,7 @@ export default async function ParentAbsencesPage({
     })
   ]);
   
-  if (!student) redirect("/parent");
+  if (!student) redirect("/employer");
   
   // 3. On trie manuellement en JS puisque Prisma ne peut pas trier 
   // sur un champ d'une relation imbriquée (lesson.date) dans un findMany de base
@@ -62,7 +60,7 @@ export default async function ParentAbsencesPage({
       // On utilise "any" temporairement si l'interface est trop complexe à aligner,
       // ou on passe l'objet formaté
       student={studentWithAbsences as any} 
-      contextNote="Vue famille : données en lecture seule."
+      contextNote="Vue entreprise : suivi de l'assiduité de l'alternant."
     />
   );
 }

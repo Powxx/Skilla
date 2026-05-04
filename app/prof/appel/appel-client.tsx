@@ -19,6 +19,7 @@ export default function AppelClient({ initialLessons }: { initialLessons: any[] 
   const [selectedLesson, setSelectedLesson] = useState<any>(null);
   const [students, setStudents] = useState<StudentForGradeEntry[]>([]);
   const [states, setStates] = useState<Record<string, PresenceState>>({});
+  const [lateDurations, setLateDurations] = useState<Record<string, number>>({});
   const [loadErr, setLoadErr] = useState<string | null>(null);
   const [feedback, setFeedback] = useState<{
     type: "success" | "error";
@@ -39,6 +40,7 @@ export default function AppelClient({ initialLessons }: { initialLessons: any[] 
           const rows = await getStudentsByClass(lesson.classId);
           setStudents(rows);
           setStates(initStates(rows.map((r) => r.id)));
+          setLateDurations({});
         } catch {
           setLoadErr("Impossible de charger les élèves.");
           setStudents([]);
@@ -64,7 +66,8 @@ export default function AppelClient({ initialLessons }: { initialLessons: any[] 
       void submitRollCall({ 
         classId: selectedLesson.classId, 
         lessonId: selectedLesson.id, 
-        markings: states 
+        markings: states,
+        lateDurations
       }).then((res) => {
         if (res.ok) {
           setFeedback({
@@ -183,6 +186,19 @@ export default function AppelClient({ initialLessons }: { initialLessons: any[] 
                     >
                       Retard
                     </button>
+                    {st === "late" && (
+                      <div className="flex items-center gap-1">
+                        <input 
+                          type="number" 
+                          min="0" 
+                          placeholder="min"
+                          className="w-16 rounded-lg border-slate-200 p-1 text-xs text-slate-900"
+                          value={lateDurations[s.id] || ""}
+                          onChange={(e) => setLateDurations(prev => ({ ...prev, [s.id]: parseInt(e.target.value) || 0 }))}
+                        />
+                        <span className="text-[10px] text-slate-400 font-bold">min</span>
+                      </div>
+                    )}
                   </div>
                 </li>
               );
