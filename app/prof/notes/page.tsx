@@ -1,6 +1,8 @@
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth-options";
 import { redirect } from "next/navigation";
+import prisma from "@/lib/prisma";
+import GradeEntryClient from "./grade-entry-client";
 
 export const dynamic = 'force-dynamic';
 
