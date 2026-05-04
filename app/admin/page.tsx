@@ -98,6 +98,15 @@ export default async function AdminHomePage() {
                 Contrats d'Alternance →
               </Link>
             </li>
+            <li>
+              <Link
+                href="/admin/recap"
+                className="block rounded-xl border border-indigo-200 bg-indigo-50 px-5 py-4 text-sm font-medium text-indigo-700 shadow-sm transition hover:border-indigo-300 hover:bg-indigo-100 font-bold"
+              >
+                📊 Récapitulatif Global →
+                <p className="text-[10px] text-indigo-500 font-normal mt-0.5">Vue croisée Élève / Parents / Entreprise</p>
+              </Link>
+            </li>
           </ul>
         </div>
         

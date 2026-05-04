@@ -8,15 +8,25 @@ export const metadata = {
   title: "Espace Tuteur — Entreprise",
 };
 
-export default async function EmployerDashboardPage() {
+import { resolveTutorStudentId, listTutorStudentsSerialized } from "@/lib/employer-access";
+import StudentSelector from "@/components/student/student-selector";
+
+export default async function EmployerDashboardPage({
+  searchParams,
+}: {
+  searchParams?: Record<string, string | string[] | undefined>;
+}) {
   const session = await getServerSession(authOptions);
   if (!session?.user?.id || session.user.role !== "COMPANY_TUTOR") {
     redirect("/login");
   }
 
-  const students = await loadEmployerDashboardPayload(session.user.id);
+  const [studentId, allStudents] = await Promise.all([
+    resolveTutorStudentId(session.user.id, searchParams?.studentId),
+    listTutorStudentsSerialized(session.user.id),
+  ]);
 
-  if (!students) {
+  if (!studentId) {
     return (
       <div className="mx-auto max-w-xl px-4 py-16 text-center text-slate-600">
         <p className="font-medium text-slate-900">
@@ -29,7 +39,19 @@ export default async function EmployerDashboardPage() {
     );
   }
 
+  const studentsData = await loadEmployerDashboardPayload(session.user.id);
+  const selectedStudentData = studentsData?.find(s => s.studentId === studentId);
+
+  if (!selectedStudentData) {
+    redirect("/employer/dashboard");
+  }
+
   return (
-    <EmployerDashboardClient students={students} />
+    <div className="space-y-6">
+      <div className="flex justify-end px-4 sm:px-6 lg:px-8 mt-6">
+        <StudentSelector students={allStudents} currentId={studentId} />
+      </div>
+      <EmployerDashboardClient students={[selectedStudentData]} />
+    </div>
   );
 }
