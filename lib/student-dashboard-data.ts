@@ -88,10 +88,13 @@ export async function loadStudentDashboardPayload(
     where: {
       classId: student.class.id,
       homework: { not: "" },
-      startTime: { gte: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000) }
+      startTime: { 
+        gte: new Date(), 
+        lte: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) 
+      }
     },
     orderBy: { startTime: 'asc' },
-    take: 5,
+    take: 10,
     include: { subject: { select: { name: true } } }
   }) : [];
 
