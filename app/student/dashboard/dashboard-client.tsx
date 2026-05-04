@@ -34,6 +34,7 @@ export type DashboardClientProps = {
   classSize?: number;
   lastGrade?: { value: number; subjectName: string; date: string } | null;
   nextLesson?: { subjectName: string; startTime: string; roomName: string } | null;
+  upcomingHomework?: { subjectName: string; content: string; date: string }[];
   absencesDetailHref: string;
 };
 
@@ -54,6 +55,7 @@ export default function StudentDashboardClient({
   classSize,
   lastGrade,
   nextLesson,
+  upcomingHomework = [],
   absencesDetailHref,
 }: DashboardClientProps) {
   return (
@@ -149,6 +151,24 @@ export default function StudentDashboardClient({
 
         {/* Sidebar Column */}
         <div className="space-y-6">
+          <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+            <h3 className="text-sm font-bold text-slate-900 uppercase tracking-widest mb-4">Prochains Devoirs</h3>
+            <div className="space-y-4">
+              {upcomingHomework.length > 0 ? upcomingHomework.map((hw, idx) => (
+                <div key={idx} className="group p-3 rounded-2xl border border-slate-50 bg-slate-50/30 hover:border-blue-100 hover:bg-blue-50/30 transition">
+                   <div className="flex justify-between items-start mb-1">
+                     <p className="text-xs font-bold text-blue-600">{hw.subjectName}</p>
+                     <p className="text-[10px] text-slate-400 font-bold">{format(new Date(hw.date), 'dd/MM')}</p>
+                   </div>
+                   <p className="text-sm text-slate-700 line-clamp-2 leading-tight">{hw.content}</p>
+                </div>
+              )) : (
+                <p className="text-xs text-slate-400 italic">Aucun devoir à faire.</p>
+              )}
+            </div>
+            <Link href="/student/planning" className="mt-4 block text-center text-[10px] font-bold uppercase tracking-widest text-slate-400 hover:text-slate-900">Voir l'agenda complet →</Link>
+          </section>
+
           <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
             <h3 className="text-sm font-bold text-slate-900 uppercase tracking-widest mb-4">Dernière Note</h3>
             {lastGrade ? (

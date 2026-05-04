@@ -83,7 +83,25 @@ export async function loadStudentDashboardPayload(
   // 3. Next Lesson
   const nextLesson = student.class?.lessons[0] || null;
 
-  // 4. Chart Rows (Order by date asc for chart)
+  // 4. Upcoming Homework
+  const homeworkLessons = student.class ? await prisma.lesson.findMany({
+    where: {
+      classId: student.class.id,
+      homework: { not: "" },
+      startTime: { lte: new Date(), gte: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000) }
+    },
+    orderBy: { startTime: 'desc' },
+    take: 5,
+    include: { subject: { select: { name: true } } }
+  }) : [];
+
+  const homeworks = homeworkLessons.map(l => ({
+    subjectName: l.subject.name,
+    content: l.homework!,
+    date: l.startTime.toISOString()
+  }));
+
+  // 5. Chart Rows (Order by date asc for chart)
   const chartRows: DashboardChartRow[] = [...student.grades].reverse().map((g) => {
     const d = g.createdAt;
     return {
@@ -115,6 +133,7 @@ export async function loadStudentDashboardPayload(
       subjectName: nextLesson.subject.name,
       startTime: nextLesson.startTime.toISOString(),
       roomName: nextLesson.room?.name ?? "Salle TBD"
-    } : null
+    } : null,
+    upcomingHomework: homeworks
   };
 }
