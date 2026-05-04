@@ -75,7 +75,9 @@ export async function GET(request: Request) {
       roomId: lesson.roomId,
       isCancelled: lesson.isCancelled,
       substituteId: lesson.substituteId,
-      substitute: lesson.substitute ? `${lesson.substitute.firstName} ${lesson.substitute.lastName}` : null
+      substitute: lesson.substitute ? `${lesson.substitute.firstName} ${lesson.substitute.lastName}` : null,
+      summary: lesson.summary,
+      homework: lesson.homework
     }
   }));
 
@@ -108,7 +110,7 @@ export async function POST(request: Request) {
 
 export async function PUT(request: Request) {
   const session = await getServerSession(authOptions);
-  if (!session?.user || session.user.role !== "ADMIN") {
+  if (!session?.user) {
     return NextResponse.json({ error: "Non autorisé" }, { status: 403 });
   }
 
@@ -116,6 +118,29 @@ export async function PUT(request: Request) {
     const data = await request.json();
     const { id, ...updateData } = data;
     
+    // Check ownership if teacher
+    if (session.user.role === "TEACHER") {
+      const lesson = await prisma.lesson.findUnique({ where: { id }, select: { teacherId: true } });
+      if (lesson?.teacherId !== session.user.id) {
+        return NextResponse.json({ error: "Vous ne pouvez modifier que vos propres cours" }, { status: 403 });
+      }
+      
+      // Teachers can only update summary and homework
+      const allowedKeys = ["summary", "homework"];
+      const filteredData: any = {};
+      allowedKeys.forEach(k => { if (k in updateData) filteredData[k] = updateData[k]; });
+      
+      const updatedLesson = await prisma.lesson.update({
+        where: { id },
+        data: filteredData,
+      });
+      return NextResponse.json(updatedLesson);
+    }
+
+    if (session.user.role !== "ADMIN") {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
     if (updateData.startTime) updateData.startTime = new Date(updateData.startTime);
     if (updateData.endTime) updateData.endTime = new Date(updateData.endTime);
 

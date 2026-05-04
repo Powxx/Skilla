@@ -163,6 +163,9 @@ model Lesson {
   attendanceSheetId String?
   attendanceSheet   AttendanceSheet? @relation(fields: [attendanceSheetId], references: [id])
   substitutionRequests SubstitutionRequest[]
+  
+  summary           String?          @db.Text
+  homework          String?          @db.Text
 }
 
 model AttendanceSheet {
