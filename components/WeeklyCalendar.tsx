@@ -25,7 +25,11 @@ export default function WeeklyCalendar({ events, onDateChange, onEventClick, onD
           center: "title",
           right: "timeGridWeek,timeGridDay",
         }}
-        datesSet={(arg) => onDateChange(arg.start)}
+        datesSet={(arg) => {
+          if (onDateChange) {
+            onDateChange(arg.start);
+          }
+        }}
         slotMinTime="08:00:00"
         slotMaxTime="19:00:00"
         allDaySlot={false}

@@ -21,7 +21,9 @@ export default function AdvancedPlanningClient({ classes, teachers, subjects, ro
     teacherId: "",
     subjectId: "",
     classId: "",
-    roomId: ""
+    roomId: "",
+    periodicity: "none",
+    occurrences: 5
   });
 
   const selectedTeacher = teachers.find(t => t.id === config.teacherId);
@@ -132,30 +134,48 @@ export default function AdvancedPlanningClient({ classes, teachers, subjects, ro
 
     setLoading(true);
     try {
-      const payload = {
-        startTime: start.toISOString(),
-        endTime: end.toISOString(),
-        subjectId: props.subjectId,
-        teacherId: props.teacherId,
-        classId: props.classId,
-        roomId: props.roomId || null
-      };
+      const occurrences = config.periodicity === "none" ? 1 : config.occurrences;
+      const intervalWeeks = config.periodicity === "weekly" ? 1 : (config.periodicity === "1/3" ? 3 : 1);
 
-      const res = await fetch("/api/lessons", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload)
-      });
+      const creations = [];
       
-      if (res.ok) {
-        const newLesson = await res.json();
-        // Trigger refetch to get proper formatted event from server
-        fetchLessons(currentDate);
-        info.revert(); // Remove the temp event, let the fetch replace it
-      } else {
-        info.revert();
-        setErrorMsg("Erreur lors de l'enregistrement du cours.");
+      for (let i = 0; i < occurrences; i++) {
+        const nextStart = new Date(start);
+        nextStart.setDate(start.getDate() + (i * intervalWeeks * 7));
+        const nextEnd = new Date(end);
+        nextEnd.setDate(end.getDate() + (i * intervalWeeks * 7));
+
+        const conflictError = checkConflicts(nextStart, nextEnd, props.teacherId, props.classId, props.roomId);
+        if (conflictError) {
+          info.revert();
+          setErrorMsg(`Conflit à l'occurrence ${i+1} (${format(nextStart, 'dd/MM')}): ${conflictError}`);
+          setTimeout(() => setErrorMsg(""), 5000);
+          setLoading(false);
+          return;
+        }
+
+        creations.push({
+          startTime: nextStart.toISOString(),
+          endTime: nextEnd.toISOString(),
+          subjectId: props.subjectId,
+          teacherId: props.teacherId,
+          classId: props.classId,
+          roomId: props.roomId || null
+        });
       }
+
+      // We could batch this, but for now let's just loop or update API to handle multiple
+      // For simplicity and to avoid API changes now, let's just do them sequentially or promise.all
+      await Promise.all(creations.map(payload => 
+        fetch("/api/lessons", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        })
+      ));
+      
+      fetchLessons(currentDate);
+      info.revert();
     } catch (err) {
       info.revert();
       setErrorMsg("Erreur réseau");
@@ -350,6 +370,27 @@ export default function AdvancedPlanningClient({ classes, teachers, subjects, ro
               <option value="04:00">4 Heures</option>
             </select>
           </div>
+          <div className="pt-2 border-t border-slate-50">
+            <label className="block text-xs font-medium text-slate-700 mb-1">Périodicité</label>
+            <select className="w-full text-sm rounded-lg border-slate-300" value={config.periodicity} onChange={e => setConfig({...config, periodicity: e.target.value})}>
+              <option value="none">Unique</option>
+              <option value="weekly">Hebdomadaire</option>
+              <option value="1/3">Toutes les 3 semaines (1/3)</option>
+            </select>
+          </div>
+          {config.periodicity !== "none" && (
+            <div>
+              <label className="block text-xs font-medium text-slate-700 mb-1">Nombre d'occurrences</label>
+              <input 
+                type="number" 
+                min="1" 
+                max="52"
+                className="w-full text-sm rounded-lg border-slate-300" 
+                value={config.occurrences} 
+                onChange={e => setConfig({...config, occurrences: parseInt(e.target.value) || 1})}
+              />
+            </div>
+          )}
 
           <div className="pt-4 border-t border-slate-100" id="external-events">
             <h3 className="text-xs font-semibold text-slate-800 mb-2 uppercase tracking-wide">2. Glisser & Déposer</h3>

@@ -48,7 +48,11 @@ export default function PlanningClient({ classId, teacherId }: { classId?: strin
       )}
       <WeeklyCalendar 
         events={events} 
-        onDateChange={(newDate) => setCurrentDate(newDate)} 
+        onDateChange={(newDate) => {
+          if (newDate.getTime() !== currentDate.getTime()) {
+            setCurrentDate(newDate);
+          }
+        }} 
       />
     </div>
   );
