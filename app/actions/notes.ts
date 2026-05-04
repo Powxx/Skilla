@@ -88,6 +88,20 @@ export async function saveGradesBatch(
       }
     }
 
+    // 3. Resolve Semester
+    const now = new Date();
+    const activeSemester = await prisma.semester.findFirst({
+      where: {
+        startDate: { lte: now },
+        endDate: { gte: now }
+      },
+      select: { id: true }
+    }) || await prisma.semester.findFirst({ orderBy: { startDate: 'desc' } });
+
+    if (!activeSemester) {
+      return { ok: false, error: "Aucun semestre défini en base." };
+    }
+
     await prisma.$transaction(
       entries.map((e) => {
         const commentTrimmed =
@@ -101,8 +115,8 @@ export async function saveGradesBatch(
             coefficient: e.coefficient === undefined ? 1 : Number(e.coefficient),
             subjectName: subjectNameById.get(e.matiereId) ?? "",
             comment: commentTrimmed,
-            subjectId: e.matiereId, // Utilise l'ID de la matière provenant de ton itération
-            semesterId: "TON_ID_DE_SEMESTRE_ICI", // Il faut un ID de semestre valide
+            subjectId: e.matiereId,
+            semesterId: activeSemester.id,
           },
         });
       }),

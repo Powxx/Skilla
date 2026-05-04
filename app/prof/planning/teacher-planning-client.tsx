@@ -17,8 +17,25 @@ export default function TeacherPlanningClient({ teacherId, teachers }: { teacher
   const [feedback, setFeedback] = useState<{type: 'success' | 'error', text: string} | null>(null);
 
   const fetchLessons = async (date: Date) => {
-    // ... same as before
+    setLoading(true);
+    const monday = format(startOfWeek(date, { weekStartsOn: 1 }), 'yyyy-MM-dd');
+    
+    try {
+      const response = await fetch(`/api/lessons?date=${monday}&teacherId=${teacherId}`);
+      const data = await response.json();
+      if (Array.isArray(data)) {
+        setEvents(data);
+      }
+    } catch (error) {
+      console.error("Erreur planning:", error);
+    } finally {
+      setLoading(false);
+    }
   };
+
+  useEffect(() => {
+    fetchLessons(currentDate);
+  }, [currentDate]);
 
   useEffect(() => {
     if (selectedEvent) {

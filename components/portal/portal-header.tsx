@@ -81,9 +81,21 @@ export default function PortalHeader({ variant, parentChildren = [] }: Props) {
   return (
     <header className="sticky top-0 z-20 border-b border-slate-200 bg-white/80 backdrop-blur-md shadow-sm">
       {isImpersonated && (
-        <div className="bg-amber-600 text-white text-[10px] font-bold uppercase tracking-widest px-4 py-1.5 flex items-center justify-center gap-4">
-          <span>Mode Impersonnalisation activé ({(session?.user as any)?.name})</span>
-          <button onClick={handleStopImpersonation} className="underline hover:text-amber-100">Arrêter</button>
+        <div className="bg-orange-600 text-white text-xs font-bold px-4 py-2.5 flex items-center justify-between shadow-inner">
+          <div className="flex items-center gap-3">
+            <div className="flex h-6 w-6 items-center justify-center rounded-full bg-white/20 animate-pulse">
+               <span className="text-[10px]">⚠️</span>
+            </div>
+            <p className="tracking-wide">
+              MODE IMPERSONNALISATION : Vous contrôlez actuellement le compte de <span className="underline decoration-2 underline-offset-4">{(session?.user as any)?.name}</span>
+            </p>
+          </div>
+          <button 
+            onClick={handleStopImpersonation} 
+            className="px-4 py-1.5 bg-white text-orange-600 rounded-lg text-[10px] font-black uppercase tracking-widest hover:bg-orange-50 transition shadow-sm"
+          >
+            Quitter le contrôle
+          </button>
         </div>
       )}
       

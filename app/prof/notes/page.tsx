@@ -1,5 +1,6 @@
-import prisma from "@/lib/prisma";
-import GradeEntryClient from "./grade-entry-client";
+import { getServerSession } from "next-auth/next";
+import { authOptions } from "@/lib/auth-options";
+import { redirect } from "next/navigation";
 
 export const dynamic = 'force-dynamic';
 
@@ -8,12 +9,23 @@ export const metadata = {
 };
 
 export default async function TeacherGradesPage() {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.id) redirect("/login");
+
+  const teacherId = session.user.id;
+
   const [classes, subjects] = await Promise.all([
     prisma.class.findMany({
+      where: {
+        lessons: { some: { teacherId } }
+      },
       orderBy: { name: "asc" },
       select: { id: true, name: true },
     }),
     prisma.subject.findMany({
+      where: {
+        lessons: { some: { teacherId } }
+      },
       orderBy: { name: "asc" },
       select: { id: true, name: true },
     }),
