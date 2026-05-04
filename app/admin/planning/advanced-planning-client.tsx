@@ -5,7 +5,9 @@ import FullCalendar from '@fullcalendar/react';
 import timeGridPlugin from '@fullcalendar/timegrid';
 import interactionPlugin, { Draggable } from '@fullcalendar/interaction';
 import frLocale from '@fullcalendar/core/locales/fr';
-import { startOfWeek, format, isWithinInterval, parseISO, endOfWeek } from 'date-fns';
+import { startOfWeek, format, isWithinInterval, parseISO, endOfWeek, addWeeks, setHours, setMinutes, isSameDay } from 'date-fns';
+import { fr } from 'date-fns/locale';
+import { getSpecialCalendarEvents, HOLIDAYS_2026 } from '@/lib/calendar-utils';
 
 interface AdvancedPlanningClientProps {
   classes: { id: string; name: string }[];
@@ -100,6 +102,15 @@ export default function AdvancedPlanningClient({ classes, teachers, subjects, ro
 
   // Conflict Checking logic
   const checkConflicts = (start: Date, end: Date, teacherId: string, classId: string, roomId: string, excludeEventId?: string) => {
+    // Check holidays
+    const isHoliday = HOLIDAYS_2026.some(h => isSameDay(parseISO(h), start));
+    if (isHoliday) return "Impossible de planifier un cours un jour férié.";
+
+    // Check lunch break (12:00 - 13:30)
+    const lunchStart = setMinutes(setHours(new Date(start), 12), 0);
+    const lunchEnd = setMinutes(setHours(new Date(start), 13), 30);
+    if (start < lunchEnd && end > lunchStart) return "Conflit avec la pause déjeuner (12h-13h30).";
+
     for (const event of events) {
       if (excludeEventId && event.id === excludeEventId) continue;
       
@@ -284,14 +295,18 @@ export default function AdvancedPlanningClient({ classes, teachers, subjects, ro
     }
   };
 
-  // Filter events based on selected view
-  const visibleEvents = events.filter(e => {
-    if (!viewFilter.id) return true;
-    if (viewFilter.type === 'class') return e.extendedProps.classId === viewFilter.id;
-    if (viewFilter.type === 'teacher') return e.extendedProps.teacherId === viewFilter.id;
-    if (viewFilter.type === 'room') return e.extendedProps.roomId === viewFilter.id;
-    return true;
-  });
+  // Filter events based on selected view + Special events
+  const specialEvents = getSpecialCalendarEvents(currentDate);
+  const visibleEvents = [
+    ...events.filter(e => {
+      if (!viewFilter.id) return true;
+      if (viewFilter.type === 'class') return e.extendedProps.classId === viewFilter.id;
+      if (viewFilter.type === 'teacher') return e.extendedProps.teacherId === viewFilter.id;
+      if (viewFilter.type === 'room') return e.extendedProps.roomId === viewFilter.id;
+      return true;
+    }),
+    ...specialEvents
+  ];
 
   // Calculate Stats
   const calculateStats = () => {
@@ -499,6 +514,17 @@ export default function AdvancedPlanningClient({ classes, teachers, subjects, ro
             eventClick={handleEventClick}
             eventContent={(arg) => {
               const { extendedProps } = arg.event;
+              
+              if (extendedProps.type === 'holiday-label') {
+                return (
+                  <div className="flex items-center justify-center h-full text-lg font-black opacity-30 rotate-12 pointer-events-none uppercase tracking-widest">
+                    {arg.event.title}
+                  </div>
+                );
+              }
+
+              if (extendedProps.type === 'break') return null; // Background handle it
+
               // If viewing by class, show teacher. If viewing by teacher, show class.
               let subtitle = extendedProps.teacher;
               if (viewFilter.type === 'teacher') subtitle = extendedProps.class;

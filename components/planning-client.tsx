@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import WeeklyCalendar from '@/components/WeeklyCalendar';
 import { startOfWeek, format } from 'date-fns';
+import { getSpecialCalendarEvents } from '@/lib/calendar-utils';
 
 export default function PlanningClient({ classId, teacherId }: { classId?: string; teacherId?: string }) {
   const [events, setEvents] = useState<any[]>([]);
@@ -47,7 +48,7 @@ export default function PlanningClient({ classId, teacherId }: { classId?: strin
         </div>
       )}
       <WeeklyCalendar 
-        events={events} 
+        events={[...events, ...getSpecialCalendarEvents(currentDate)]} 
         onDateChange={(newDate) => {
           if (newDate.getTime() !== currentDate.getTime()) {
             setCurrentDate(newDate);
