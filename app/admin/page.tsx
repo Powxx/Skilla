@@ -57,8 +57,16 @@ export default function AdminHomePage() {
             </li>
             <li>
               <Link
-                href="/admin/impersonate"
+                href="/admin/hr"
                 className="block rounded-xl border border-blue-200 bg-blue-50 px-5 py-4 text-sm font-medium text-blue-700 shadow-sm transition hover:border-blue-300 hover:bg-blue-100"
+              >
+                Ressources Humaines (RH) →
+              </Link>
+            </li>
+            <li>
+              <Link
+                href="/admin/impersonate"
+                className="block rounded-xl border border-slate-200 bg-white px-5 py-4 text-sm font-medium text-slate-500 shadow-sm transition hover:border-slate-300 hover:bg-slate-50"
               >
                 Impersonnalisation (Se connecter en tant que...) →
               </Link>

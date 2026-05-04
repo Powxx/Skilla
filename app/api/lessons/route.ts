@@ -51,16 +51,19 @@ export async function GET(request: Request) {
       subject: { select: { id: true, name: true } },
       teacher: { select: { id: true, firstName: true, lastName: true } },
       class: { select: { id: true, name: true } },
-      room: { select: { id: true, name: true } }
+      room: { select: { id: true, name: true } },
+      substitute: { select: { id: true, firstName: true, lastName: true } }
     },
   });
 
   const formattedEvents = lessons.map((lesson) => ({
     id: lesson.id,
-    title: `${lesson.subject.name} - ${lesson.teacher.firstName} ${lesson.teacher.lastName} (${lesson.class.name})`,
+    title: lesson.isCancelled 
+      ? `ANNULÉ: ${lesson.subject.name} - ${lesson.teacher.firstName} ${lesson.teacher.lastName}`
+      : `${lesson.subject.name} - ${lesson.substitute ? `Remplaçant: ${lesson.substitute.lastName}` : `${lesson.teacher.firstName} ${lesson.teacher.lastName}`} (${lesson.class.name})`,
     start: lesson.startTime.toISOString(),
     end: lesson.endTime.toISOString(),
-    backgroundColor: "#3b82f6", // Default color
+    backgroundColor: lesson.isCancelled ? "#ef4444" : lesson.substitute ? "#f59e0b" : "#3b82f6", // Red if cancelled, Orange if sub, Blue default
     extendedProps: {
       teacher: `${lesson.teacher.firstName} ${lesson.teacher.lastName}`,
       teacherId: lesson.teacherId,
@@ -69,7 +72,10 @@ export async function GET(request: Request) {
       class: lesson.class.name,
       classId: lesson.classId,
       room: lesson.room?.name,
-      roomId: lesson.roomId
+      roomId: lesson.roomId,
+      isCancelled: lesson.isCancelled,
+      substituteId: lesson.substituteId,
+      substitute: lesson.substitute ? `${lesson.substitute.firstName} ${lesson.substitute.lastName}` : null
     }
   }));
 
