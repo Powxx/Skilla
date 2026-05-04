@@ -79,6 +79,26 @@ export default async function AdminHomePage() {
               </Link>
             </li>
           </ul>
+
+          <h2 className="text-lg font-medium text-slate-800 mb-4 mt-8">Liaisons & Contrats</h2>
+          <ul className="space-y-3">
+            <li>
+              <Link
+                href="/admin/relations/families"
+                className="block rounded-xl border border-emerald-200 bg-emerald-50 px-5 py-4 text-sm font-medium text-emerald-700 shadow-sm transition hover:border-emerald-300 hover:bg-emerald-100"
+              >
+                Relations Parents-Élèves →
+              </Link>
+            </li>
+            <li>
+              <Link
+                href="/admin/relations/contracts"
+                className="block rounded-xl border border-slate-200 bg-white px-5 py-4 text-sm font-medium shadow-sm ring-1 ring-slate-900/[0.04] transition hover:border-slate-300 hover:bg-slate-50"
+              >
+                Contrats d'Alternance →
+              </Link>
+            </li>
+          </ul>
         </div>
         
         <div>
