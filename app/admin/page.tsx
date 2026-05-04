@@ -18,30 +18,15 @@ export default async function AdminHomePage() {
       </p>
       <div className="grid gap-6 md:grid-cols-2 mt-8">
         <div>
-          <h2 className="text-lg font-medium text-slate-800 mb-4">Gestion</h2>
+          <h2 className="text-lg font-medium text-slate-800 mb-4">Structure & Pédagogie</h2>
           <ul className="space-y-3">
             <li>
               <Link
-                href="/admin/users"
-                className="block rounded-xl border border-slate-200 bg-white px-5 py-4 text-sm font-medium shadow-sm ring-1 ring-slate-900/[0.04] transition hover:border-slate-300 hover:bg-slate-50"
+                href="/admin/settings"
+                className="block rounded-xl border border-blue-200 bg-blue-50/50 px-5 py-4 text-sm font-medium text-blue-700 shadow-sm transition hover:border-blue-300 hover:bg-blue-100/50"
               >
-                Utilisateurs & rôles →
-              </Link>
-            </li>
-            <li>
-              <Link
-                href="/admin/teachers/subjects"
-                className="block rounded-xl border border-slate-200 bg-white px-5 py-4 text-sm font-medium shadow-sm ring-1 ring-slate-900/[0.04] transition hover:border-slate-300 hover:bg-slate-50"
-              >
-                Matières des Professeurs →
-              </Link>
-            </li>
-            <li>
-              <Link
-                href="/admin/students"
-                className="block rounded-xl border border-slate-200 bg-white px-5 py-4 text-sm font-medium shadow-sm ring-1 ring-slate-900/[0.04] transition hover:border-slate-300 hover:bg-slate-50"
-              >
-                Gestion des élèves →
+                Configuration Core →
+                <p className="text-[10px] text-blue-500 font-normal mt-0.5">Classes, Matières, Semestres</p>
               </Link>
             </li>
             <li>
@@ -57,7 +42,19 @@ export default async function AdminHomePage() {
                 href="/admin/planning"
                 className="block rounded-xl border border-slate-200 bg-white px-5 py-4 text-sm font-medium shadow-sm ring-1 ring-slate-900/[0.04] transition hover:border-slate-300 hover:bg-slate-50"
               >
-                Gestion du Planning & Cours →
+                Emploi du Temps →
+              </Link>
+            </li>
+          </ul>
+
+          <h2 className="text-lg font-medium text-slate-800 mb-4 mt-8">Personnel & RH</h2>
+          <ul className="space-y-3">
+            <li>
+              <Link
+                href="/admin/users"
+                className="block rounded-xl border border-slate-200 bg-white px-5 py-4 text-sm font-medium shadow-sm ring-1 ring-slate-900/[0.04] transition hover:border-slate-300 hover:bg-slate-50"
+              >
+                Utilisateurs & Comptes →
               </Link>
             </li>
             <li>
@@ -65,15 +62,15 @@ export default async function AdminHomePage() {
                 href="/admin/hr"
                 className="block rounded-xl border border-slate-200 bg-white px-5 py-4 text-sm font-medium shadow-sm ring-1 ring-slate-900/[0.04] transition hover:border-slate-300 hover:bg-slate-50"
               >
-                Ressources Humaines (RH) →
+                Pôle RH (Heures & Contrats) →
               </Link>
             </li>
             <li>
               <Link
                 href="/admin/substitutions"
-                className="relative block rounded-xl border border-blue-200 bg-blue-50 px-5 py-4 text-sm font-medium text-blue-700 shadow-sm transition hover:border-blue-300 hover:bg-blue-100"
+                className="relative block rounded-xl border border-orange-200 bg-orange-50 px-5 py-4 text-sm font-medium text-orange-700 shadow-sm transition hover:border-orange-300 hover:bg-orange-100"
               >
-                Demandes de Remplacement →
+                Remplacements →
                 {pendingSubsCount > 0 && (
                   <span className="absolute -top-2 -right-2 flex h-6 w-6 items-center justify-center rounded-full bg-red-600 text-[10px] font-bold text-white shadow-lg animate-bounce">
                     {pendingSubsCount}
@@ -81,24 +78,16 @@ export default async function AdminHomePage() {
                 )}
               </Link>
             </li>
-            <li>
-              <Link
-                href="/admin/impersonate"
-                className="block rounded-xl border border-slate-200 bg-white px-5 py-4 text-sm font-medium text-slate-500 shadow-sm transition hover:border-slate-300 hover:bg-slate-50"
-              >
-                Impersonnalisation (Se connecter en tant que...) →
-              </Link>
-            </li>
           </ul>
         </div>
         
         <div>
-          <h2 className="text-lg font-medium text-slate-800 mb-4">Accès rapides aux espaces</h2>
+          <h2 className="text-lg font-medium text-slate-800 mb-4">Accès Rapides</h2>
           <ul className="space-y-3">
             <li>
               <Link
                 href="/prof"
-                className="block rounded-xl border border-slate-200 bg-white px-5 py-4 text-sm font-medium shadow-sm ring-1 ring-slate-900/[0.04] transition hover:border-slate-300 hover:bg-slate-50"
+                className="block rounded-xl border border-slate-100 bg-slate-50/50 px-5 py-3 text-sm font-medium text-slate-600 transition hover:bg-slate-100"
               >
                 Espace Professeur →
               </Link>
@@ -106,25 +95,17 @@ export default async function AdminHomePage() {
             <li>
               <Link
                 href="/student"
-                className="block rounded-xl border border-slate-200 bg-white px-5 py-4 text-sm font-medium shadow-sm ring-1 ring-slate-900/[0.04] transition hover:border-slate-300 hover:bg-slate-50"
+                className="block rounded-xl border border-slate-100 bg-slate-50/50 px-5 py-3 text-sm font-medium text-slate-600 transition hover:bg-slate-100"
               >
                 Espace Élève →
               </Link>
             </li>
             <li>
               <Link
-                href="/parent"
-                className="block rounded-xl border border-slate-200 bg-white px-5 py-4 text-sm font-medium shadow-sm ring-1 ring-slate-900/[0.04] transition hover:border-slate-300 hover:bg-slate-50"
+                href="/admin/impersonate"
+                className="block rounded-xl border border-dashed border-slate-300 px-5 py-3 text-sm font-medium text-slate-400 transition hover:border-slate-400 hover:text-slate-600"
               >
-                Espace Parent →
-              </Link>
-            </li>
-            <li>
-              <Link
-                href="/employer"
-                className="block rounded-xl border border-slate-200 bg-white px-5 py-4 text-sm font-medium shadow-sm ring-1 ring-slate-900/[0.04] transition hover:border-slate-300 hover:bg-slate-50"
-              >
-                Espace Entreprise →
+                Impersonnalisation →
               </Link>
             </li>
           </ul>
