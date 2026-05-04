@@ -14,8 +14,7 @@ function weightedAverage(grades: GradeLite[]): number | null {
   let sumWx = 0;
   let sumC = 0;
   for (const g of grades) {
-    const c =
-      Number.isFinite(g.coefficient) && g.coefficient > 0 ? g.coefficient : 1;
+    const c = Number.isFinite(g.coefficient) && g.coefficient > 0 ? g.coefficient : 1;
     sumWx += g.value * c;
     sumC += c;
   }
@@ -29,15 +28,34 @@ export async function loadStudentDashboardPayload(
   const student = await prisma.user.findUnique({
     where,
     include: {
-      class: true,
+      class: {
+        include: {
+          students: {
+            include: { grades: true }
+          },
+          lessons: {
+            where: { startTime: { gte: new Date() }, isCancelled: false },
+            orderBy: { startTime: 'asc' },
+            take: 1,
+            include: { subject: true, teacher: true, room: true }
+          }
+        }
+      },
       grades: {
-        orderBy: { createdAt: "asc" },
+        orderBy: { createdAt: "desc" },
       },
       absences: true,
     },
   });
 
   if (!student) return null;
+
+  // 1. Attendance
+  const totalLessonsCount = await prisma.attendance.count({ where: { studentId: student.id } });
+  const presenceCount = await prisma.attendance.count({ 
+    where: { studentId: student.id, status: 'PRESENT' } 
+  });
+  const attendanceRate = totalLessonsCount > 0 ? (presenceCount / totalLessonsCount) * 100 : 100;
 
   const absenceCount = student.absences.filter(
     (a) => a.status === "ABSENT" || a.status === "EXCUSED",
@@ -46,38 +64,34 @@ export async function loadStudentDashboardPayload(
     (a) => a.status === "LATE",
   ).length;
 
-  const grades = student.grades;
-  const generalAverage = weightedAverage(grades.map((g) => g));
+  // 2. Average & Rank
+  const generalAverage = weightedAverage(student.grades);
+  
+  let rank: number | null = null;
+  let classSize = 0;
+  if (student.class) {
+    const classAverages = student.class.students.map(s => ({
+      id: s.id,
+      avg: weightedAverage(s.grades) ?? 0
+    })).sort((a, b) => b.avg - a.avg);
+    
+    classSize = classAverages.length;
+    const myIndex = classAverages.findIndex(a => a.id === student.id);
+    if (myIndex !== -1) rank = myIndex + 1;
+  }
 
-  const chartRows: DashboardChartRow[] = grades.map((g) => {
+  // 3. Next Lesson
+  const nextLesson = student.class?.lessons[0] || null;
+
+  // 4. Chart Rows (Order by date asc for chart)
+  const chartRows: DashboardChartRow[] = [...student.grades].reverse().map((g) => {
     const d = g.createdAt;
     return {
       isoDate: d.toISOString(),
-      dateLabel: d.toLocaleDateString("fr-FR", {
-        day: "2-digit",
-        month: "2-digit",
-      }),
+      dateLabel: d.toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit" }),
       note: g.value,
       coefficient: g.coefficient,
       subjectName: g.subjectName ?? "Inconnue",
-    };
-  });
-
-  const dayCounts = new Map<string, number>();
-  for (const row of chartRows) {
-    const key = row.dateLabel;
-    dayCounts.set(key, (dayCounts.get(key) ?? 0) + 1);
-  }
-  const seen = new Map<string, number>();
-  const chartRowsUniqueX = chartRows.map((row) => {
-    const key = row.dateLabel;
-    const n = dayCounts.get(key) ?? 1;
-    if (n <= 1) return row;
-    const i = (seen.get(key) ?? 0) + 1;
-    seen.set(key, i);
-    return {
-      ...row,
-      dateLabel: `${row.dateLabel} (${i})`,
     };
   });
 
@@ -86,8 +100,21 @@ export async function loadStudentDashboardPayload(
     studentEmail: student.email ?? "",
     classLabel: student.class?.name ?? "Non assignée",
     generalAverage,
-    chartRows: chartRowsUniqueX,
+    chartRows,
     absenceCount,
     delayCount,
+    attendanceRate,
+    rank,
+    classSize,
+    lastGrade: student.grades[0] ? {
+      value: student.grades[0].value,
+      subjectName: student.grades[0].subjectName ?? "Matière",
+      date: student.grades[0].createdAt.toISOString()
+    } : null,
+    nextLesson: nextLesson ? {
+      subjectName: nextLesson.subject.name,
+      startTime: nextLesson.startTime.toISOString(),
+      roomName: nextLesson.room?.name ?? "Salle TBD"
+    } : null
   };
 }

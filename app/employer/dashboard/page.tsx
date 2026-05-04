@@ -1,41 +1,35 @@
 import { redirect } from "next/navigation";
 import { getServerSession } from "next-auth/next";
-import StudentDashboardClient from "@/app/student/dashboard/dashboard-client";
 import { authOptions } from "@/lib/auth-options";
-import { resolveParentStudentId } from "@/lib/parent-access";
-import { loadStudentDashboardPayload } from "@/lib/student-dashboard-data";
+import { loadEmployerDashboardPayload } from "@/lib/employer-dashboard-data";
+import EmployerDashboardClient from "./employer-client";
 
 export const metadata = {
-  title: "Tableau de bord — Famille",
+  title: "Espace Tuteur — Entreprise",
 };
 
-export default async function ParentDashboardPage({
-  searchParams,
-}: {
-  searchParams?: Record<string, string | string[] | undefined>;
-}) {
+export default async function EmployerDashboardPage() {
   const session = await getServerSession(authOptions);
-  if (!session?.user?.id) {
+  if (!session?.user?.id || session.user.role !== "COMPANY_TUTOR") {
     redirect("/login");
   }
 
-  const studentId = await resolveParentStudentId(
-    session.user.id,
-    searchParams?.studentId,
-  );
-  if (!studentId) {
-    redirect("/parent");
-  }
+  const students = await loadEmployerDashboardPayload(session.user.id);
 
-  const data = await loadStudentDashboardPayload({ id: studentId });
-  if (!data) {
-    redirect("/parent");
+  if (!students) {
+    return (
+      <div className="mx-auto max-w-xl px-4 py-16 text-center text-slate-600">
+        <p className="font-medium text-slate-900">
+          Aucun alternant rattaché à votre compte tuteur.
+        </p>
+        <p className="mt-2 text-sm">
+          Contactez la Skilla Academy pour lier vos apprentis à votre compte.
+        </p>
+      </div>
+    );
   }
 
   return (
-    <StudentDashboardClient
-      {...data}
-      absencesDetailHref={`/parent/absences?studentId=${studentId}`}
-    />
+    <EmployerDashboardClient students={students} />
   );
 }

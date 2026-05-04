@@ -1,6 +1,8 @@
 "use client";
 
 import Link from "next/link";
+import { format } from "date-fns";
+import { fr } from "date-fns/locale";
 import {
   CartesianGrid,
   Line,
@@ -12,7 +14,6 @@ import {
 } from "recharts";
 
 export type DashboardChartRow = {
-  /** Libellé court pour l'axe X (ex. jj/mm). */
   dateLabel: string;
   note: number;
   coefficient: number;
@@ -28,18 +29,17 @@ export type DashboardClientProps = {
   chartRows: DashboardChartRow[];
   absenceCount: number;
   delayCount: number;
-  /** Lien « Voir le détail » assiduité (élève ou parent avec `studentId`). */
+  attendanceRate?: number;
+  rank?: number | null;
+  classSize?: number;
+  lastGrade?: { value: number; subjectName: string; date: string } | null;
+  nextLesson?: { subjectName: string; startTime: string; roomName: string } | null;
   absencesDetailHref: string;
 };
 
 function formatAvg(n: number) {
-  return n.toLocaleString("fr-FR", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  });
+  return n.toLocaleString("fr-FR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
-
-const MOCK_RANK_LABEL = "3ᵉ";
 
 export default function StudentDashboardClient({
   studentDisplayName,
@@ -49,173 +49,133 @@ export default function StudentDashboardClient({
   chartRows,
   absenceCount,
   delayCount,
+  attendanceRate = 100,
+  rank,
+  classSize,
+  lastGrade,
+  nextLesson,
   absencesDetailHref,
 }: DashboardClientProps) {
   return (
     <div className="mx-auto max-w-6xl px-4 py-8 font-sans text-slate-900 sm:px-6 lg:px-8">
       <div className="mb-8">
-        <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
-          Tableau de bord
+        <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl text-slate-900">
+          Bonjour, {studentDisplayName.split(' ')[1] || studentDisplayName} 👋
         </h1>
-        <p className="mt-2 text-sm text-slate-600">
-          <span className="font-semibold text-slate-800">{studentDisplayName}</span>
-          {" · "}
-          <span className="text-slate-500">{studentEmail}</span>
-          {" · "}
-          <span className="rounded-full bg-white px-2 py-0.5 text-xs font-medium text-slate-700 shadow-sm ring-1 ring-slate-200/80">
-            {classLabel}
-          </span>
+        <p className="mt-1 text-sm text-slate-500">
+          Voici un résumé de votre situation actuelle à la <span className="font-bold text-slate-700">Skilla Academy</span>.
         </p>
       </div>
 
-      <div className="mb-8 grid gap-4 sm:grid-cols-3">
-        <article className="rounded-2xl border border-slate-200/90 bg-white p-6 shadow-sm ring-1 ring-slate-900/[0.04]">
-          <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-            Moyenne générale
-          </p>
-          <p className="mt-1 text-[11px] text-slate-400">pondérée (coef.)</p>
-          <p className="mt-4 text-3xl font-semibold tabular-nums tracking-tight text-slate-900">
-            {generalAverage != null ? (
-              <>
-                {formatAvg(generalAverage)}
-                <span className="text-lg font-normal text-slate-400"> / 20</span>
-              </>
-            ) : (
-              <span className="text-slate-400">—</span>
-            )}
-          </p>
-        </article>
-
-        <article className="rounded-2xl border border-slate-200/90 bg-white p-6 shadow-sm ring-1 ring-slate-900/[0.04]">
-          <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-            Assiduité
-          </p>
-          <p className="mt-1 text-[11px] text-slate-400">
-            Compteurs depuis la base (absences · retards)
-          </p>
-          <div className="mt-4 flex gap-8">
-            <div>
-              <p className="text-3xl font-semibold tabular-nums tracking-tight text-slate-900">
-                {absenceCount}
-              </p>
-              <p className="mt-1 text-[11px] font-medium uppercase tracking-wide text-red-900/70">
-                Absences
-              </p>
-            </div>
-            <div>
-              <p className="text-3xl font-semibold tabular-nums tracking-tight text-slate-900">
-                {delayCount}
-              </p>
-              <p className="mt-1 text-[11px] font-medium uppercase tracking-wide text-orange-900/75">
-                Retards
-              </p>
-            </div>
-          </div>
-          <Link
-            href={absencesDetailHref}
-            className="mt-4 inline-flex text-xs font-semibold text-sky-800 underline underline-offset-2 hover:text-sky-950"
-          >
-            Voir le détail et le statut de justification →
-          </Link>
-        </article>
-
-        <article className="rounded-2xl border border-slate-200/90 bg-white p-6 shadow-sm ring-1 ring-slate-900/[0.04]">
-          <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-            Rang en classe
-          </p>
-          <p className="mt-1 text-[11px] text-slate-400">indicatif (factice)</p>
-          <p className="mt-4 text-3xl font-semibold tabular-nums tracking-tight text-slate-900">
-            {MOCK_RANK_LABEL}
-            <span className="text-lg font-normal text-slate-400"> / 24</span>
-          </p>
-        </article>
-      </div>
-
-      <section className="rounded-2xl border border-slate-200/90 bg-white p-6 shadow-sm ring-1 ring-slate-900/[0.04] sm:p-8">
-        <div className="mb-6 flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+      {/* Main Stats Row */}
+      <div className="grid gap-4 md:grid-cols-4 mb-8">
+        <div className="md:col-span-2 bg-gradient-to-br from-slate-900 to-slate-800 rounded-3xl p-6 text-white shadow-xl flex flex-col justify-between">
           <div>
-            <h2 className="text-lg font-semibold text-slate-900">
-              Évolution des notes
-            </h2>
-            <p className="text-sm text-slate-500">
-              Notes dans l’ordre chronologique (échelle /20).
-            </p>
+            <p className="text-xs font-bold uppercase tracking-widest text-slate-400">Prochain Cours</p>
+            {nextLesson ? (
+              <div className="mt-4">
+                <h3 className="text-2xl font-bold">{nextLesson.subjectName}</h3>
+                <p className="text-slate-300 mt-1 flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                  {format(new Date(nextLesson.startTime), 'HH:mm')} — {nextLesson.roomName}
+                </p>
+              </div>
+            ) : (
+              <p className="mt-4 text-slate-400 italic">Aucun cours prévu prochainement.</p>
+            )}
+          </div>
+          <Link href="/student/planning" className="mt-6 text-xs font-bold bg-white/10 hover:bg-white/20 transition px-4 py-2 rounded-full inline-block w-fit">
+            Voir mon emploi du temps →
+          </Link>
+        </div>
+
+        <div className="bg-white rounded-3xl border border-slate-200 p-6 shadow-sm flex flex-col justify-between">
+          <p className="text-xs font-bold uppercase tracking-widest text-slate-500">Moyenne</p>
+          <div className="mt-4">
+            <span className="text-4xl font-black text-slate-900">
+              {generalAverage != null ? formatAvg(generalAverage) : "—"}
+            </span>
+            <span className="text-lg font-bold text-slate-400 ml-1">/20</span>
+          </div>
+          <div className="mt-2 text-[10px] font-bold text-slate-400 uppercase tracking-tighter">
+            {rank ? `Rang: ${rank} / ${classSize}` : "Rang indisponible"}
           </div>
         </div>
 
-        {chartRows.length === 0 ? (
-          <div className="flex min-h-[280px] items-center justify-center rounded-xl border border-dashed border-slate-200 bg-slate-50/80 text-sm text-slate-500">
-            Aucune note à afficher pour le moment.
+        <div className="bg-white rounded-3xl border border-slate-200 p-6 shadow-sm flex flex-col justify-between">
+          <p className="text-xs font-bold uppercase tracking-widest text-slate-500">Assiduité</p>
+          <div className="mt-4">
+            <span className="text-4xl font-black text-slate-900">{Math.round(attendanceRate)}%</span>
           </div>
-        ) : (
-          <div className="h-[320px] w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart
-                data={chartRows}
-                margin={{ top: 8, right: 12, left: 0, bottom: 4 }}
-              >
-                <CartesianGrid
-                  strokeDasharray="3 3"
-                  stroke="#e2e8f0"
-                  vertical={false}
-                />
-                <XAxis
-                  dataKey="dateLabel"
-                  tick={{ fontSize: 11, fill: "#64748b" }}
-                  tickLine={false}
-                  axisLine={{ stroke: "#e2e8f0" }}
-                />
-                <YAxis
-                  domain={[0, 20]}
-                  width={36}
-                  tick={{ fontSize: 11, fill: "#64748b" }}
-                  tickLine={false}
-                  axisLine={{ stroke: "#e2e8f0" }}
-                />
-                <Tooltip
-                  contentStyle={{
-                    borderRadius: "12px",
-                    border: "1px solid #e2e8f0",
-                    boxShadow: "0 8px 24px rgba(0,0,0,0.08)",
-                    fontSize: "13px",
-                  }}
-                  labelFormatter={(_, payload) => {
-                    const p = payload?.[0]?.payload as DashboardChartRow | undefined;
-                    return p
-                      ? new Date(p.isoDate).toLocaleDateString("fr-FR", {
-                          day: "numeric",
-                          month: "long",
-                          year: "numeric",
-                        })
-                      : "";
-                  }}
-                  formatter={(value, _name, item) => {
-                    const row = item?.payload as DashboardChartRow;
-                    const v = typeof value === "number" ? value : Number(value);
-                    return [
-                      `${v.toLocaleString("fr-FR", { minimumFractionDigits: 0, maximumFractionDigits: 2 })} / 20 — ${row?.subjectName ?? ""} (coef. ${row?.coefficient ?? 1})`,
-                      "Note",
-                    ];
-                  }}
-                />
-                <Line
-                  type="monotone"
-                  dataKey="note"
-                  stroke="#0d9488"
-                  strokeWidth={2.5}
-                  dot={{
-                    r: 4,
-                    fill: "#0d9488",
-                    stroke: "#fff",
-                    strokeWidth: 2,
-                  }}
-                  activeDot={{ r: 6, strokeWidth: 0 }}
-                />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-        )}
-      </section>
+          <Link href={absencesDetailHref} className="mt-2 text-[10px] font-bold text-blue-600 uppercase tracking-tighter hover:underline">
+            {absenceCount} absence(s) • {delayCount} retard(s)
+          </Link>
+        </div>
+      </div>
+
+      <div className="grid gap-8 lg:grid-cols-3">
+        {/* Chart Column */}
+        <div className="lg:col-span-2 space-y-8">
+          <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
+            <div className="mb-8 flex items-end justify-between">
+              <div>
+                <h2 className="text-lg font-bold text-slate-900 tracking-tight">Évolution de vos résultats</h2>
+                <p className="text-xs text-slate-500 font-medium">Suivi chronologique des dernières notes</p>
+              </div>
+            </div>
+
+            {chartRows.length === 0 ? (
+              <div className="flex h-64 items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-slate-50 text-sm text-slate-400 font-medium italic">
+                En attente des premières évaluations...
+              </div>
+            ) : (
+              <div className="h-64 w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={chartRows}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+                    <XAxis dataKey="dateLabel" hide />
+                    <YAxis domain={[0, 20]} hide />
+                    <Tooltip
+                      contentStyle={{ borderRadius: "16px", border: "none", boxShadow: "0 10px 40px rgba(0,0,0,0.1)", padding: "12px" }}
+                      formatter={(v: any, _: any, p: any) => [`${v}/20`, p.payload.subjectName]}
+                    />
+                    <Line type="monotone" dataKey="note" stroke="#3b82f6" strokeWidth={4} dot={{ r: 6, fill: "#3b82f6", stroke: "#fff", strokeWidth: 3 }} activeDot={{ r: 8 }} />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            )}
+          </section>
+        </div>
+
+        {/* Sidebar Column */}
+        <div className="space-y-6">
+          <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+            <h3 className="text-sm font-bold text-slate-900 uppercase tracking-widest mb-4">Dernière Note</h3>
+            {lastGrade ? (
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-bold text-slate-800">{lastGrade.subjectName}</p>
+                  <p className="text-[10px] text-slate-400 font-bold uppercase">{format(new Date(lastGrade.date), 'dd MMM yyyy', { locale: fr })}</p>
+                </div>
+                <div className="h-12 w-12 rounded-full bg-blue-50 flex items-center justify-center border border-blue-100">
+                  <span className="text-sm font-black text-blue-700">{lastGrade.value}</span>
+                </div>
+              </div>
+            ) : (
+              <p className="text-xs text-slate-400 italic">Pas encore de note.</p>
+            )}
+          </section>
+
+          <section className="rounded-3xl bg-blue-600 p-6 shadow-lg text-white">
+            <h3 className="text-sm font-bold uppercase tracking-widest mb-2 opacity-80">Profil</h3>
+            <p className="text-lg font-bold">{classLabel}</p>
+            <p className="text-xs opacity-70 mt-1">{studentEmail}</p>
+            <button className="mt-6 w-full py-2 bg-white/10 hover:bg-white/20 rounded-xl text-xs font-bold transition">
+              Paramètres du compte
+            </button>
+          </section>
+        </div>
+      </div>
     </div>
   );
 }
