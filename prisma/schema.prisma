@@ -140,6 +140,7 @@ model Lesson {
   startTime         DateTime
   endTime           DateTime
   isCancelled       Boolean          @default(false)
+  isAttendanceValidated Boolean       @default(false)
   
   subjectId         String
   subject           Subject          @relation(fields: [subjectId], references: [id])

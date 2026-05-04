@@ -99,8 +99,13 @@ export default function AppelClient({ initialLessons }: { initialLessons: any[] 
               onClick={() => handleSelectLesson(lesson)}
               className="flex flex-col items-start rounded-2xl border border-slate-200 bg-white p-5 text-left shadow-sm ring-1 ring-slate-900/[0.04] transition hover:border-blue-300 hover:bg-blue-50/30 group"
             >
-              <div className="text-xs font-bold uppercase tracking-wider text-blue-600 mb-1">
-                {format(new Date(lesson.startTime), 'HH:mm')} - {format(new Date(lesson.endTime), 'HH:mm')}
+              <div className="flex w-full justify-between items-start">
+                <div className="text-xs font-bold uppercase tracking-wider text-blue-600 mb-1">
+                  {format(new Date(lesson.startTime), 'HH:mm')} - {format(new Date(lesson.endTime), 'HH:mm')}
+                </div>
+                {lesson.isAttendanceValidated && (
+                  <span className="bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded text-[10px] font-bold uppercase">Appel fait</span>
+                )}
               </div>
               <div className="text-lg font-semibold text-slate-900 group-hover:text-blue-700">
                 {lesson.subject.name}

@@ -48,16 +48,15 @@ export async function submitRollCall(payload: SubmitRollPayload): Promise<Submit
   }
 
   // 3. Préparation des données pour createMany
-  // On ne garde que ceux qui ne sont pas présents (absents ou en retard)
+  // On crée une entrée pour CHAQUE élève pour valider l'appel
   const toCreate = classe.students
-    .filter((student) => markings[student.id] && markings[student.id] !== "present")
     .map((student) => {
-      const mark = markings[student.id];
+      const mark = markings[student.id] || "present";
       
       return {
         studentId: student.id,
         lessonId: lessonId,
-        status: (mark === "late" ? "LATE" : "ABSENT") as AttendanceStatus,
+        status: (mark === "late" ? "LATE" : mark === "absent" ? "ABSENT" : "PRESENT") as AttendanceStatus,
         lateDuration: mark === "late" ? (lateDurations[student.id] || 0) : null,
       };
     });
@@ -67,10 +66,16 @@ export async function submitRollCall(payload: SubmitRollPayload): Promise<Submit
   }
 
   try {
-    // 4. Insertion en base de données
+    // 4. Insertion des présences
     await prisma.attendance.createMany({
       data: toCreate,
-      skipDuplicates: true, // Évite les erreurs si on soumet deux fois
+      skipDuplicates: true,
+    });
+
+    // 5. Marquage du cours comme validé
+    await prisma.lesson.update({
+      where: { id: lessonId },
+      data: { isAttendanceValidated: true }
     });
 
     // 5. Revalidation du cache pour mettre à jour les interfaces
