@@ -49,6 +49,7 @@ type Props = {
   student: User & {
     class: Class | null;
     grades: Grade[];
+    reportCards: (any)[]; // We'll handle typing in the component
   };
   subjectsFromDb: SubjectLite[];
   /** Bandeau informatif (ex. consultation parent). */
@@ -120,6 +121,35 @@ export default function GradesBody({
         </p>
       ) : (
         <>
+          {student.reportCards && student.reportCards.length > 0 && (
+            <section className="mb-10 animate-in fade-in slide-in-from-top-4 duration-700">
+               <h2 className="mb-4 text-lg font-bold tracking-tight text-slate-900 flex items-center gap-2">
+                 <span className="h-2 w-2 rounded-full bg-blue-600"></span>
+                 Bilan du dernier bulletin
+               </h2>
+               <div className="relative overflow-hidden rounded-3xl border border-blue-100 bg-white p-8 shadow-xl ring-1 ring-blue-900/5">
+                 <div className="absolute top-0 right-0 p-4">
+                    <span className="text-[10px] font-black uppercase tracking-widest text-blue-200">OFFICIEL</span>
+                 </div>
+                 <div className="relative z-10">
+                   <p className="text-slate-700 leading-relaxed italic text-lg font-medium">
+                     "{student.reportCards[0].generalAppraisal}"
+                   </p>
+                   {student.reportCards[0].distinction && (
+                     <div className="mt-6 flex items-center gap-3">
+                       <span className="h-px w-8 bg-blue-200"></span>
+                       <span className="text-xs font-black uppercase tracking-[0.2em] text-blue-600">
+                         Mention : {student.reportCards[0].distinction}
+                       </span>
+                       <span className="h-px w-8 bg-blue-200"></span>
+                     </div>
+                   )}
+                 </div>
+                 <div className="absolute -bottom-12 -right-12 h-48 w-48 rounded-full bg-blue-50/50 blur-3xl"></div>
+               </div>
+            </section>
+          )}
+
           <section className="mb-8 grid gap-4 sm:grid-cols-2">
             <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm ring-1 ring-slate-900/[0.04] sm:p-6">
               <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">

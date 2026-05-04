@@ -42,6 +42,10 @@ export default async function EmployerGradesPage({
             semester: true // On profite du fait qu'ils sont dans ton modèle
           },
         },
+        reportCards: {
+          orderBy: { semester: { startDate: 'desc' } },
+          include: { semester: true }
+        }
       },
     }),
     prisma.subject.findMany({
@@ -51,21 +55,14 @@ export default async function EmployerGradesPage({
   ]);
   
   if (!student) {
-    redirect("/parent");
+    redirect("/employer");
   }
-  
-  // 3. On formate l'objet pour le composant
-  const formattedStudent = {
-    ...student,
-    // On renomme Grade en grades si ton composant AbsencesBody/GradesBody attend le pluriel
-    grades: (student as any).Grade || [],
-  };
   
   return (
     <GradesBody
-      student={formattedStudent as any}
+      student={student as any}
       subjectsFromDb={subjectsFromDb}
-      contextNote="Vue famille : données en lecture seule pour l’élève sélectionné."
+      contextNote="Vue entreprise : suivi pédagogique de l'alternant."
     />
   );
 }

@@ -153,6 +153,7 @@ export default function PortalHeader({ variant, parentChildren = [] }: Props) {
               <NavLink href="/admin" active={pathname === "/admin"}>Accueil</NavLink>
               <NavLink href="/admin/users" active={pathname.startsWith("/admin/users")}>Utilisateurs</NavLink>
               <NavLink href="/admin/planning" active={pathname.startsWith("/admin/planning")}>Planning</NavLink>
+              <NavLink href="/admin/report-cards" active={pathname.startsWith("/admin/report-cards")}>Bulletins</NavLink>
               <NavLink href="/admin/recap" active={pathname.startsWith("/admin/recap")}>Récapitulatif</NavLink>
               <NavLink href="/admin/settings" active={pathname.startsWith("/admin/settings")}>Config</NavLink>
             </>
@@ -163,6 +164,7 @@ export default function PortalHeader({ variant, parentChildren = [] }: Props) {
               <NavLink href="/prof/planning" active={pathname.startsWith("/prof/planning")}>Planning</NavLink>
               <NavLink href="/prof/appel" active={pathname.startsWith("/prof/appel")}>Appel</NavLink>
               <NavLink href="/prof/notes" active={pathname.startsWith("/prof/notes")}>Notes</NavLink>
+              <NavLink href="/prof/livret" active={pathname.startsWith("/prof/livret")}>Livret</NavLink>
             </>
           )}
           {variant === "student" && (
@@ -170,6 +172,7 @@ export default function PortalHeader({ variant, parentChildren = [] }: Props) {
               <NavLink href="/student/dashboard" active={pathname.startsWith("/student/dashboard")}>Synthèse</NavLink>
               <NavLink href="/student/planning" active={pathname.startsWith("/student/planning")}>Planning</NavLink>
               <NavLink href="/student/grades" active={pathname.startsWith("/student/grades")}>Notes</NavLink>
+              <NavLink href="/student/livret" active={pathname.startsWith("/student/livret")}>Livret</NavLink>
               <NavLink href="/student/absences" active={pathname.startsWith("/student/absences")}>Absences</NavLink>
             </>
           )}
@@ -178,6 +181,7 @@ export default function PortalHeader({ variant, parentChildren = [] }: Props) {
               <NavLink href={`/${variant}/dashboard?studentId=${resolvedChildId}`} active={pathname.includes("/dashboard")}>Synthèse</NavLink>
               <NavLink href={`/${variant}/planning?studentId=${resolvedChildId}`} active={pathname.includes("/planning")}>Planning</NavLink>
               <NavLink href={`/${variant}/grades?studentId=${resolvedChildId}`} active={pathname.includes("/grades")}>Notes</NavLink>
+              <NavLink href={`/${variant}/livret?studentId=${resolvedChildId}`} active={pathname.includes("/livret")}>Livret</NavLink>
               <NavLink href={`/${variant}/absences?studentId=${resolvedChildId}`} active={pathname.includes("/absences")}>Absences</NavLink>
             </>
           )}

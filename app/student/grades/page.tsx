@@ -31,6 +31,10 @@ export default async function StudentGradesPage() {
             semester: true, // Inclus pour filtrer par semestre
           }
         },
+        reportCards: {
+          orderBy: { semester: { startDate: 'desc' } },
+          include: { semester: true }
+        }
       },
     }),
     prisma.subject.findMany({
