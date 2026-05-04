@@ -2,14 +2,14 @@ import { redirect } from "next/navigation";
 import { getServerSession } from "next-auth/next";
 import GradesBody from "@/components/student/grades-body";
 import { authOptions } from "@/lib/auth-options";
-import { resolveParentStudentId } from "@/lib/parent-access";
+import { resolveTutorStudentId } from "@/lib/employer-access";
 import prisma from "@/lib/prisma";
 
 export const metadata = {
-  title: "Notes — Famille",
+  title: "Notes de l'alternant — Entreprise",
 };
 
-export default async function ParentGradesPage({
+export default async function EmployerGradesPage({
   searchParams,
 }: {
   searchParams?: Record<string, string | string[] | undefined>;
@@ -19,12 +19,12 @@ export default async function ParentGradesPage({
     redirect("/login");
   }
 
-  const studentId = await resolveParentStudentId(
+  const studentId = await resolveTutorStudentId(
     session.user.id,
     searchParams?.studentId,
   );
   if (!studentId) {
-    redirect("/parent");
+    redirect("/employer");
   }
 
   const [student, subjectsFromDb] = await Promise.all([

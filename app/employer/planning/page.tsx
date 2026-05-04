@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth-options";
-import { resolveParentStudentId } from "@/lib/parent-access";
+import { resolveTutorStudentId } from "@/lib/employer-access";
 import prisma from "@/lib/prisma";
 import PlanningClient from "@/components/planning-client";
 
@@ -19,13 +19,13 @@ export default async function EmployerPlanningPage({
     redirect("/login");
   }
 
-  const studentId = await resolveParentStudentId(
+  const studentId = await resolveTutorStudentId(
     session.user.id,
     searchParams?.studentId,
   );
   
   if (!studentId) {
-    redirect("/parent");
+    redirect("/employer");
   }
 
   const studentData = await prisma.user.findUnique({

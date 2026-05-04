@@ -1,111 +1,90 @@
-import prisma from "@/lib/prisma";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth-options";
 import { redirect } from "next/navigation";
+import prisma from "@/lib/prisma";
+import Link from "next/link";
 
-export const metadata = {
-  title: "Récapitulatif Global — Administration",
-};
+export const dynamic = 'force-dynamic';
 
 export default async function AdminRecapPage() {
   const session = await getServerSession(authOptions);
-  if (!session?.user || session.user.role !== "ADMIN") {
+  if (!session?.user?.id || session.user.role !== "ADMIN") {
     redirect("/login");
   }
 
-  // On récupère tous les élèves avec leurs relations
   const students = await prisma.user.findMany({
     where: { role: "STUDENT" },
     include: {
       class: true,
       responsibles: {
-        select: {
-          firstName: true,
-          lastName: true,
-          email: true,
-          phone: true,
-        }
+        select: { firstName: true, lastName: true, email: true }
       },
       studentContracts: {
         include: {
-          tutor: {
-            select: {
-              firstName: true,
-              lastName: true,
-            }
-          }
+          tutor: { select: { firstName: true, lastName: true, email: true } }
         }
       }
     },
-    orderBy: {
-      lastName: "asc"
-    }
+    orderBy: [{ class: { name: 'asc' } }, { lastName: 'asc' }]
   });
 
   return (
-    <div className="min-h-screen bg-slate-50 py-8">
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <header className="mb-8">
-          <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Récapitulatif des Étudiants</h1>
-          <p className="mt-2 text-slate-600">Vue d'ensemble des liaisons administratives (Classe, Parents, Entreprise).</p>
+    <div className="min-h-screen bg-slate-50 text-slate-900 px-4 py-12 sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-7xl">
+        <header className="mb-12">
+          <h1 className="text-3xl font-black tracking-tight text-slate-900">Récapitulatif Global</h1>
+          <p className="mt-2 text-slate-500 font-medium">Vision d'ensemble des liaisons Élèves / Parents / Employeurs.</p>
         </header>
 
-        <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden ring-1 ring-slate-900/[0.04]">
+        <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-xl">
           <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="bg-slate-50/50 border-b border-slate-100">
-                  <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Étudiant</th>
-                  <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Classe</th>
-                  <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Parents / Responsables</th>
-                  <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Employeur / Tuteur</th>
+            <table className="w-full text-left text-sm border-collapse">
+              <thead className="bg-slate-900 text-white uppercase tracking-widest text-[10px]">
+                <tr>
+                  <th className="px-6 py-5 font-black">Élève & Classe</th>
+                  <th className="px-6 py-5 font-black">Parents / Responsables</th>
+                  <th className="px-6 py-5 font-black">Employeur / Tuteur</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {students.map((s) => (
                   <tr key={s.id} className="hover:bg-slate-50/50 transition">
-                    <td className="px-6 py-5 whitespace-nowrap">
-                      <div className="flex items-center">
-                        <div className="h-10 w-10 flex-shrink-0 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 font-bold">
-                          {s.lastName?.[0]}{s.firstName?.[0]}
-                        </div>
-                        <div className="ml-4">
-                          <div className="text-sm font-semibold text-slate-900">{s.lastName} {s.firstName}</div>
-                          <div className="text-xs text-slate-500">{s.email || "Pas d'email"}</div>
-                        </div>
+                    <td className="px-6 py-6 align-top">
+                      <div className="font-bold text-slate-900 text-base">{s.lastName} {s.firstName}</div>
+                      <div className="mt-1">
+                        <span className="inline-flex items-center rounded-full bg-blue-50 px-2.5 py-0.5 text-xs font-bold text-blue-700 border border-blue-100">
+                          {s.class?.name || "Sans classe"}
+                        </span>
                       </div>
+                      <div className="text-[10px] text-slate-400 mt-1 font-medium">{s.email}</div>
                     </td>
-                    <td className="px-6 py-5 whitespace-nowrap">
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-blue-50 text-blue-700">
-                        {s.class?.name || "Non assignée"}
-                      </span>
-                    </td>
-                    <td className="px-6 py-5">
+                    <td className="px-6 py-6 align-top">
                       {s.responsibles.length > 0 ? (
-                        <div className="space-y-1">
+                        <ul className="space-y-3">
                           {s.responsibles.map((r, i) => (
-                            <div key={i} className="text-xs">
-                              <span className="font-semibold text-slate-700">{r.lastName} {r.firstName}</span>
-                              {r.phone && <span className="text-slate-400 ml-1">({r.phone})</span>}
-                            </div>
+                            <li key={i} className="group">
+                              <div className="font-bold text-slate-800 text-sm group-hover:text-blue-600 transition">{r.firstName} {r.lastName}</div>
+                              <div className="text-[10px] text-slate-400 font-medium">{r.email}</div>
+                            </li>
                           ))}
-                        </div>
+                        </ul>
                       ) : (
-                        <span className="text-xs text-slate-400 italic">Aucun parent lié</span>
+                        <span className="text-xs text-slate-400 italic">Aucun responsable lié</span>
                       )}
                     </td>
-                    <td className="px-6 py-5">
+                    <td className="px-6 py-6 align-top">
                       {s.studentContracts.length > 0 ? (
-                        <div className="space-y-1">
+                        <ul className="space-y-4">
                           {s.studentContracts.map((c, i) => (
-                            <div key={i} className="text-xs">
-                              <div className="font-semibold text-slate-700">{c.companyName}</div>
-                              <div className="text-slate-400">Tuteur: {c.tutor.lastName} {c.tutor.firstName}</div>
-                            </div>
+                            <li key={i} className="bg-slate-50 p-3 rounded-2xl border border-slate-100">
+                              <div className="text-[10px] font-black text-blue-600 uppercase tracking-widest mb-1">{c.companyName}</div>
+                              <div className="font-bold text-slate-900 text-sm">{c.tutor.firstName} {c.tutor.lastName}</div>
+                              <div className="text-[10px] text-slate-400 font-medium">{c.tutor.email}</div>
+                            </li>
                           ))}
-                        </div>
+                        </ul>
                       ) : (
-                        <span className="text-xs text-slate-400 italic">Pas de contrat</span>
+                        <span className="text-xs text-slate-400 italic">Aucun contrat d'alternance</span>
                       )}
                     </td>
                   </tr>

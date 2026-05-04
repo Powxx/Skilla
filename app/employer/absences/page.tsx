@@ -2,14 +2,14 @@ import { redirect } from "next/navigation";
 import { getServerSession } from "next-auth/next";
 import AbsencesBody from "@/components/student/absences-body";
 import { authOptions } from "@/lib/auth-options";
-import { resolveParentStudentId } from "@/lib/parent-access";
+import { resolveTutorStudentId } from "@/lib/employer-access";
 import prisma from "@/lib/prisma";
 
 export const metadata = {
   title: "Assiduité Alternant — Entreprise",
 };
 
-export default async function ParentAbsencesPage({
+export default async function EmployerAbsencesPage({
   searchParams,
 }: {
   searchParams?: Record<string, string | string[] | undefined>;
@@ -19,7 +19,7 @@ export default async function ParentAbsencesPage({
     redirect("/login");
   }
 
-  const studentId = await resolveParentStudentId(
+  const studentId = await resolveTutorStudentId(
     session.user.id,
     searchParams?.studentId,
   );
