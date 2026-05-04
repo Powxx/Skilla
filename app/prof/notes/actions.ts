@@ -93,23 +93,28 @@ export type StudentForGradeEntry = {
 };
 
 export async function getStudentsByClass(classId: string): Promise<StudentForGradeEntry[]> {
-  const students = await prisma.studentProfile.findMany({
-    where: { classId: classId },
+  // On récupère les utilisateurs ayant le rôle STUDENT et liés à cette classe
+  const students = await prisma.user.findMany({
+    where: { 
+      classId: classId,
+      role: "STUDENT"
+    },
     select: {
       id: true,
-      user: {
-        select: {
-          firstName: true,
-          lastName: true,
-        },
-      },
+      firstName: true,
+      lastName: true,
     },
     orderBy: {
-      user: {
-        lastName: "asc",
-      },
+      lastName: "asc",
     },
   });
 
-  return students;
+  // On mappe pour correspondre au type attendu par le client (StudentForGradeEntry)
+  return students.map(s => ({
+    id: s.id,
+    user: {
+      firstName: s.firstName,
+      lastName: s.lastName
+    }
+  }));
 }

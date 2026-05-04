@@ -37,6 +37,7 @@ enum InternshipType {
 
 enum RhythmType {
   WEEKLY
+  ALTERNANCE_1_3
   ALTERNANCE_1_4
 }
 
