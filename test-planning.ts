@@ -4,7 +4,7 @@ import { RhythmType } from '@prisma/client';
 function isLessonWeek(date: Date, startDate: Date, rhythm: RhythmType): boolean {
   if (rhythm === RhythmType.WEEKLY) return true;
 
-  if (rhythm === RhythmType.ALTERNANCE_1_3) {
+  if (rhythm === RhythmType.ALTERNANCE_1_4) {
     // On normalise au début de semaine (Lundi) pour comparer des blocs de 7 jours
     const start = new Date(startDate);
     start.setHours(0, 0, 0, 0);
@@ -28,7 +28,7 @@ function isLessonWeek(date: Date, startDate: Date, rhythm: RhythmType): boolean 
 
 // --- SCÉNARIO DE TEST ---
 const dateDebutSemestre = new Date("2026-01-05"); // Lundi 5 Janvier 2026
-const typeAlternance = RhythmType.ALTERNANCE_1_3;
+const typeAlternance = RhythmType.ALTERNANCE_1_4;
 
 console.log(`--- TEST PLANNING SKILLA (Rythme: ${typeAlternance}) ---`);
 console.log(`Début du semestre : ${dateDebutSemestre.toLocaleDateString()}\n`);

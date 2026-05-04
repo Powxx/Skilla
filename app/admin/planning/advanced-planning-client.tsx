@@ -106,10 +106,10 @@ export default function AdvancedPlanningClient({ classes, teachers, subjects, ro
     const isHoliday = HOLIDAYS_2026.some(h => isSameDay(parseISO(h), start));
     if (isHoliday) return "Impossible de planifier un cours un jour férié.";
 
-    // Check lunch break (12:00 - 13:30)
+    // Check lunch break (12:00 - 13:00)
     const lunchStart = setMinutes(setHours(new Date(start), 12), 0);
-    const lunchEnd = setMinutes(setHours(new Date(start), 13), 30);
-    if (start < lunchEnd && end > lunchStart) return "Conflit avec la pause déjeuner (12h-13h30).";
+    const lunchEnd = setMinutes(setHours(new Date(start), 13), 0);
+    if (start < lunchEnd && end > lunchStart) return "Conflit avec la pause déjeuner (12h-13h).";
 
     for (const event of events) {
       if (excludeEventId && event.id === excludeEventId) continue;
@@ -146,7 +146,7 @@ export default function AdvancedPlanningClient({ classes, teachers, subjects, ro
     setLoading(true);
     try {
       const occurrences = config.periodicity === "none" ? 1 : config.occurrences;
-      const intervalWeeks = config.periodicity === "weekly" ? 1 : (config.periodicity === "1/3" ? 3 : 1);
+      const intervalWeeks = config.periodicity === "weekly" ? 1 : (config.periodicity === "1/4" ? 4 : 1);
 
       const creations = [];
       
@@ -390,7 +390,7 @@ export default function AdvancedPlanningClient({ classes, teachers, subjects, ro
             <select className="w-full text-sm rounded-lg border-slate-300" value={config.periodicity} onChange={e => setConfig({...config, periodicity: e.target.value})}>
               <option value="none">Unique</option>
               <option value="weekly">Hebdomadaire</option>
-              <option value="1/3">Toutes les 3 semaines (1/3)</option>
+              <option value="1/4">Toutes les 4 semaines (1/4)</option>
             </select>
           </div>
           {config.periodicity !== "none" && (
@@ -498,7 +498,7 @@ export default function AdvancedPlanningClient({ classes, teachers, subjects, ro
             allDaySlot={false}
             slotMinTime="08:00:00"
             slotMaxTime="20:00:00"
-            hiddenDays={[0]} // Hide Sunday
+            hiddenDays={[0, 6]} // Hide Sunday (0) and Saturday (6)
             height="100%"
             editable={true} // Allow drag to move, resize
             droppable={true} // Allow dropping external events

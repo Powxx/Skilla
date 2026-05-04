@@ -17,7 +17,7 @@ export const getSpecialCalendarEvents = (date: Date) => {
     special.push({
       title: "PAUSE DÉJEUNER",
       start: setMinutes(setHours(day, 12), 0).toISOString(),
-      end: setMinutes(setHours(day, 13), 30).toISOString(),
+      end: setMinutes(setHours(day, 13), 0).toISOString(),
       display: 'background',
       backgroundColor: '#f8fafc', // slate-50
       extendedProps: { type: 'break' }
