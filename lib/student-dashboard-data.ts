@@ -88,9 +88,9 @@ export async function loadStudentDashboardPayload(
     where: {
       classId: student.class.id,
       homework: { not: "" },
-      startTime: { lte: new Date(), gte: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000) }
+      startTime: { gte: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000) }
     },
-    orderBy: { startTime: 'desc' },
+    orderBy: { startTime: 'asc' },
     take: 5,
     include: { subject: { select: { name: true } } }
   }) : [];
