@@ -17,6 +17,12 @@ enum Role {
   COMPANY_TUTOR
 }
 
+enum SubstitutionStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
 enum AttendanceStatus {
   PRESENT
   ABSENT
@@ -77,6 +83,10 @@ model User {
   reportCards   ReportCard[]
   evaluations   Evaluation[] 
   
+  // Substitution Requests
+  substitutionRequestsSent     SubstitutionRequest[] @relation("OriginalTeacher")
+  substitutionRequestsReceived SubstitutionRequest[] @relation("SubstituteTeacherReq")
+
   // Qualiopi & Feedback
   complaints    Complaint[]       @relation("Sender")
   surveys       SatisfactionSurvey[]
@@ -150,6 +160,7 @@ model Lesson {
   attendances       Attendance[]
   attendanceSheetId String?
   attendanceSheet   AttendanceSheet? @relation(fields: [attendanceSheetId], references: [id])
+  substitutionRequests SubstitutionRequest[]
 }
 
 model AttendanceSheet {
@@ -247,6 +258,18 @@ model Complaint {
   senderId    String
   sender      User     @relation("Sender", fields: [senderId], references: [id])
   createdAt   DateTime @default(now())
+}
+
+model SubstitutionRequest {
+  id                 String             @id @default(cuid())
+  lessonId           String
+  lesson             Lesson             @relation(fields: [lessonId], references: [id])
+  originalTeacherId  String
+  originalTeacher    User               @relation("OriginalTeacher", fields: [originalTeacherId], references: [id])
+  substituteTeacherId String
+  substituteTeacher  User               @relation("SubstituteTeacherReq", fields: [substituteTeacherId], references: [id])
+  status             SubstitutionStatus @default(PENDING)
+  createdAt          DateTime           @default(now())
 }
 
 model SatisfactionSurvey {
