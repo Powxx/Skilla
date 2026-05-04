@@ -47,11 +47,6 @@ export default async function EmployerDashboardPage({
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-end px-4 sm:px-6 lg:px-8 mt-6">
-        <StudentSelector students={allStudents} currentId={studentId} />
-      </div>
-      <EmployerDashboardClient students={[selectedStudentData]} />
-    </div>
+    <EmployerDashboardClient students={[selectedStudentData]} />
   );
 }

@@ -35,14 +35,9 @@ export default async function ParentDashboardPage({
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-end px-4 sm:px-6 lg:px-8 mt-6">
-        <StudentSelector students={allStudents} currentId={studentId} />
-      </div>
-      <StudentDashboardClient
-        {...data}
-        absencesDetailHref={`/parent/absences?studentId=${studentId}`}
-      />
-    </div>
+    <StudentDashboardClient
+      {...data}
+      absencesDetailHref={`/parent/absences?studentId=${studentId}`}
+    />
   );
 }

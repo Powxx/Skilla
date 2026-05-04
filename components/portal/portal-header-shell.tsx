@@ -4,7 +4,7 @@ import { Suspense } from "react";
 import PortalHeader, { type PortalParentChild } from "./portal-header";
 
 type Props = {
-  variant: "prof" | "student" | "parent";
+  variant: "prof" | "student" | "parent" | "admin" | "employer";
   parentChildren?: PortalParentChild[];
 };
 

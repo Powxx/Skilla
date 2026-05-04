@@ -6,18 +6,8 @@ import { useSession, signOut } from "next-auth/react";
 
 export type PortalParentChild = { id: string; label: string };
 
-function cx(...parts: (string | false | undefined)[]) {
-  return parts.filter(Boolean).join(" ");
-}
-
-function subLinkClass(active: boolean) {
-  return active
-    ? "text-sm font-semibold text-slate-900"
-    : "text-sm font-medium text-slate-600 hover:text-slate-900";
-}
-
 type Props = {
-  variant: "prof" | "student" | "parent";
+  variant: "prof" | "student" | "parent" | "admin" | "employer";
   parentChildren?: PortalParentChild[];
 };
 
@@ -36,206 +26,162 @@ export default function PortalHeader({ variant, parentChildren = [] }: Props) {
 
   const qStudent = searchParams.get("studentId");
   const resolvedChildId =
-    variant === "parent"
+    variant === "parent" || variant === "employer"
       ? parentChildren.some((s) => s.id === qStudent)
         ? qStudent!
         : parentChildren[0]?.id ?? ""
       : "";
 
-  function parentHref(route: string): string {
-    if (variant !== "parent") return route;
-    if (!resolvedChildId) return "/parent";
-    const joiner = route.includes("?") ? "&" : "?";
-    return `${route}${joiner}studentId=${resolvedChildId}`;
-  }
-
   function spaceHref(): string {
-    if (variant === "prof") return "/prof";
-    if (variant === "student") return "/student";
-    return "/parent";
+    switch (variant) {
+      case "admin": return "/admin";
+      case "prof": return "/prof";
+      case "student": return "/student";
+      case "employer": return "/employer";
+      default: return "/parent";
+    }
   }
 
   function spaceLabel(): string {
-    if (variant === "prof") return "Espace professeur";
-    if (variant === "student") return "Espace élève";
-    return "Espace famille";
+    switch (variant) {
+      case "admin": return "Administration";
+      case "prof": return "Espace Professeur";
+      case "student": return "Espace Élève";
+      case "employer": return "Espace Tuteur";
+      default: return "Espace Famille";
+    }
   }
 
   let currentCrumb = "";
-  if (variant === "prof") {
-    if (pathname === "/prof") currentCrumb = "Accueil";
-    else if (pathname === "/prof/notes") currentCrumb = "Notes";
-    else if (pathname === "/prof/appel") currentCrumb = "Appel";
-    else if (pathname === "/prof/planning") currentCrumb = "Planning";
-  } else if (variant === "student") {
-    if (pathname === "/student") currentCrumb = "Accueil";
-    else if (pathname === "/student/dashboard") currentCrumb = "Tableau de bord";
-    else if (pathname === "/student/grades") currentCrumb = "Mes notes";
-    else if (pathname === "/student/absences") currentCrumb = "Absences & retards";
-    else if (pathname === "/student/planning") currentCrumb = "Planning";
+  const pathParts = pathname.split("/").filter(Boolean);
+  if (pathParts.length > 1) {
+     const sub = pathParts[1];
+     switch (sub) {
+       case "notes": case "grades": currentCrumb = "Notes"; break;
+       case "appel": case "absences": currentCrumb = "Absences"; break;
+       case "planning": currentCrumb = "Planning"; break;
+       case "dashboard": currentCrumb = "Tableau de bord"; break;
+       case "users": currentCrumb = "Utilisateurs"; break;
+       case "settings": currentCrumb = "Configuration"; break;
+       case "hr": currentCrumb = "Ressources Humaines"; break;
+       case "recap": currentCrumb = "Récapitulatif"; break;
+       default: currentCrumb = sub.charAt(0).toUpperCase() + sub.slice(1);
+     }
   } else {
-    if (pathname === "/parent") currentCrumb = "Accueil";
-    else if (pathname === "/parent/dashboard") currentCrumb = "Tableau de bord";
-    else if (pathname === "/parent/grades") currentCrumb = "Notes de l’élève";
-    else if (pathname === "/parent/absences") currentCrumb = "Absences & retards";
-    else if (pathname === "/parent/planning") currentCrumb = "Planning";
+    currentCrumb = "Accueil";
   }
 
-  const onHub = pathname === "/prof" || pathname === "/student" || pathname === "/parent";
-
   const onChildChange = (nextId: string) => {
-    const path = pathname || "/parent";
     const sp = new URLSearchParams(searchParams.toString());
     if (nextId) sp.set("studentId", nextId);
     else sp.delete("studentId");
-    const q = sp.toString();
-    router.push(q ? `${path}?${q}` : path);
+    router.push(`${pathname}?${sp.toString()}`);
   };
 
   return (
-    <header className="sticky top-0 z-20 border-b border-slate-200/90 bg-white/95 shadow-sm shadow-slate-900/[0.03] backdrop-blur-sm">
+    <header className="sticky top-0 z-20 border-b border-slate-200 bg-white/80 backdrop-blur-md shadow-sm">
       {isImpersonated && (
-        <div className="bg-orange-500 text-white text-sm font-medium px-4 py-2 flex items-center justify-between">
-          <span>Mode Impersonnalisation activé : Vous voyez l'application en tant que {(session?.user as any)?.name}</span>
-          <button 
-            onClick={handleStopImpersonation}
-            className="px-3 py-1 bg-white text-orange-600 rounded shadow-sm hover:bg-orange-50 transition"
-          >
-            Retour Admin
-          </button>
+        <div className="bg-amber-600 text-white text-[10px] font-bold uppercase tracking-widest px-4 py-1.5 flex items-center justify-center gap-4">
+          <span>Mode Impersonnalisation activé ({(session?.user as any)?.name})</span>
+          <button onClick={handleStopImpersonation} className="underline hover:text-amber-100">Arrêter</button>
         </div>
       )}
-      <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-6 lg:px-8">
-        <nav className="flex flex-wrap items-center gap-x-1.5 gap-y-1 text-sm text-slate-500">
-          <Link href="/" className="font-medium hover:text-slate-800">
-            Site
-          </Link>
-          <span className="text-slate-300" aria-hidden>
-            /
-          </span>
-          <Link href={spaceHref()} className="font-medium hover:text-slate-800">
-            {spaceLabel()}
-          </Link>
-          {!onHub && currentCrumb ? (
-            <>
-              <span className="text-slate-300" aria-hidden>
-                /
-              </span>
-              <span className="font-medium text-slate-900">{currentCrumb}</span>
-            </>
-          ) : null}
-        </nav>
+      
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div className="flex h-16 items-center justify-between gap-4">
+          {/* Logo & Nav */}
+          <div className="flex items-center gap-8">
+            <Link href="/" className="flex items-center gap-2 group">
+              <div className="h-8 w-8 rounded-lg bg-slate-900 flex items-center justify-center text-white font-bold text-xs transition group-hover:scale-105">S</div>
+              <span className="font-bold text-slate-900 tracking-tight hidden sm:block">Skilla</span>
+            </Link>
 
-        <div className="flex flex-wrap items-center justify-end gap-2 sm:gap-3">
-          {variant === "parent" && parentChildren.length > 0 ? (
-            <label className="flex items-center gap-2 text-xs font-medium text-slate-600">
-              <span className="hidden sm:inline">Enfant</span>
+            <nav className="hidden md:flex items-center gap-1 text-sm font-medium text-slate-400">
+              <Link href={spaceHref()} className="text-slate-900 hover:text-slate-900">{spaceLabel()}</Link>
+              <span className="mx-2 text-slate-300">/</span>
+              <span className="text-slate-500">{currentCrumb}</span>
+            </nav>
+          </div>
+
+          {/* Actions */}
+          <div className="flex items-center gap-4">
+            {(variant === "parent" || variant === "employer") && parentChildren.length > 0 && (
               <select
-                className="max-w-[220px] truncate rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-sm text-slate-900 outline-none ring-slate-400/20 focus:border-sky-500 focus:ring-4 focus:ring-sky-500/15"
+                className="text-xs font-bold bg-slate-50 border-slate-200 rounded-xl px-3 py-1.5 text-slate-700 outline-none focus:ring-2 focus:ring-blue-500/20"
                 value={resolvedChildId}
                 onChange={(e) => onChildChange(e.target.value)}
               >
                 {parentChildren.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.label}
-                  </option>
+                  <option key={c.id} value={c.id}>{c.label}</option>
                 ))}
               </select>
-            </label>
-          ) : null}
+            )}
 
-          <button
-            type="button"
-            className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
-            onClick={() =>
-              void signOut({
-                callbackUrl: "/",
-              })
-            }
-          >
-            Déconnexion
-          </button>
+            <div className="flex items-center gap-3 pl-4 border-l border-slate-100">
+              <div className="text-right hidden sm:block">
+                <p className="text-xs font-bold text-slate-900 leading-none">{session?.user?.name}</p>
+                <p className="text-[10px] font-medium text-slate-400 mt-1 uppercase tracking-wider">{session?.user?.role}</p>
+              </div>
+              <button
+                onClick={() => signOut({ callbackUrl: "/" })}
+                className="h-9 px-4 rounded-xl bg-slate-50 text-slate-600 text-xs font-bold hover:bg-slate-100 transition border border-slate-200"
+              >
+                Déconnexion
+              </button>
+            </div>
+          </div>
         </div>
       </div>
 
-      <div className="border-t border-slate-100 bg-slate-50/90">
-        <div className="mx-auto flex max-w-6xl flex-wrap gap-x-4 gap-y-2 px-4 py-2.5 sm:px-6 lg:px-8">
-          {variant === "prof" ? (
+      {/* Sub-navigation based on role */}
+      <div className="bg-slate-50/50 border-t border-slate-100 overflow-x-auto no-scrollbar">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 flex gap-1 py-1">
+          {variant === "admin" && (
             <>
-              <Link href="/prof" className={cx(subLinkClass(pathname === "/prof"))}>
-                Accueil espace
-              </Link>
-              <Link href="/prof/notes" className={cx(subLinkClass(pathname === "/prof/notes"))}>
-                Notes
-              </Link>
-              <Link href="/prof/appel" className={cx(subLinkClass(pathname === "/prof/appel"))}>
-                Appel
-              </Link>
-              <Link href="/prof/planning" className={cx(subLinkClass(pathname === "/prof/planning"))}>
-                Planning
-              </Link>
+              <NavLink href="/admin" active={pathname === "/admin"}>Accueil</NavLink>
+              <NavLink href="/admin/users" active={pathname.startsWith("/admin/users")}>Utilisateurs</NavLink>
+              <NavLink href="/admin/planning" active={pathname.startsWith("/admin/planning")}>Planning</NavLink>
+              <NavLink href="/admin/recap" active={pathname.startsWith("/admin/recap")}>Récapitulatif</NavLink>
+              <NavLink href="/admin/settings" active={pathname.startsWith("/admin/settings")}>Config</NavLink>
             </>
-          ) : null}
-
-          {variant === "student" ? (
+          )}
+          {variant === "prof" && (
             <>
-              <Link href="/student" className={cx(subLinkClass(pathname === "/student"))}>
-                Accueil espace
-              </Link>
-              <Link
-                href="/student/dashboard"
-                className={cx(subLinkClass(pathname === "/student/dashboard"))}
-              >
-                Tableau de bord
-              </Link>
-              <Link href="/student/grades" className={cx(subLinkClass(pathname === "/student/grades"))}>
-                Mes notes
-              </Link>
-              <Link
-                href="/student/absences"
-                className={cx(subLinkClass(pathname === "/student/absences"))}
-              >
-                Absences
-              </Link>
-              <Link href="/student/planning" className={cx(subLinkClass(pathname === "/student/planning"))}>
-                Planning
-              </Link>
+              <NavLink href="/prof" active={pathname === "/prof"}>Tableau de bord</NavLink>
+              <NavLink href="/prof/planning" active={pathname.startsWith("/prof/planning")}>Planning</NavLink>
+              <NavLink href="/prof/appel" active={pathname.startsWith("/prof/appel")}>Appel</NavLink>
+              <NavLink href="/prof/notes" active={pathname.startsWith("/prof/notes")}>Notes</NavLink>
             </>
-          ) : null}
-
-          {variant === "parent" ? (
+          )}
+          {variant === "student" && (
             <>
-              <Link href="/parent" className={cx(subLinkClass(pathname === "/parent"))}>
-                Accueil espace
-              </Link>
-              <Link
-                href={resolvedChildId ? parentHref("/parent/dashboard") : "/parent"}
-                className={cx(subLinkClass(pathname === "/parent/dashboard"))}
-              >
-                Tableau de bord
-              </Link>
-              <Link
-                href={resolvedChildId ? parentHref("/parent/grades") : "/parent"}
-                className={cx(subLinkClass(pathname === "/parent/grades"))}
-              >
-                Notes
-              </Link>
-              <Link
-                href={resolvedChildId ? parentHref("/parent/absences") : "/parent"}
-                className={cx(subLinkClass(pathname === "/parent/absences"))}
-              >
-                Absences
-              </Link>
-              <Link
-                href={resolvedChildId ? parentHref("/parent/planning") : "/parent"}
-                className={cx(subLinkClass(pathname === "/parent/planning"))}
-              >
-                Planning
-              </Link>
+              <NavLink href="/student/dashboard" active={pathname.startsWith("/student/dashboard")}>Synthèse</NavLink>
+              <NavLink href="/student/planning" active={pathname.startsWith("/student/planning")}>Planning</NavLink>
+              <NavLink href="/student/grades" active={pathname.startsWith("/student/grades")}>Notes</NavLink>
+              <NavLink href="/student/absences" active={pathname.startsWith("/student/absences")}>Absences</NavLink>
             </>
-          ) : null}
+          )}
+          {(variant === "parent" || variant === "employer") && (
+            <>
+              <NavLink href={`/${variant}/dashboard?studentId=${resolvedChildId}`} active={pathname.includes("/dashboard")}>Synthèse</NavLink>
+              <NavLink href={`/${variant}/planning?studentId=${resolvedChildId}`} active={pathname.includes("/planning")}>Planning</NavLink>
+              <NavLink href={`/${variant}/grades?studentId=${resolvedChildId}`} active={pathname.includes("/grades")}>Notes</NavLink>
+              <NavLink href={`/${variant}/absences?studentId=${resolvedChildId}`} active={pathname.includes("/absences")}>Absences</NavLink>
+            </>
+          )}
         </div>
       </div>
     </header>
+  );
+}
+
+function NavLink({ href, active, children }: { href: string; active: boolean; children: React.ReactNode }) {
+  return (
+    <Link 
+      href={href} 
+      className={`px-4 py-2 text-xs font-bold rounded-lg transition-colors whitespace-nowrap ${active ? 'bg-white text-blue-600 shadow-sm border border-slate-200' : 'text-slate-500 hover:text-slate-900'}`}
+    >
+      {children}
+    </Link>
   );
 }
