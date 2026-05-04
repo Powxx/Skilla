@@ -75,7 +75,7 @@ export default function TeacherPlanningClient({ teacherId, teachers }: { teacher
 
   const handleRequestSubstitution = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedEvent || !substituteId) return;
+    if (!selectedEvent) return;
 
     setLoading(true);
     try {
@@ -83,12 +83,11 @@ export default function TeacherPlanningClient({ teacherId, teachers }: { teacher
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          lessonId: selectedEvent.id,
-          substituteTeacherId: substituteId
+          lessonId: selectedEvent.id
         })
       });
       if (res.ok) {
-        setFeedback({ type: 'success', text: "Demande de remplacement envoyée." });
+        setFeedback({ type: 'success', text: "Demande de remplacement transmise à l'administration." });
       } else {
         setFeedback({ type: 'error', text: "Erreur lors de l'envoi." });
       }
@@ -208,25 +207,21 @@ export default function TeacherPlanningClient({ teacherId, teachers }: { teacher
               )}
 
               {activeTab === 'substitute' && (
-                <form onSubmit={handleRequestSubstitution} className="space-y-4">
-                  <div>
-                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Choisir un collègue remplaçant</label>
-                    <select 
-                      required
-                      className="w-full text-sm rounded-xl border-slate-200 focus:border-blue-500 focus:ring-blue-500"
-                      value={substituteId}
-                      onChange={(e) => setSubstituteId(e.target.value)}
-                    >
-                      <option value="">-- Sélectionner un professeur --</option>
-                      {teachers.map(t => (
-                        <option key={t.id} value={t.id}>{t.lastName} {t.firstName}</option>
-                      ))}
-                    </select>
+                <div className="space-y-6 py-4">
+                  <div className="p-4 bg-orange-50 border border-orange-100 rounded-2xl">
+                     <p className="text-sm text-orange-800 font-medium leading-relaxed">
+                       Vous ne pouvez pas assurer ce cours ? Cliquez sur le bouton ci-dessous pour demander un remplacement. 
+                       L'administration sera notifiée et se chargera de trouver un remplaçant qualifié.
+                     </p>
                   </div>
-                  <button type="submit" disabled={loading || !substituteId} className="w-full py-3 bg-orange-600 text-white rounded-xl text-sm font-bold shadow-lg hover:bg-orange-700 transition disabled:opacity-50">
-                    {loading ? "Envoi..." : "Envoyer la demande de remplacement"}
+                  <button 
+                    onClick={handleRequestSubstitution} 
+                    disabled={loading} 
+                    className="w-full py-4 bg-orange-600 text-white rounded-2xl text-sm font-bold shadow-lg hover:bg-orange-700 transition disabled:opacity-50"
+                  >
+                    {loading ? "Envoi..." : "Demander un remplacement"}
                   </button>
-                </form>
+                </div>
               )}
             </div>
           </div>

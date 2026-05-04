@@ -52,13 +52,12 @@ export async function POST(request: Request) {
   }
 
   try {
-    const { lessonId, substituteTeacherId } = await request.json();
+    const { lessonId } = await request.json();
 
     const subRequest = await prisma.substitutionRequest.create({
       data: {
         lessonId,
         originalTeacherId: session.user.id,
-        substituteTeacherId,
         status: "PENDING"
       }
     });
@@ -76,19 +75,22 @@ export async function PUT(request: Request) {
   }
 
   try {
-    const { id, status } = await request.json();
+    const { id, status, substituteTeacherId, subjectId } = await request.json();
 
     const subRequest = await prisma.substitutionRequest.update({
       where: { id },
-      data: { status },
+      data: { status, substituteTeacherId },
       include: { lesson: true }
     });
 
-    // If approved, update the lesson's substituteId
-    if (status === "APPROVED") {
+    // If approved, update the lesson's teacher and subject
+    if (status === "APPROVED" && substituteTeacherId) {
       await prisma.lesson.update({
         where: { id: subRequest.lessonId },
-        data: { substituteId: subRequest.substituteTeacherId }
+        data: { 
+          teacherId: substituteTeacherId,
+          subjectId: subjectId || undefined // Change subject if provided
+        }
       });
     }
 

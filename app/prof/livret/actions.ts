@@ -3,13 +3,11 @@
 import prisma from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 
-export async function updateSkillLevel(studentId: string, competencyName: string, level: number) {
+export async function updateSkillLevel(studentId: string, competencyName: string, level: number, category: string = "SCHOOL") {
   await prisma.evaluation.upsert({
     where: {
-      // Evaluation doesn't have a unique key for student+competency in schema, 
-      // but we search by it.
       id: (await prisma.evaluation.findFirst({
-        where: { studentId, competency: competencyName },
+        where: { studentId, competency: competencyName, category },
         select: { id: true }
       }))?.id || 'temp-eval-id'
     },
@@ -18,7 +16,8 @@ export async function updateSkillLevel(studentId: string, competencyName: string
       studentId,
       competency: competencyName,
       level,
-      source: "TEACHER_EVAL"
+      source: category === "SCHOOL" ? "TEACHER_EVAL" : "EMPLOYER_EVAL",
+      category
     }
   });
 

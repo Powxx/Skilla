@@ -108,6 +108,7 @@ model Class {
   students         User[]
   lessons          Lesson[]
   attendanceSheets AttendanceSheet[]
+  competencies     ClassCompetency[]
 }
 
 model Room {
@@ -243,8 +244,17 @@ model Evaluation {
   competency  String
   level       Int      
   source      String   
+  category    String   @default("SCHOOL") // "SCHOOL" or "ENTERPRISE"
   studentId   String
   student     User   @relation(fields: [studentId], references: [id])
+}
+
+model ClassCompetency {
+  id        String @id @default(cuid())
+  name      String
+  category  String // "SCHOOL" or "ENTERPRISE"
+  classId   String
+  class     Class  @relation(fields: [classId], references: [id])
 }
 
 model SkillMatrix {
@@ -271,8 +281,8 @@ model SubstitutionRequest {
   lesson             Lesson             @relation(fields: [lessonId], references: [id])
   originalTeacherId  String
   originalTeacher    User               @relation("OriginalTeacher", fields: [originalTeacherId], references: [id])
-  substituteTeacherId String
-  substituteTeacher  User               @relation("SubstituteTeacherReq", fields: [substituteTeacherId], references: [id])
+  substituteTeacherId String?
+  substituteTeacher  User?               @relation("SubstituteTeacherReq", fields: [substituteTeacherId], references: [id])
   status             SubstitutionStatus @default(PENDING)
   createdAt          DateTime           @default(now())
 }

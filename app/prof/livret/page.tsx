@@ -21,29 +21,44 @@ export default async function ProfLivretPage({ searchParams }: { searchParams?: 
 
   const students = await prisma.user.findMany({
     where: { classId: { in: classIds }, role: "STUDENT" },
-    select: { id: true, firstName: true, lastName: true, class: { select: { name: true } } },
+    select: { id: true, firstName: true, lastName: true, classId: true, class: { select: { name: true } } },
     orderBy: { lastName: 'asc' }
   });
 
   const studentId = searchParams?.studentId || students[0]?.id;
   
-  // 2. Get evaluations for the selected student
-  const evaluations = studentId ? await prisma.evaluation.findMany({
-    where: { studentId },
-    orderBy: { competency: 'asc' }
-  }) : [];
+  // 2. Get the student's class competencies (SCHOOL only)
+  const student = students.find(s => s.id === studentId);
+  const classId = (student as any)?.classId;
+
+  const [classComps, evaluations] = await Promise.all([
+    classId ? prisma.classCompetency.findMany({ where: { classId, category: 'SCHOOL' } }) : [],
+    studentId ? prisma.evaluation.findMany({ where: { studentId, category: 'SCHOOL' } }) : []
+  ]);
+
+  // Combine: if evaluation exists, use its level. Otherwise use class competency name with level 1.
+  const mergedEvaluations = classComps.map(cc => {
+    const existing = evaluations.find(e => e.competency === cc.name);
+    return {
+      id: cc.id,
+      name: cc.name,
+      level: existing?.level || 1,
+      lastUpdated: existing?.id || 'new'
+    };
+  });
 
   return (
     <div className="space-y-8">
       <header>
-        <h1 className="text-3xl font-black text-slate-900">Évaluation des Compétences</h1>
-        <p className="text-sm text-slate-500 font-medium">Saisissez les niveaux d'acquisition pour chaque élève.</p>
+        <h1 className="text-3xl font-black text-slate-900">Livret d'Apprentissage — École</h1>
+        <p className="text-sm text-slate-500 font-medium">Évaluation des compétences académiques pour {student?.firstName} {student?.lastName}.</p>
       </header>
 
       <ProfLivretClient 
         students={students.map(s => ({ id: s.id, name: `${s.lastName} ${s.firstName}`, className: s.class?.name }))}
-        initialEvaluations={evaluations.map(e => ({ id: e.id, name: e.competency, level: e.level, lastUpdated: e.id }))}
+        initialEvaluations={mergedEvaluations}
         selectedStudentId={studentId}
+        category="SCHOOL"
       />
     </div>
   );

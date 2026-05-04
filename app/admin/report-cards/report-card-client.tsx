@@ -2,6 +2,8 @@
 
 import React, { useState, useTransition } from 'react';
 import { calculateStudentAverages, saveReportCard } from './actions';
+import { format } from 'date-fns';
+import { fr } from 'date-fns/locale';
 
 export default function ReportCardClient({ students, semesters }: any) {
   const [isPending, startTransition] = useTransition();
@@ -115,13 +117,93 @@ export default function ReportCardClient({ students, semesters }: any) {
                   onChange={(e) => setDistinction(e.target.value)}
                 />
               </div>
-              <button 
-                onClick={handleSave}
-                disabled={isPending}
-                className="w-full bg-blue-600 text-white py-4 rounded-2xl font-bold hover:bg-blue-700 transition shadow-lg shadow-blue-500/20"
-              >
-                {isPending ? "Enregistrement..." : "Valider et Enregistrer le Bulletin"}
-              </button>
+              <div className="flex gap-4">
+                <button 
+                  onClick={handleSave}
+                  disabled={isPending}
+                  className="flex-1 bg-blue-600 text-white py-4 rounded-2xl font-bold hover:bg-blue-700 transition shadow-lg shadow-blue-500/20"
+                >
+                  {isPending ? "Enregistrement..." : "Valider et Enregistrer le Bulletin"}
+                </button>
+                <button 
+                  onClick={() => window.print()}
+                  className="px-6 bg-slate-100 text-slate-600 rounded-2xl font-bold hover:bg-slate-200 transition"
+                >
+                  🖨️
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Print Only Section */}
+          <div className="hidden print:block fixed inset-0 bg-white z-[9999] p-12 overflow-y-auto">
+            <div className="max-w-4xl mx-auto space-y-12">
+              <header className="flex justify-between items-start border-b-2 border-slate-900 pb-8">
+                <div>
+                  <h1 className="text-4xl font-black text-slate-900">BULLETIN SCOLAIRE</h1>
+                  <p className="text-xl text-slate-500 mt-2">{semesters.find((s: any) => s.id === selectedSemester)?.name}</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-2xl font-bold text-slate-900">Skilla Academy</p>
+                  <p className="text-sm text-slate-500">Portail Académique</p>
+                </div>
+              </header>
+
+              <section className="grid grid-cols-2 gap-12">
+                <div>
+                   <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Élève</h3>
+                   <p className="text-2xl font-black text-slate-900">{students.find((s: any) => s.id === selectedStudent)?.name}</p>
+                   <p className="text-slate-500 font-medium">Classe : {students.find((s: any) => s.id === selectedStudent)?.className}</p>
+                </div>
+                <div className="bg-slate-50 p-6 rounded-3xl border border-slate-100 text-right">
+                   <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Moyenne Générale</h3>
+                   <p className="text-5xl font-black text-blue-600">
+                     {(averages.reduce((acc: number, cur: any) => acc + cur.average, 0) / (averages.length || 1)).toFixed(2)}
+                     <span className="text-lg text-slate-400 ml-2">/ 20</span>
+                   </p>
+                </div>
+              </section>
+
+              <section>
+                 <table className="w-full border-collapse">
+                   <thead>
+                     <tr className="border-b-2 border-slate-100">
+                       <th className="py-4 text-left text-xs font-black uppercase tracking-widest text-slate-400">Matière</th>
+                       <th className="py-4 text-right text-xs font-black uppercase tracking-widest text-slate-400">Moyenne</th>
+                       <th className="py-4 text-right text-xs font-black uppercase tracking-widest text-slate-400">Appréciation</th>
+                     </tr>
+                   </thead>
+                   <tbody className="divide-y divide-slate-100">
+                     {averages.map((a: any) => (
+                       <tr key={a.subjectId}>
+                         <td className="py-6 font-bold text-slate-900">{a.subjectName}</td>
+                         <td className="py-6 text-right font-black text-slate-900 text-lg">{a.average.toFixed(2)}</td>
+                         <td className="py-6 text-right text-slate-400 italic text-sm">—</td>
+                       </tr>
+                     ))}
+                   </tbody>
+                 </table>
+              </section>
+
+              <section className="bg-slate-900 text-white p-8 rounded-3xl shadow-xl">
+                 <h3 className="text-[10px] font-black uppercase tracking-widest text-white/40 mb-4">Bilan de l'établissement</h3>
+                 <p className="text-xl font-medium leading-relaxed">"{appraisal}"</p>
+                 {distinction && (
+                   <div className="mt-6 pt-6 border-t border-white/10">
+                     <p className="text-sm font-black uppercase tracking-[0.3em] text-blue-400">Mention : {distinction}</p>
+                   </div>
+                 )}
+              </section>
+
+              <footer className="pt-20 flex justify-between items-end border-t border-slate-100">
+                 <div className="text-xs text-slate-400">
+                   Document généré le {format(new Date(), 'dd MMMM yyyy HH:mm', { locale: fr })}
+                 </div>
+                 <div className="text-center w-64">
+                   <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-12">Cachet et Signature</p>
+                   <div className="h-px w-full bg-slate-200"></div>
+                 </div>
+              </footer>
             </div>
           </div>
         </div>

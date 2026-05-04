@@ -155,7 +155,8 @@ export default function PortalHeader({ variant, parentChildren = [] }: Props) {
               <NavLink href="/admin/planning" active={pathname.startsWith("/admin/planning")}>Planning</NavLink>
               <NavLink href="/admin/report-cards" active={pathname.startsWith("/admin/report-cards")}>Bulletins</NavLink>
               <NavLink href="/admin/recap" active={pathname.startsWith("/admin/recap")}>Récapitulatif</NavLink>
-              <NavLink href="/admin/settings" active={pathname.startsWith("/admin/settings")}>Config</NavLink>
+              <NavLink href="/admin/settings" active={pathname === "/admin/settings"}>Config</NavLink>
+              <NavLink href="/admin/settings/competencies" active={pathname.startsWith("/admin/settings/competencies")}>Compétences</NavLink>
             </>
           )}
           {variant === "prof" && (

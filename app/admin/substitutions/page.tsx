@@ -14,20 +14,33 @@ export default async function AdminSubstitutionsPage() {
     redirect("/login");
   }
 
-  const requests = await prisma.substitutionRequest.findMany({
-    include: {
-      lesson: {
-        include: {
-          subject: true,
-          class: true,
-          room: true
-        }
+  const [requests, teachers, allSubjects] = await Promise.all([
+    prisma.substitutionRequest.findMany({
+      include: {
+        lesson: {
+          include: {
+            subject: true,
+            class: true,
+            room: true
+          }
+        },
+        originalTeacher: { select: { firstName: true, lastName: true } },
+        substituteTeacher: { select: { firstName: true, lastName: true } }
       },
-      originalTeacher: { select: { firstName: true, lastName: true } },
-      substituteTeacher: { select: { firstName: true, lastName: true } }
-    },
-    orderBy: { createdAt: 'desc' }
-  });
+      orderBy: { createdAt: 'desc' }
+    }),
+    prisma.user.findMany({
+      where: { role: "TEACHER" },
+      select: { 
+        id: true, 
+        firstName: true, 
+        lastName: true,
+        subjects: { select: { id: true, name: true } }
+      },
+      orderBy: { lastName: 'asc' }
+    }),
+    prisma.subject.findMany({ orderBy: { name: 'asc' } })
+  ]);
 
   return (
     <div className="min-h-screen bg-white text-slate-900">
@@ -45,11 +58,15 @@ export default async function AdminSubstitutionsPage() {
             Demandes de Remplacement
           </h1>
           <p className="mt-2 text-sm text-slate-600">
-            Validez ou refusez les demandes de remplacement entre professeurs.
+            Gérez les demandes et assignez des professeurs remplaçants.
           </p>
         </header>
 
-        <AdminSubstitutionsClient initialRequests={requests} />
+        <AdminSubstitutionsClient 
+          initialRequests={requests} 
+          teachers={teachers}
+          allSubjects={allSubjects}
+        />
       </div>
     </div>
   );
