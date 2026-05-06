@@ -44,35 +44,37 @@ export default async function ParentHomePage() {
           assurer la liaison famille / élève.
         </div>
       ) : (
-        <ul className="mt-8 space-y-3">
-          <li>
-            <Link
-              href={`/parent/dashboard${q}`}
-              className="block rounded-xl border border-slate-200 bg-white px-5 py-4 text-sm font-medium shadow-sm ring-1 ring-slate-900/[0.04] transition hover:border-slate-300 hover:bg-slate-50"
-            >
-              Tableau de bord →
-            </Link>
-          </li>
-          <li>
-            <Link
-              href={`/parent/grades${q}`}
-              className="block rounded-xl border border-slate-200 bg-white px-5 py-4 text-sm font-medium shadow-sm ring-1 ring-slate-900/[0.04] transition hover:border-slate-300 hover:bg-slate-50"
-            >
-              Notes de l’élève →
-            </Link>
-          </li>
-          <li>
-            <Link
-              href={`/parent/absences${q}`}
-              className="block rounded-xl border border-slate-200 bg-white px-5 py-4 text-sm font-medium shadow-sm ring-1 ring-slate-900/[0.04] transition hover:border-slate-300 hover:bg-slate-50"
-            >
-              Absences & retards →
-            </Link>
-          </li>
-        </ul>
-        <div className="mt-12">
-           <MeetingRequestForm />
-        </div>
+        <>
+          <ul className="mt-8 space-y-3">
+            <li>
+              <Link
+                href={`/parent/dashboard${q}`}
+                className="block rounded-xl border border-slate-200 bg-white px-5 py-4 text-sm font-medium shadow-sm ring-1 ring-slate-900/[0.04] transition hover:border-slate-300 hover:bg-slate-50"
+              >
+                Tableau de bord →
+              </Link>
+            </li>
+            <li>
+              <Link
+                href={`/parent/grades${q}`}
+                className="block rounded-xl border border-slate-200 bg-white px-5 py-4 text-sm font-medium shadow-sm ring-1 ring-slate-900/[0.04] transition hover:border-slate-300 hover:bg-slate-50"
+              >
+                Notes de l’élève →
+              </Link>
+            </li>
+            <li>
+              <Link
+                href={`/parent/absences${q}`}
+                className="block rounded-xl border border-slate-200 bg-white px-5 py-4 text-sm font-medium shadow-sm ring-1 ring-slate-900/[0.04] transition hover:border-slate-300 hover:bg-slate-50"
+              >
+                Absences & retards →
+              </Link>
+            </li>
+          </ul>
+          <div className="mt-12">
+             <MeetingRequestForm />
+          </div>
+        </>
       )}
     </div>
   );
