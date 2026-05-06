@@ -107,6 +107,15 @@ export default async function AdminHomePage() {
                 <p className="text-[10px] text-indigo-500 font-normal mt-0.5">Vue croisée Élève / Parents / Entreprise</p>
               </Link>
             </li>
+            <li>
+              <Link
+                href="/admin/recap/competencies"
+                className="block rounded-xl border border-violet-200 bg-violet-50 px-5 py-4 text-sm font-medium text-violet-700 shadow-sm transition hover:border-violet-300 hover:bg-violet-100 font-bold"
+              >
+                🏆 Suivi des Compétences →
+                <p className="text-[10px] text-violet-500 font-normal mt-0.5">Tableau de bord École & Entreprise</p>
+              </Link>
+            </li>
           </ul>
         </div>
         
