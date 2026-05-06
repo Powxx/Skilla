@@ -337,3 +337,71 @@ export async function deleteUserSafe(userId: string): Promise<MutationResult> {
   revalidatePath("/admin/users");
   return { ok: true };
 }
+
+export async function importUsersAction(users: Array<{
+  email: string;
+  firstName: string;
+  lastName: string;
+  role: Role;
+  classId?: string;
+  password?: string;
+}>): Promise<MutationResult<{ count: number }>> {
+  const session = await requireAdmin();
+  if (!session) return { ok: false, error: "Accès réservé aux administrateurs." };
+
+  let count = 0;
+  for (const user of users) {
+    const email = user.email.trim().toLowerCase();
+    const firstName = user.firstName.trim();
+    const lastName = user.lastName.trim();
+    const role = user.role;
+    const password = user.password || "Skilla2026!"; // Default password if none provided
+
+    if (!email || !firstName || !lastName || !role) continue;
+
+    const passwordHash = await bcrypt.hash(password, 10);
+
+    try {
+      if (role === Role.STUDENT && user.classId) {
+        // Find class first to be sure
+        const targetClass = await prisma.class.findFirst({
+           where: { OR: [{ id: user.classId }, { name: user.classId }] }
+        });
+
+        if (targetClass) {
+          await prisma.user.upsert({
+            where: { email },
+            update: { firstName, lastName, role, classId: targetClass.id },
+            create: {
+              email,
+              password: passwordHash,
+              role,
+              firstName,
+              lastName,
+              classId: targetClass.id,
+              studentProfile: { create: { classId: targetClass.id } }
+            }
+          });
+        }
+      } else {
+        await prisma.user.upsert({
+          where: { email },
+          update: { firstName, lastName, role },
+          create: {
+            email,
+            password: passwordHash,
+            role,
+            firstName,
+            lastName
+          }
+        });
+      }
+      count++;
+    } catch (e) {
+      console.error("Error importing user:", email, e);
+    }
+  }
+
+  revalidatePath("/admin/users");
+  return { ok: true, data: { count } };
+}

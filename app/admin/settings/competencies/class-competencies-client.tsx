@@ -1,11 +1,53 @@
 "use client";
 
-import React, { useState, useTransition } from 'react';
+import React, { useState, useTransition, useRef } from 'react';
 import { createClassCompetency, deleteClassCompetency } from './actions';
+import Papa from 'papaparse';
 
 export default function ClassCompetenciesClient({ initialClasses, initialCompetencies }: any) {
   const [isPending, startTransition] = useTransition();
   const [form, setForm] = useState({ classId: '', name: '', category: 'SCHOOL' });
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [activeImportClassId, setActiveImportClassId] = useState<string | null>(null);
+
+  const handleExportCSV = (clId: string, clName: string) => {
+    const comps = initialCompetencies.filter((c: any) => c.classId === clId);
+    const data = comps.map((c: any) => ({
+      Nom: c.name,
+      Catégorie: c.category
+    }));
+    const csv = Papa.unparse(data);
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `competences_${clName}.csv`);
+    link.click();
+  };
+
+  const handleImportCSV = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !activeImportClassId) return;
+
+    Papa.parse(file, {
+      header: true,
+      skipEmptyLines: true,
+      complete: (results) => {
+        const payload = results.data.map((row: any) => ({
+          classId: activeImportClassId,
+          name: row.Nom || row.name || "",
+          category: (row.Catégorie || row.category || "SCHOOL").toUpperCase()
+        })).filter((c: any) => c.name);
+
+        startTransition(async () => {
+          for (const comp of payload) {
+            await createClassCompetency(comp);
+          }
+          setActiveImportClassId(null);
+        });
+      }
+    });
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -65,8 +107,25 @@ export default function ClassCompetenciesClient({ initialClasses, initialCompete
           if (comps.length === 0) return null;
           return (
             <div key={cl.id} className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
-              <div className="p-6 bg-slate-50 border-b border-slate-100">
+              <div className="p-6 bg-slate-50 border-b border-slate-100 flex justify-between items-center">
                 <h3 className="font-bold text-slate-900">{cl.name}</h3>
+                <div className="flex gap-2">
+                  <button 
+                    onClick={() => handleExportCSV(cl.id, cl.name)}
+                    className="text-[10px] font-bold text-slate-500 hover:text-slate-900 uppercase tracking-tight"
+                  >
+                    Exporter
+                  </button>
+                  <button 
+                    onClick={() => {
+                      setActiveImportClassId(cl.id);
+                      fileInputRef.current?.click();
+                    }}
+                    className="text-[10px] font-bold text-sky-600 hover:text-sky-800 uppercase tracking-tight"
+                  >
+                    Importer
+                  </button>
+                </div>
               </div>
               <div className="p-6 space-y-3">
                 {comps.map((c: any) => (
@@ -90,6 +149,13 @@ export default function ClassCompetenciesClient({ initialClasses, initialCompete
           );
         })}
       </div>
+      <input 
+        type="file" 
+        ref={fileInputRef} 
+        onChange={handleImportCSV} 
+        accept=".csv" 
+        className="hidden" 
+      />
     </div>
   );
 }

@@ -5,7 +5,9 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { createUser, deleteUserSafe, updateUser } from "./actions";
+import { createUser, deleteUserSafe, updateUser, importUsersAction } from "./actions";
+import Papa from "papaparse";
+import { useRef } from "react";
 
 const inputClass =
   "w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-sky-600 focus:ring-2 focus:ring-sky-600/20";
@@ -77,6 +79,61 @@ export default function UsersShell(props: Props) {
   const [flash, setFlash] = useState<{ type: "ok" | "err"; msg: string } | null>(
     null,
   );
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleExportCSV = () => {
+    const data = users.map(u => ({
+      Prénom: u.firstName,
+      Nom: u.lastName,
+      Email: u.email,
+      Rôle: u.role,
+      Classe: u.studentClass?.name || ""
+    }));
+    const csv = Papa.unparse(data);
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `skilla_users_export_${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const handleImportCSV = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    Papa.parse(file, {
+      header: true,
+      skipEmptyLines: true,
+      complete: async (results) => {
+        const payload = results.data.map((row: any) => ({
+          firstName: row.Prénom || row.firstName || "",
+          lastName: row.Nom || row.lastName || "",
+          email: row.Email || row.email || "",
+          role: (row.Rôle || row.role || "STUDENT") as Role,
+          classId: row.Classe || row.classId || ""
+        })).filter((u: any) => u.email && u.firstName);
+
+        if (payload.length === 0) {
+          setFlash({ type: "err", msg: "Aucune donnée valide trouvée dans le CSV." });
+          return;
+        }
+
+        transition(async () => {
+          const res = await importUsersAction(payload);
+          if (res.ok) {
+            setFlash({ type: "ok", msg: `${res.data?.count} utilisateurs importés/mis à jour avec succès.` });
+            router.refresh();
+          } else {
+            setFlash({ type: "err", msg: res.error });
+          }
+        });
+      }
+    });
+  };
 
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
 
@@ -116,16 +173,39 @@ export default function UsersShell(props: Props) {
             Recherche, filtre par rôle (ADMIN, TEACHER, STUDENT, PARENT, EMPLOYER) et gestion des comptes.
           </p>
         </div>
-        <button
-          type="button"
-          onClick={() => {
-            setShowCreate(true);
-            setFlash(null);
-          }}
-          className="inline-flex shrink-0 items-center justify-center rounded-xl bg-slate-900 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800"
-        >
-          Nouvel utilisateur
-        </button>
+        <div className="flex flex-wrap gap-3">
+          <input 
+            type="file" 
+            ref={fileInputRef} 
+            onChange={handleImportCSV} 
+            accept=".csv" 
+            className="hidden" 
+          />
+          <button
+            type="button"
+            onClick={handleExportCSV}
+            className="inline-flex shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white px-5 py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
+          >
+            Exporter CSV
+          </button>
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            className="inline-flex shrink-0 items-center justify-center rounded-xl border border-sky-200 bg-sky-50 px-5 py-2.5 text-sm font-semibold text-sky-700 shadow-sm transition hover:bg-sky-100"
+          >
+            Importer CSV
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setShowCreate(true);
+              setFlash(null);
+            }}
+            className="inline-flex shrink-0 items-center justify-center rounded-xl bg-slate-900 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800"
+          >
+            Nouvel utilisateur
+          </button>
+        </div>
       </header>
 
       {flash ? (

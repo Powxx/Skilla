@@ -3,8 +3,11 @@
 import prisma from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 
-export async function createClassCompetency(data: { classId: string, name: string, category: string }) {
-  await prisma.classCompetency.create({ data });
+export async function createClassCompetency(data: { classId: string, name: string }) {
+  await prisma.$transaction([
+    prisma.classCompetency.create({ data: { ...data, category: "SCHOOL" } }),
+    prisma.classCompetency.create({ data: { ...data, category: "ENTERPRISE" } })
+  ]);
   revalidatePath("/admin/settings/competencies");
 }
 
