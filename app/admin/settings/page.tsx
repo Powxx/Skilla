@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import prisma from "@/lib/prisma";
 import Link from "next/link";
 import CoreSettingsClient from "./core-settings-client";
+import { getNotificationConfigs } from "@/app/actions/notifications";
 
 export const dynamic = 'force-dynamic';
 
@@ -14,10 +15,11 @@ export default async function AdminSettingsPage() {
     redirect("/login");
   }
 
-  const [classes, subjects, semesters] = await Promise.all([
+  const [classes, subjects, semesters, notificationConfigs] = await Promise.all([
     prisma.class.findMany({ orderBy: { name: 'asc' } }),
     prisma.subject.findMany({ orderBy: { name: 'asc' } }),
     prisma.semester.findMany({ orderBy: { startDate: 'asc' } }),
+    getNotificationConfigs(),
   ]);
 
   return (
@@ -36,7 +38,7 @@ export default async function AdminSettingsPage() {
             Paramétrage du système
           </h1>
           <p className="mt-2 text-sm text-slate-600">
-            Gérez les fondamentaux de l'école : classes, matières et périodes.
+            Gérez les fondamentaux de l'école : classes, matières, périodes et notifications.
           </p>
         </header>
 
@@ -44,6 +46,7 @@ export default async function AdminSettingsPage() {
           initialClasses={classes} 
           initialSubjects={subjects} 
           initialSemesters={semesters} 
+          initialNotificationConfigs={notificationConfigs}
         />
       </div>
     </div>

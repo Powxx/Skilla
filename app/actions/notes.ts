@@ -1,7 +1,7 @@
 "use server";
 
 import prisma from "@/lib/prisma";
-import { createNotification } from "./notifications";
+import { createNotification, checkEventEnabled } from "./notifications";
 
 export type GradeBatchEntry = {
   studentId: string;
@@ -124,14 +124,17 @@ export async function saveGradesBatch(
     );
 
     // Send notifications (non-blocking for the transaction but after success)
-    for (const e of entries) {
-      createNotification({
-        userId: e.studentId,
-        title: "Nouvelle note disponible",
-        message: `Une nouvelle note a été publiée en ${subjectNameById.get(e.matiereId)}. Note : ${e.note}/20.`,
-        type: "INFO",
-        link: "/student/grades"
-      }).catch(err => console.error("Failed to send notification:", err));
+    const isEnabled = await checkEventEnabled("NEW_GRADE");
+    if (isEnabled) {
+      for (const e of entries) {
+        createNotification({
+          userId: e.studentId,
+          title: "Nouvelle note disponible",
+          message: `Une nouvelle note a été publiée en ${subjectNameById.get(e.matiereId)}. Note : ${e.note}/20.`,
+          type: "INFO",
+          link: "/student/grades"
+        }).catch(err => console.error("Failed to send notification:", err));
+      }
     }
 
     return { ok: true, count: entries.length };

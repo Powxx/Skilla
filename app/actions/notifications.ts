@@ -52,3 +52,57 @@ export async function createNotification(data: {
   revalidatePath("/");
   return notification;
 }
+
+export async function getNotificationConfigs() {
+  await ensureDefaultConfigs();
+  return await prisma.notificationConfig.findMany({
+    orderBy: { event: "asc" },
+  });
+}
+
+async function ensureDefaultConfigs() {
+  const defaults = [
+    {
+      event: "NEW_GRADE",
+      title: "Nouvelle note disponible",
+      message: "Une nouvelle note a été publiée.",
+      targetRoles: ["STUDENT"] as any[],
+    },
+    {
+      event: "MEETING_UPDATE",
+      title: "Mise à jour de votre demande de rendez-vous",
+      message: "Le statut de votre demande a été modifié.",
+      targetRoles: ["STUDENT", "PARENT", "EMPLOYER"] as any[],
+    }
+  ];
+
+  for (const def of defaults) {
+    await prisma.notificationConfig.upsert({
+      where: { event: def.event },
+      update: {},
+      create: {
+        event: def.event,
+        title: def.title,
+        message: def.message,
+        targetRoles: def.targetRoles,
+      },
+    });
+  }
+}
+
+
+export async function updateNotificationConfig(id: string, data: { isEnabled?: boolean; targetRoles?: any[] }) {
+  await prisma.notificationConfig.update({
+    where: { id },
+    data,
+  });
+  revalidatePath("/admin/settings");
+}
+
+export async function checkEventEnabled(event: string) {
+  const config = await prisma.notificationConfig.findUnique({
+    where: { event },
+  });
+  return config?.isEnabled ?? true; // Default to true if not configured
+}
+

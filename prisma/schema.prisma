@@ -325,3 +325,13 @@ model Notification {
   link      String?  // Optional link to navigate to
   createdAt DateTime @default(now())
 }
+
+model NotificationConfig {
+  id          String   @id @default(cuid())
+  event       String   @unique // e.g., "NEW_GRADE", "MEETING_UPDATE"
+  isEnabled   Boolean  @default(true)
+  title       String   // Default title template
+  message     String   // Default message template
+  targetRoles Role[]   @default([STUDENT])
+  updatedAt   DateTime @updatedAt
+}

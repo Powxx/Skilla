@@ -4,7 +4,7 @@ import prisma from "@/lib/prisma";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth-options";
 import { revalidatePath } from "next/cache";
-import { createNotification } from "./notifications";
+import { createNotification, checkEventEnabled } from "./notifications";
 
 export async function createMeetingRequest(reason: string) {
   const session = await getServerSession(authOptions);
@@ -37,12 +37,15 @@ export async function updateMeetingStatus(id: string, status: any, scheduledAt?:
     include: { sender: true }
   });
 
-  await createNotification({
-    userId: meeting.senderId,
-    title: "Mise à jour de votre demande de rendez-vous",
-    message: `Le statut de votre demande est passé à : ${status}${scheduledAt ? ` (Prévu le ${scheduledAt.toLocaleDateString('fr-FR')})` : ''}`,
-    type: status === "SCHEDULED" ? "SUCCESS" : status === "REJECTED" ? "ERROR" : "INFO",
-  });
+  const isEnabled = await checkEventEnabled("MEETING_UPDATE");
+  if (isEnabled) {
+    await createNotification({
+      userId: meeting.senderId,
+      title: "Mise à jour de votre demande de rendez-vous",
+      message: `Le statut de votre demande est passé à : ${status}${scheduledAt ? ` (Prévu le ${scheduledAt.toLocaleDateString('fr-FR')})` : ''}`,
+      type: status === "SCHEDULED" ? "SUCCESS" : status === "REJECTED" ? "ERROR" : "INFO",
+    });
+  }
 
   revalidatePath("/admin");
 }

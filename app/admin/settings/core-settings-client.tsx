@@ -4,14 +4,37 @@ import React, { useState } from 'react';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { useRouter } from 'next/navigation';
+import { updateNotificationConfig } from '@/app/actions/notifications';
 
-export default function CoreSettingsClient({ initialClasses, initialSubjects, initialSemesters }: any) {
+export default function CoreSettingsClient({ 
+  initialClasses, 
+  initialSubjects, 
+  initialSemesters,
+  initialNotificationConfigs = []
+}: any) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('classes');
 
   const [newName, setNewName] = useState('');
   const [newSemester, setNewSemester] = useState({ name: '', start: '', end: '' });
+
+  const handleUpdateNotifConfig = async (id: string, isEnabled: boolean) => {
+    setLoading(true);
+    await updateNotificationConfig(id, { isEnabled });
+    setLoading(false);
+    router.refresh();
+  };
+
+  const handleUpdateNotifRoles = async (id: string, role: string, currentRoles: string[]) => {
+    setLoading(true);
+    const newRoles = currentRoles.includes(role) 
+      ? currentRoles.filter(r => r !== role)
+      : [...currentRoles, role];
+    await updateNotificationConfig(id, { targetRoles: newRoles as any });
+    setLoading(false);
+    router.refresh();
+  };
 
   const handleAddClass = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -77,6 +100,12 @@ export default function CoreSettingsClient({ initialClasses, initialSubjects, in
           className={`px-6 py-4 text-sm font-semibold transition ${activeTab === 'semesters' ? 'text-blue-600 border-b-2 border-blue-600 bg-white' : 'text-slate-500 hover:text-slate-700'}`}
         >
           Semestres / Périodes ({initialSemesters.length})
+        </button>
+        <button 
+          onClick={() => setActiveTab('notifications')}
+          className={`px-6 py-4 text-sm font-semibold transition ${activeTab === 'notifications' ? 'text-blue-600 border-b-2 border-blue-600 bg-white' : 'text-slate-500 hover:text-slate-700'}`}
+        >
+          Notifications ({initialNotificationConfigs.length})
         </button>
       </div>
 
@@ -178,6 +207,73 @@ export default function CoreSettingsClient({ initialClasses, initialSubjects, in
                 </div>
               ))}
             </div>
+          </div>
+        )}
+
+        {activeTab === 'notifications' && (
+          <div className="space-y-6">
+            <div className="bg-blue-50 p-4 rounded-xl border border-blue-100 mb-6">
+              <p className="text-xs text-blue-700 font-medium leading-relaxed">
+                Configurez ici les déclencheurs de notifications automatiques. Vous pouvez activer/désactiver chaque événement et choisir quels rôles recevront les notifications (si applicable).
+              </p>
+            </div>
+
+            {initialNotificationConfigs.length === 0 ? (
+              <div className="text-center py-10 border-2 border-dashed border-slate-100 rounded-3xl">
+                <p className="text-sm text-slate-400 italic">Aucune configuration de notification trouvée. Elles seront créées lors de la première utilisation.</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {initialNotificationConfigs.map((config: any) => (
+                  <div key={config.id} className="p-5 rounded-2xl border border-slate-200 bg-white shadow-sm">
+                    <div className="flex justify-between items-start mb-4">
+                      <div>
+                        <h3 className="text-sm font-bold text-slate-900">{config.event}</h3>
+                        <p className="text-[10px] text-slate-500 mt-1 uppercase tracking-wider">Dernière mise à jour : {format(new Date(config.updatedAt), 'dd/MM/yyyy HH:mm', { locale: fr })}</p>
+                      </div>
+                      <button
+                        onClick={() => handleUpdateNotifConfig(config.id, !config.isEnabled)}
+                        disabled={loading}
+                        className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition shadow-sm ${
+                          config.isEnabled 
+                            ? 'bg-emerald-500 text-white hover:bg-emerald-600' 
+                            : 'bg-slate-200 text-slate-500 hover:bg-slate-300'
+                        }`}
+                      >
+                        {config.isEnabled ? 'Activé' : 'Désactivé'}
+                      </button>
+                    </div>
+
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      <div className="space-y-2">
+                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Destinataires (Rôles)</label>
+                        <div className="flex flex-wrap gap-2">
+                          {['STUDENT', 'TEACHER', 'RESPONSIBLE', 'COMPANY_TUTOR', 'ADMIN'].map((role) => (
+                            <button
+                              key={role}
+                              onClick={() => handleUpdateNotifRoles(config.id, role, config.targetRoles)}
+                              disabled={loading || !config.isEnabled}
+                              className={`px-2 py-1 rounded-md text-[9px] font-bold border transition ${
+                                config.targetRoles.includes(role)
+                                  ? 'bg-blue-50 border-blue-200 text-blue-600'
+                                  : 'bg-white border-slate-200 text-slate-400 hover:border-slate-300'
+                              } ${!config.isEnabled && 'opacity-50 cursor-not-allowed'}`}
+                            >
+                              {role}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                      <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
+                         <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Aperçu du message</p>
+                         <p className="text-xs font-bold text-slate-700">{config.title}</p>
+                         <p className="text-[11px] text-slate-500 mt-0.5">{config.message}</p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
       </div>
