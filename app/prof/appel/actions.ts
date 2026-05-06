@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { authOptions } from "@/lib/auth-options";
 import prisma from "@/lib/prisma";
 import { AttendanceStatus } from "@prisma/client";
+import { createNotification, checkEventEnabled } from "@/app/actions/notifications";
 
 // Types pour le payload
 export type SubmitRollPayload = {
@@ -78,7 +79,54 @@ export async function submitRollCall(payload: SubmitRollPayload): Promise<Submit
       data: { isAttendanceValidated: true }
     });
 
-    // 5. Revalidation du cache pour mettre à jour les interfaces
+    // 6. Envoi des notifications
+    const [isAbsenceEnabled, isLateEnabled] = await Promise.all([
+      checkEventEnabled("ABSENCE_ALERT"),
+      checkEventEnabled("LATE_ALERT")
+    ]);
+
+    for (const item of toCreate) {
+      if (item.status === "ABSENT" && isAbsenceEnabled) {
+        // Fetch student and responsibles/tutors
+        const student = await prisma.user.findUnique({
+          where: { id: item.studentId },
+          include: { responsibles: true, studentContracts: { include: { tutor: true } } }
+        });
+        
+        if (student) {
+          const targets = [student.id, ...student.responsibles.map(r => r.id), ...student.studentContracts.map(c => c.tutorId)];
+          for (const targetId of targets) {
+            createNotification({
+              userId: targetId,
+              title: "Alerte Absence",
+              message: `Une absence a été signalée pour ${student.firstName} ${student.lastName} aujourd'hui.`,
+              type: "WARNING",
+              link: student.role === "STUDENT" ? "/student/absences" : undefined
+            }).catch(e => console.error(e));
+          }
+        }
+      } else if (item.status === "LATE" && isLateEnabled) {
+        const student = await prisma.user.findUnique({
+          where: { id: item.studentId },
+          include: { responsibles: true }
+        });
+
+        if (student) {
+          const targets = [student.id, ...student.responsibles.map(r => r.id)];
+          for (const targetId of targets) {
+            createNotification({
+              userId: targetId,
+              title: "Alerte Retard",
+              message: `Un retard de ${item.lateDuration} minutes a été signalé pour ${student.firstName} ${student.lastName}.`,
+              type: "WARNING",
+              link: student.role === "STUDENT" ? "/student/absences" : undefined
+            }).catch(e => console.error(e));
+          }
+        }
+      }
+    }
+
+    // 7. Revalidation du cache pour mettre à jour les interfaces
     revalidatePath("/prof/appel");
     revalidatePath("/student/absences");
 

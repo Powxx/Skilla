@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth-options";
+import { createNotification, checkEventEnabled } from "@/app/actions/notifications";
 
 export async function GET(request: Request) {
   const session = await getServerSession(authOptions);
@@ -85,13 +86,32 @@ export async function PUT(request: Request) {
 
     // If approved, update the lesson's teacher and subject
     if (status === "APPROVED" && substituteTeacherId) {
-      await prisma.lesson.update({
+      const updatedLesson = await prisma.lesson.update({
         where: { id: subRequest.lessonId },
         data: { 
           teacherId: substituteTeacherId,
           subjectId: subjectId || undefined // Change subject if provided
+        },
+        include: { 
+          class: { include: { students: true } }, 
+          subject: true,
+          teacher: { select: { firstName: true, lastName: true } }
         }
       });
+
+      // Notify Students
+      const isEnabled = await checkEventEnabled("SUBSTITUTION_VALIDATED");
+      if (isEnabled) {
+        for (const student of updatedLesson.class.students) {
+          createNotification({
+            userId: student.id,
+            title: "Remplacement validé",
+            message: `M. ${updatedLesson.teacher.lastName} assurera le cours de ${updatedLesson.subject.name} du ${updatedLesson.startTime.toLocaleDateString('fr-FR')}.`,
+            type: "SUCCESS",
+            link: "/student/planning"
+          }).catch(e => console.error(e));
+        }
+      }
     }
 
     return NextResponse.json(subRequest);

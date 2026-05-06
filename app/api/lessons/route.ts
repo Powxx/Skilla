@@ -4,6 +4,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth-options";
 import type { Role } from "@prisma/client";
+import { createNotification, checkEventEnabled } from "@/app/actions/notifications";
 
 export async function GET(request: Request) {
   const session = await getServerSession(authOptions);
@@ -144,10 +145,53 @@ export async function PUT(request: Request) {
     if (updateData.startTime) updateData.startTime = new Date(updateData.startTime);
     if (updateData.endTime) updateData.endTime = new Date(updateData.endTime);
 
+    // Fetch existing lesson to check for changes
+    const oldLesson = await prisma.lesson.findUnique({
+      where: { id },
+      include: { class: { include: { students: true } }, subject: true }
+    });
+
     const updatedLesson = await prisma.lesson.update({
       where: { id },
       data: updateData,
     });
+
+    // Handle Notifications
+    if (oldLesson) {
+      // 1. Room Change
+      if (updateData.roomId !== undefined && updateData.roomId !== oldLesson.roomId) {
+        const isEnabled = await checkEventEnabled("ROOM_CHANGE");
+        if (isEnabled) {
+          const room = updateData.roomId ? await prisma.room.findUnique({ where: { id: updateData.roomId } }) : null;
+          for (const student of oldLesson.class.students) {
+            createNotification({
+              userId: student.id,
+              title: "Changement de salle",
+              message: `Le cours de ${oldLesson.subject.name} aura lieu en ${room?.name || 'salle non définie'}.`,
+              type: "INFO",
+              link: "/student/planning"
+            }).catch(e => console.error(e));
+          }
+        }
+      }
+
+      // 2. Cancellation
+      if (updateData.isCancelled === true && !oldLesson.isCancelled) {
+        const isEnabled = await checkEventEnabled("LESSON_CANCELLED");
+        if (isEnabled) {
+          for (const student of oldLesson.class.students) {
+            createNotification({
+              userId: student.id,
+              title: "Cours annulé",
+              message: `Le cours de ${oldLesson.subject.name} du ${oldLesson.startTime.toLocaleDateString('fr-FR')} a été annulé.`,
+              type: "ERROR",
+              link: "/student/planning"
+            }).catch(e => console.error(e));
+          }
+        }
+      }
+    }
+
     return NextResponse.json(updatedLesson);
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 400 });

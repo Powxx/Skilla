@@ -74,9 +74,44 @@ async function ensureDefaultConfigs() {
         title: "Mise à jour de votre demande de rendez-vous",
         message: "Le statut de votre demande a été modifié.",
         targetRoles: ["STUDENT", "RESPONSIBLE", "COMPANY_TUTOR"] as any[],
+      },
+      {
+        event: "ABSENCE_ALERT",
+        title: "Alerte Absence",
+        message: "Une absence a été signalée aujourd'hui.",
+        targetRoles: ["STUDENT", "RESPONSIBLE", "COMPANY_TUTOR"] as any[],
+      },
+      {
+        event: "LATE_ALERT",
+        title: "Alerte Retard",
+        message: "Un retard a été signalé.",
+        targetRoles: ["STUDENT", "RESPONSIBLE"] as any[],
+      },
+      {
+        event: "ROOM_CHANGE",
+        title: "Changement de salle",
+        message: "La salle d'un de vos cours a été modifiée.",
+        targetRoles: ["STUDENT"] as any[],
+      },
+      {
+        event: "LESSON_CANCELLED",
+        title: "Cours annulé",
+        message: "Un de vos cours a été annulé.",
+        targetRoles: ["STUDENT"] as any[],
+      },
+      {
+        event: "SUBSTITUTION_VALIDATED",
+        title: "Remplacement validé",
+        message: "Un professeur remplaçant a été assigné à votre cours.",
+        targetRoles: ["STUDENT"] as any[],
+      },
+      {
+        event: "REPORT_CARD_AVAILABLE",
+        title: "Bulletin disponible",
+        message: "Votre bulletin semestriel est désormais disponible.",
+        targetRoles: ["STUDENT", "RESPONSIBLE"] as any[],
       }
-    ];
-
+      ];
     for (const def of defaults) {
       await prisma.notificationConfig.upsert({
         where: { event: def.event },

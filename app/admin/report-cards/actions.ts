@@ -2,6 +2,7 @@
 
 import prisma from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
+import { createNotification, checkEventEnabled } from "@/app/actions/notifications";
 
 export async function calculateStudentAverages(studentId: string, semesterId: string) {
   const grades = await prisma.grade.findMany({
@@ -55,6 +56,28 @@ export async function saveReportCard(data: {
       distinction: data.distinction
     }
   });
+
+  // Notify Student & Responsibles
+  const isEnabled = await checkEventEnabled("REPORT_CARD_AVAILABLE");
+  if (isEnabled) {
+    const student = await prisma.user.findUnique({
+      where: { id: data.studentId },
+      include: { responsibles: true }
+    });
+
+    if (student) {
+      const targets = [student.id, ...student.responsibles.map(r => r.id)];
+      for (const targetId of targets) {
+        createNotification({
+          userId: targetId,
+          title: "Bulletin disponible",
+          message: `Le bulletin du semestre est désormais disponible pour ${student.firstName} ${student.lastName}.`,
+          type: "SUCCESS",
+          link: student.role === "STUDENT" ? "/student/grades" : "/parent/grades"
+        }).catch(e => console.error(e));
+      }
+    }
+  }
 
   revalidatePath("/admin/report-cards");
   return { ok: true, id: reportCard.id };
