@@ -38,6 +38,7 @@ export default async function AdminCompetenciesRecapPage() {
         <AdminCompetenciesRecapClient 
           initialClasses={classes} 
           studentsData={students} 
+          semesters={semesters}
         />
       </div>
     </div>
