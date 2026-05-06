@@ -5,29 +5,44 @@ import AdminMeetingsManager from "@/components/admin/admin-meetings-manager";
 export const dynamic = 'force-dynamic';
 
 export default async function AdminHomePage() {
+  // Fetch counts and pending items
   const [pendingSubsCount, pendingMeetings] = await Promise.all([
-    prisma.substitutionRequest.count({ where: { status: "PENDING" } }),
+    prisma.substitutionRequest.count({ 
+      where: { status: "PENDING" } 
+    }),
     prisma.meetingRequest.findMany({
       where: { status: "PENDING" },
-      include: { sender: true },
+      include: { 
+        sender: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            role: true,
+            name: true
+          }
+        } 
+      },
       orderBy: { requestedAt: 'asc' }
     })
   ]);
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-8 font-sans text-slate-900 bg-slate-50 min-h-screen">
-      <header className="mb-10 flex justify-between items-end">
+    <div className="mx-auto max-w-7xl font-sans text-slate-900">
+      <header className="mb-10 flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4">
         <div>
            <h1 className="text-3xl font-black tracking-tight text-slate-900">Administration</h1>
            <p className="mt-1 text-sm text-slate-500 font-medium">Pilotage global de la Skilla Academy.</p>
         </div>
         <div className="flex gap-3">
-           <Link href="/admin/impersonate" className="px-4 py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-400 hover:text-slate-900 transition">Impersonnalisation</Link>
+           <Link href="/admin/impersonate" className="px-4 py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-400 hover:text-slate-900 transition shadow-sm">
+             Impersonnalisation
+           </Link>
         </div>
       </header>
 
       <div className="grid gap-8 lg:grid-cols-12 items-start">
-        {/* Left Column: Actions & Structure (6 cols) */}
+        {/* Left Column: Actions & Structure (8 cols) */}
         <div className="lg:col-span-8 grid gap-8 md:grid-cols-2">
            
            {/* Section 1: Pédagogie */}
@@ -73,7 +88,7 @@ export default async function AdminHomePage() {
               </div>
            </section>
 
-           {/* Section 3: Liaisons (Full Width of left col) */}
+           {/* Section 3: Liaisons & Suivi Global */}
            <section className="md:col-span-2 bg-white p-6 rounded-3xl border border-slate-200 shadow-sm">
               <h2 className="text-sm font-bold text-slate-900 uppercase tracking-widest mb-4 flex items-center gap-2">
                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
