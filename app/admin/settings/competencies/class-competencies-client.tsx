@@ -6,7 +6,7 @@ import Papa from 'papaparse';
 
 export default function ClassCompetenciesClient({ initialClasses, initialCompetencies }: any) {
   const [isPending, startTransition] = useTransition();
-  const [form, setForm] = useState({ classId: '', name: '', category: 'SCHOOL' });
+  const [form, setForm] = useState({ classId: '', name: '' });
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [activeImportClassId, setActiveImportClassId] = useState<string | null>(null);
 
@@ -82,16 +82,11 @@ export default function ClassCompetenciesClient({ initialClasses, initialCompete
             onChange={e => setForm({...form, name: e.target.value})}
           />
         </div>
-        <div>
-          <label className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-2 block">Catégorie</label>
-          <select 
-            className="w-full rounded-xl border-slate-200 text-sm"
-            value={form.category}
-            onChange={e => setForm({...form, category: e.target.value})}
-          >
-            <option value="SCHOOL">École (Professeurs)</option>
-            <option value="ENTERPRISE">Entreprise (Employeurs)</option>
-          </select>
+        <div className="md:col-span-1 bg-slate-50 p-4 rounded-xl border border-slate-100 flex items-center gap-3">
+          <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></div>
+          <p className="text-[10px] text-slate-500 font-bold uppercase tracking-tight">
+            Sera créée pour <span className="text-slate-900">École</span> & <span className="text-slate-900">Entreprise</span>
+          </p>
         </div>
         <button 
           disabled={isPending}

@@ -12,7 +12,7 @@ export default async function AdminCompetenciesRecapPage() {
     redirect("/login");
   }
 
-  const [classes, students] = await Promise.all([
+  const [classes, students, semesters] = await Promise.all([
     prisma.class.findMany({
       include: { competencies: true },
       orderBy: { name: 'asc' }
@@ -21,6 +21,9 @@ export default async function AdminCompetenciesRecapPage() {
       where: { role: "STUDENT" },
       include: { evaluations: true },
       orderBy: { lastName: 'asc' }
+    }),
+    prisma.semester.findMany({
+      orderBy: { startDate: 'asc' }
     })
   ]);
 
