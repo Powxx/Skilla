@@ -61,34 +61,40 @@ export async function getNotificationConfigs() {
 }
 
 async function ensureDefaultConfigs() {
-  const defaults = [
-    {
-      event: "NEW_GRADE",
-      title: "Nouvelle note disponible",
-      message: "Une nouvelle note a été publiée.",
-      targetRoles: ["STUDENT"] as any[],
-    },
-    {
-      event: "MEETING_UPDATE",
-      title: "Mise à jour de votre demande de rendez-vous",
-      message: "Le statut de votre demande a été modifié.",
-      targetRoles: ["STUDENT", "PARENT", "EMPLOYER"] as any[],
-    }
-  ];
-
-  for (const def of defaults) {
-    await prisma.notificationConfig.upsert({
-      where: { event: def.event },
-      update: {},
-      create: {
-        event: def.event,
-        title: def.title,
-        message: def.message,
-        targetRoles: def.targetRoles,
+  try {
+    const defaults = [
+      {
+        event: "NEW_GRADE",
+        title: "Nouvelle note disponible",
+        message: "Une nouvelle note a été publiée.",
+        targetRoles: ["STUDENT"] as any[],
       },
-    });
+      {
+        event: "MEETING_UPDATE",
+        title: "Mise à jour de votre demande de rendez-vous",
+        message: "Le statut de votre demande a été modifié.",
+        targetRoles: ["STUDENT", "RESPONSIBLE", "COMPANY_TUTOR"] as any[],
+      }
+    ];
+
+    for (const def of defaults) {
+      await prisma.notificationConfig.upsert({
+        where: { event: def.event },
+        update: {},
+        create: {
+          event: def.event,
+          title: def.title,
+          message: def.message,
+          targetRoles: def.targetRoles,
+        },
+      });
+    }
+  } catch (error) {
+    console.error("Error in ensureDefaultConfigs:", error);
+    // Don't crash the whole page if seeding fails
   }
 }
+
 
 
 export async function updateNotificationConfig(id: string, data: { isEnabled?: boolean; targetRoles?: any[] }) {
