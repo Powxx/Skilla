@@ -1,152 +1,115 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
+import AdminMeetingsManager from "@/components/admin/admin-meetings-manager";
 
 export const dynamic = 'force-dynamic';
 
 export default async function AdminHomePage() {
-  const pendingSubsCount = await prisma.substitutionRequest.count({
-    where: { status: "PENDING" }
-  });
+  const [pendingSubsCount, pendingMeetings] = await Promise.all([
+    prisma.substitutionRequest.count({ where: { status: "PENDING" } }),
+    prisma.meetingRequest.findMany({
+      where: { status: "PENDING" },
+      include: { sender: true },
+      orderBy: { requestedAt: 'asc' }
+    })
+  ]);
 
   return (
-    <div className="mx-auto max-w-2xl px-4 py-16 font-sans text-slate-900 bg-white min-h-screen">
-      <h1 className="text-2xl font-semibold tracking-tight">
-        Administration
-      </h1>
-      <p className="mt-2 text-sm text-slate-600">
-        Choisissez une section ci-dessous.
-      </p>
-      <div className="grid gap-6 md:grid-cols-2 mt-8">
+    <div className="mx-auto max-w-7xl px-4 py-8 font-sans text-slate-900 bg-slate-50 min-h-screen">
+      <header className="mb-10 flex justify-between items-end">
         <div>
-          <h2 className="text-lg font-medium text-slate-800 mb-4">Structure & Pédagogie</h2>
-          <ul className="space-y-3">
-            <li>
-              <Link
-                href="/admin/settings"
-                className="block rounded-xl border border-blue-200 bg-blue-50/50 px-5 py-4 text-sm font-medium text-blue-700 shadow-sm transition hover:border-blue-300 hover:bg-blue-100/50"
-              >
-                Configuration Core →
-                <p className="text-[10px] text-blue-500 font-normal mt-0.5">Classes, Matières, Semestres</p>
-              </Link>
-            </li>
-            <li>
-              <Link
-                href="/admin/rooms"
-                className="block rounded-xl border border-slate-200 bg-white px-5 py-4 text-sm font-medium shadow-sm ring-1 ring-slate-900/[0.04] transition hover:border-slate-300 hover:bg-slate-50"
-              >
-                Salles de Classe →
-              </Link>
-            </li>
-            <li>
-              <Link
-                href="/admin/planning"
-                className="block rounded-xl border border-slate-200 bg-white px-5 py-4 text-sm font-medium shadow-sm ring-1 ring-slate-900/[0.04] transition hover:border-slate-300 hover:bg-slate-50"
-              >
-                Emploi du Temps →
-              </Link>
-            </li>
-          </ul>
-
-          <h2 className="text-lg font-medium text-slate-800 mb-4 mt-8">Personnel & RH</h2>
-          <ul className="space-y-3">
-            <li>
-              <Link
-                href="/admin/users"
-                className="block rounded-xl border border-slate-200 bg-white px-5 py-4 text-sm font-medium shadow-sm ring-1 ring-slate-900/[0.04] transition hover:border-slate-300 hover:bg-slate-50"
-              >
-                Utilisateurs & Comptes →
-              </Link>
-            </li>
-            <li>
-              <Link
-                href="/admin/hr"
-                className="block rounded-xl border border-slate-200 bg-white px-5 py-4 text-sm font-medium shadow-sm ring-1 ring-slate-900/[0.04] transition hover:border-slate-300 hover:bg-slate-50"
-              >
-                Pôle RH (Heures & Contrats) →
-              </Link>
-            </li>
-            <li>
-              <Link
-                href="/admin/substitutions"
-                className="relative block rounded-xl border border-orange-200 bg-orange-50 px-5 py-4 text-sm font-medium text-orange-700 shadow-sm transition hover:border-orange-300 hover:bg-orange-100"
-              >
-                Remplacements →
-                {pendingSubsCount > 0 && (
-                  <span className="absolute -top-2 -right-2 flex h-6 w-6 items-center justify-center rounded-full bg-red-600 text-[10px] font-bold text-white shadow-lg animate-bounce">
-                    {pendingSubsCount}
-                  </span>
-                )}
-              </Link>
-            </li>
-          </ul>
-
-          <h2 className="text-lg font-medium text-slate-800 mb-4 mt-8">Liaisons & Contrats</h2>
-          <ul className="space-y-3">
-            <li>
-              <Link
-                href="/admin/relations/families"
-                className="block rounded-xl border border-emerald-200 bg-emerald-50 px-5 py-4 text-sm font-medium text-emerald-700 shadow-sm transition hover:border-emerald-300 hover:bg-emerald-100"
-              >
-                Relations Parents-Élèves →
-              </Link>
-            </li>
-            <li>
-              <Link
-                href="/admin/relations/contracts"
-                className="block rounded-xl border border-slate-200 bg-white px-5 py-4 text-sm font-medium shadow-sm ring-1 ring-slate-900/[0.04] transition hover:border-slate-300 hover:bg-slate-50"
-              >
-                Contrats d'Alternance →
-              </Link>
-            </li>
-            <li>
-              <Link
-                href="/admin/recap"
-                className="block rounded-xl border border-indigo-200 bg-indigo-50 px-5 py-4 text-sm font-medium text-indigo-700 shadow-sm transition hover:border-indigo-300 hover:bg-indigo-100 font-bold"
-              >
-                📊 Récapitulatif Global →
-                <p className="text-[10px] text-indigo-500 font-normal mt-0.5">Vue croisée Élève / Parents / Entreprise</p>
-              </Link>
-            </li>
-            <li>
-              <Link
-                href="/admin/recap/competencies"
-                className="block rounded-xl border border-violet-200 bg-violet-50 px-5 py-4 text-sm font-medium text-violet-700 shadow-sm transition hover:border-violet-300 hover:bg-violet-100 font-bold"
-              >
-                🏆 Suivi des Compétences →
-                <p className="text-[10px] text-violet-500 font-normal mt-0.5">Tableau de bord École & Entreprise</p>
-              </Link>
-            </li>
-          </ul>
+           <h1 className="text-3xl font-black tracking-tight text-slate-900">Administration</h1>
+           <p className="mt-1 text-sm text-slate-500 font-medium">Pilotage global de la Skilla Academy.</p>
         </div>
-        
-        <div>
-          <h2 className="text-lg font-medium text-slate-800 mb-4">Accès Rapides</h2>
-          <ul className="space-y-3">
-            <li>
-              <Link
-                href="/prof"
-                className="block rounded-xl border border-slate-100 bg-slate-50/50 px-5 py-3 text-sm font-medium text-slate-600 transition hover:bg-slate-100"
-              >
-                Espace Professeur →
+        <div className="flex gap-3">
+           <Link href="/admin/impersonate" className="px-4 py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-400 hover:text-slate-900 transition">Impersonnalisation</Link>
+        </div>
+      </header>
+
+      <div className="grid gap-8 lg:grid-cols-12 items-start">
+        {/* Left Column: Actions & Structure (6 cols) */}
+        <div className="lg:col-span-8 grid gap-8 md:grid-cols-2">
+           
+           {/* Section 1: Pédagogie */}
+           <section className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm">
+              <h2 className="text-sm font-bold text-slate-900 uppercase tracking-widest mb-4 flex items-center gap-2">
+                 <span className="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
+                 Structure & Pédagogie
+              </h2>
+              <div className="grid gap-3">
+                 <Link href="/admin/settings" className="group flex justify-between items-center p-4 rounded-2xl bg-blue-50/50 border border-blue-100 hover:bg-blue-100/50 transition">
+                    <div>
+                       <p className="text-sm font-bold text-blue-900">Configuration Core</p>
+                       <p className="text-[10px] text-blue-600 font-medium">Classes, Matières, Semestres</p>
+                    </div>
+                    <span className="text-blue-300 group-hover:translate-x-1 transition">→</span>
+                 </Link>
+                 <div className="grid grid-cols-2 gap-3">
+                    <Link href="/admin/rooms" className="p-4 rounded-2xl bg-slate-50 border border-slate-100 hover:bg-slate-100 transition text-sm font-bold text-slate-700">Salles</Link>
+                    <Link href="/admin/planning" className="p-4 rounded-2xl bg-slate-50 border border-slate-100 hover:bg-slate-100 transition text-sm font-bold text-slate-700">Planning</Link>
+                 </div>
+              </div>
+           </section>
+
+           {/* Section 2: RH & Personnel */}
+           <section className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm">
+              <h2 className="text-sm font-bold text-slate-900 uppercase tracking-widest mb-4 flex items-center gap-2">
+                 <span className="w-1.5 h-1.5 rounded-full bg-orange-500"></span>
+                 Personnel & RH
+              </h2>
+              <div className="grid gap-3">
+                 <Link href="/admin/substitutions" className="relative group flex justify-between items-center p-4 rounded-2xl bg-orange-50 border border-orange-100 hover:bg-orange-100 transition">
+                    <div>
+                       <p className="text-sm font-bold text-orange-900">Remplacements</p>
+                       <p className="text-[10px] text-orange-600 font-medium">{pendingSubsCount} demande(s) en attente</p>
+                    </div>
+                    {pendingSubsCount > 0 && <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full animate-ping"></span>}
+                    <span className="text-orange-300 group-hover:translate-x-1 transition">→</span>
+                 </Link>
+                 <div className="grid grid-cols-2 gap-3">
+                    <Link href="/admin/users" className="p-4 rounded-2xl bg-slate-50 border border-slate-100 hover:bg-slate-100 transition text-sm font-bold text-slate-700">Utilisateurs</Link>
+                    <Link href="/admin/hr" className="p-4 rounded-2xl bg-slate-50 border border-slate-100 hover:bg-slate-100 transition text-sm font-bold text-slate-700">Pôle RH</Link>
+                 </div>
+              </div>
+           </section>
+
+           {/* Section 3: Liaisons (Full Width of left col) */}
+           <section className="md:col-span-2 bg-white p-6 rounded-3xl border border-slate-200 shadow-sm">
+              <h2 className="text-sm font-bold text-slate-900 uppercase tracking-widest mb-4 flex items-center gap-2">
+                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                 Liaisons & Suivi Global
+              </h2>
+              <div className="grid md:grid-cols-3 gap-4">
+                 <Link href="/admin/relations/families" className="p-4 rounded-2xl bg-emerald-50/50 border border-emerald-100 hover:bg-emerald-100/50 transition">
+                    <p className="text-xs font-bold text-emerald-900">Familles</p>
+                    <p className="text-[9px] text-emerald-600 mt-0.5">Relations Parents-Élèves</p>
+                 </Link>
+                 <Link href="/admin/relations/contracts" className="p-4 rounded-2xl bg-slate-50 border border-slate-100 hover:bg-slate-100 transition">
+                    <p className="text-xs font-bold text-slate-700">Alternance</p>
+                    <p className="text-[9px] text-slate-400 mt-0.5">Contrats Entreprises</p>
+                 </Link>
+                 <Link href="/admin/recap" className="p-4 rounded-2xl bg-indigo-50 border border-indigo-100 hover:bg-indigo-100 transition">
+                    <p className="text-xs font-bold text-indigo-900 text-center">📊 Récapitulatif Global</p>
+                 </Link>
+              </div>
+              <Link href="/admin/recap/competencies" className="mt-4 block p-5 rounded-2xl bg-violet-600 text-white shadow-lg shadow-violet-200 hover:bg-violet-700 transition text-center">
+                 <p className="text-sm font-bold">🏆 Pilotage des Compétences École & Entreprise</p>
+                 <p className="text-[10px] opacity-80 mt-0.5">Tableau de bord de progression consolidé</p>
               </Link>
-            </li>
-            <li>
-              <Link
-                href="/student"
-                className="block rounded-xl border border-slate-100 bg-slate-50/50 px-5 py-3 text-sm font-medium text-slate-600 transition hover:bg-slate-100"
-              >
-                Espace Élève →
-              </Link>
-            </li>
-            <li>
-              <Link
-                href="/admin/impersonate"
-                className="block rounded-xl border border-dashed border-slate-300 px-5 py-3 text-sm font-medium text-slate-400 transition hover:border-slate-400 hover:text-slate-600"
-              >
-                Impersonnalisation →
-              </Link>
-            </li>
-          </ul>
+           </section>
+        </div>
+
+        {/* Right Column: Dynamic Feed (4 cols) */}
+        <div className="lg:col-span-4 space-y-8">
+           <AdminMeetingsManager initialMeetings={pendingMeetings} />
+           
+           <section className="bg-slate-900 p-6 rounded-3xl text-white shadow-xl">
+              <h2 className="text-xs font-bold uppercase tracking-widest text-slate-400 mb-4">Accès Rapides</h2>
+              <div className="space-y-2">
+                 <Link href="/prof" className="block p-3 rounded-xl bg-white/5 hover:bg-white/10 transition text-xs font-bold">Espace Professeur →</Link>
+                 <Link href="/student" className="block p-3 rounded-xl bg-white/5 hover:bg-white/10 transition text-xs font-bold">Espace Élève →</Link>
+              </div>
+           </section>
         </div>
       </div>
     </div>

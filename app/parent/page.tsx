@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth/next";
 import { redirect } from "next/navigation";
 import { authOptions } from "@/lib/auth-options";
 import { listParentChildrenSerialized } from "@/lib/parent-access";
+import MeetingRequestForm from "@/components/meetings/meeting-request-form";
 
 export const metadata = {
   title: "Espace famille",
@@ -69,6 +70,9 @@ export default async function ParentHomePage() {
             </Link>
           </li>
         </ul>
+        <div className="mt-12">
+           <MeetingRequestForm />
+        </div>
       )}
     </div>
   );

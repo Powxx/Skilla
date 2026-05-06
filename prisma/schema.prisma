@@ -91,6 +91,7 @@ model User {
   // Qualiopi & Feedback
   complaints    Complaint[]       @relation("Sender")
   surveys       SatisfactionSurvey[]
+  meetingRequestsSent MeetingRequest[]  @relation("MeetingSender")
 }
 
 model StudentProfile {
@@ -285,6 +286,24 @@ model SubstitutionRequest {
   substituteTeacher  User?               @relation("SubstituteTeacherReq", fields: [substituteTeacherId], references: [id])
   status             SubstitutionStatus @default(PENDING)
   createdAt          DateTime           @default(now())
+}
+
+enum MeetingStatus {
+  PENDING
+  SCHEDULED
+  REJECTED
+  COMPLETED
+}
+
+model MeetingRequest {
+  id          String        @id @default(cuid())
+  senderId    String
+  sender      User          @relation("MeetingSender", fields: [senderId], references: [id])
+  reason      String
+  status      MeetingStatus @default(PENDING)
+  requestedAt DateTime      @default(now())
+  scheduledAt DateTime?
+  adminNotes  String?
 }
 
 model SatisfactionSurvey {

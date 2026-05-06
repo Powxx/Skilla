@@ -3,6 +3,7 @@
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import Link from "next/link";
+import MeetingRequestForm from "@/components/meetings/meeting-request-form";
 
 export default function EmployerDashboardClient({ students }: { students: any[] }) {
   return (
@@ -82,6 +83,10 @@ export default function EmployerDashboardClient({ students }: { students: any[] 
             </div>
           </div>
         ))}
+      </div>
+
+      <div className="mt-12 max-w-lg">
+        <MeetingRequestForm />
       </div>
     </div>
   );

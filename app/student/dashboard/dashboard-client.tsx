@@ -12,6 +12,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+import MeetingRequestForm from "@/components/meetings/meeting-request-form";
 
 export type DashboardChartRow = {
   dateLabel: string;
@@ -194,6 +195,8 @@ export default function StudentDashboardClient({
               Paramètres du compte
             </button>
           </section>
+
+          <MeetingRequestForm />
         </div>
       </div>
     </div>
