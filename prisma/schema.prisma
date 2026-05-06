@@ -92,6 +92,7 @@ model User {
   complaints    Complaint[]       @relation("Sender")
   surveys       SatisfactionSurvey[]
   meetingRequestsSent MeetingRequest[]  @relation("MeetingSender")
+  notifications  Notification[]
 }
 
 model StudentProfile {
@@ -311,4 +312,16 @@ model SatisfactionSurvey {
   rating    Int
   studentId String
   student   User   @relation(fields: [studentId], references: [id])
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  title     String
+  message   String
+  type      String   @default("INFO") // INFO, WARNING, SUCCESS, ERROR
+  isRead    Boolean  @default(false)
+  link      String?  // Optional link to navigate to
+  createdAt DateTime @default(now())
 }

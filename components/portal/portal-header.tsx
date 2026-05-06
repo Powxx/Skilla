@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
+import NotificationBell from "@/components/notifications/notification-bell";
 
 export type PortalParentChild = { id: string; label: string };
 
@@ -130,6 +131,7 @@ export default function PortalHeader({ variant, parentChildren = [] }: Props) {
             )}
 
             <div className="flex items-center gap-3 pl-4 border-l border-slate-100">
+              <NotificationBell />
               <div className="text-right hidden sm:block">
                 <p className="text-xs font-bold text-slate-900 leading-none">{session?.user?.name}</p>
                 <p className="text-[10px] font-medium text-slate-400 mt-1 uppercase tracking-wider">{session?.user?.role}</p>
