@@ -27,7 +27,22 @@ export async function middleware(req: NextRequest) {
     if (sessionCookie) {
       console.error("ERREUR : Cookie présent mais indéchiffrable. Vérifiez NEXTAUTH_SECRET.");
     }
+    // Ne pas rediriger si on est déjà sur /login ou / (landing page)
+    if (pathname === "/login" || pathname === "/") {
+      return NextResponse.next();
+    }
     return NextResponse.redirect(new URL("/login", req.url));
+  }
+
+  // Redirection automatique si on est sur la home ou le login alors qu'on est déjà connecté
+  if (pathname === "/" || pathname === "/login") {
+    switch (token.role) {
+      case "ADMIN": return NextResponse.redirect(new URL("/admin", req.url));
+      case "TEACHER": return NextResponse.redirect(new URL("/prof", req.url));
+      case "STUDENT": return NextResponse.redirect(new URL("/student/dashboard", req.url));
+      case "RESPONSIBLE": return NextResponse.redirect(new URL("/parent/dashboard", req.url));
+      case "COMPANY_TUTOR": return NextResponse.redirect(new URL("/employer/dashboard", req.url));
+    }
   }
 
   // Vérification des droits
@@ -51,5 +66,5 @@ export async function middleware(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/admin/:path*", "/prof/:path*", "/student/:path*", "/parent/:path*", "/employer/:path*"],
+  matcher: ["/", "/login", "/admin/:path*", "/prof/:path*", "/student/:path*", "/parent/:path*", "/employer/:path*"],
 };

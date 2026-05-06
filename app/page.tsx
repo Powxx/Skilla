@@ -1,6 +1,11 @@
 import Link from "next/link";
+import { getServerSession } from "next-auth/next";
+import { authOptions } from "@/lib/auth-options";
+import { redirect } from "next/navigation";
+
 export const dynamic = 'force-dynamic';
 export const fetchCache = 'force-no-store';
+
 const stats = [
   {
     label: "Élèves suivis",
@@ -19,7 +24,21 @@ const stats = [
   },
 ];
 
-export default function Home() {
+export default async function Home() {
+  const session = await getServerSession(authOptions);
+
+  if (session?.user) {
+    const role = session.user.role;
+    switch (role) {
+      case "ADMIN": redirect("/admin");
+      case "TEACHER": redirect("/prof");
+      case "STUDENT": redirect("/student/dashboard");
+      case "RESPONSIBLE": redirect("/parent/dashboard");
+      case "COMPANY_TUTOR": redirect("/employer/dashboard");
+      default: break;
+    }
+  }
+
   return (
     <div className="relative min-h-screen overflow-hidden bg-slate-50 text-slate-900">
       <div
