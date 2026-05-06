@@ -12,16 +12,18 @@ export const metadata = {
 export default async function EmployerGradesPage({
   searchParams,
 }: {
-  searchParams?: Record<string, string | string[] | undefined>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) {
     redirect("/login");
   }
 
+  const { studentId: studentIdParam } = await searchParams;
+
   const studentId = await resolveTutorStudentId(
     session.user.id,
-    searchParams?.studentId,
+    studentIdParam,
   );
   if (!studentId) {
     redirect("/employer");

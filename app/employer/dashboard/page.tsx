@@ -14,15 +14,17 @@ import StudentSelector from "@/components/student/student-selector";
 export default async function EmployerDashboardPage({
   searchParams,
 }: {
-  searchParams?: Record<string, string | string[] | undefined>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const session = await getServerSession(authOptions);
   if (!session?.user?.id || session.user.role !== "COMPANY_TUTOR") {
     redirect("/login");
   }
 
+  const { studentId: studentIdParam } = await searchParams;
+
   const [studentId, allStudents] = await Promise.all([
-    resolveTutorStudentId(session.user.id, searchParams?.studentId),
+    resolveTutorStudentId(session.user.id, studentIdParam),
     listTutorStudentsSerialized(session.user.id),
   ]);
 

@@ -7,13 +7,19 @@ import ProfLivretClient from "@/app/prof/livret/prof-livret-client";
 
 export const dynamic = 'force-dynamic';
 
-export default async function EmployerLivretPage({ searchParams }: { searchParams?: { studentId?: string } }) {
+export default async function EmployerLivretPage({ 
+  searchParams 
+}: { 
+  searchParams: Promise<{ studentId?: string }> 
+}) {
   const session = await getServerSession(authOptions);
   if (!session?.user?.id || session.user.role !== "COMPANY_TUTOR") {
     redirect("/login");
   }
 
-  const studentId = await resolveTutorStudentId(session.user.id, searchParams?.studentId);
+  const { studentId: studentIdParam } = await searchParams;
+
+  const studentId = await resolveTutorStudentId(session.user.id, studentIdParam);
   if (!studentId) redirect("/employer");
 
   const [contracts, student, allTutorStudents] = await Promise.all([
