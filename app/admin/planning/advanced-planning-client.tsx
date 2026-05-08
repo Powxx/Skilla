@@ -541,15 +541,31 @@ export default function AdvancedPlanningClient({ classes, teachers, subjects, ro
 
               if (extendedProps.type === 'break') return null; // Background handle it
 
+              const isCancelled = extendedProps.isCancelled;
+              const hasSubstitute = !!extendedProps.substituteId;
+
               // If viewing by class, show teacher. If viewing by teacher, show class.
               let subtitle = extendedProps.teacher;
               if (viewFilter.type === 'teacher') subtitle = extendedProps.class;
               
               return (
-                <div className="flex flex-col text-xs leading-tight p-0.5 overflow-hidden w-full h-full">
-                  <span className="font-semibold truncate">{arg.event.title.split(' - ')[0]}</span>
-                  <span className="truncate opacity-90">{subtitle}</span>
-                  {extendedProps.room && <span className="truncate opacity-75 mt-auto">{extendedProps.room}</span>}
+                <div className={`flex flex-col text-xs leading-tight p-0.5 overflow-hidden w-full h-full ${isCancelled ? 'opacity-60' : ''}`}>
+                  <div className="flex items-center gap-1 flex-wrap">
+                    <span className={`font-semibold truncate ${isCancelled ? 'line-through' : ''}`}>
+                      {arg.event.title}
+                    </span>
+                    {isCancelled && (
+                      <span className="bg-white/80 text-red-700 text-[8px] px-1 rounded font-black uppercase tracking-tighter shadow-sm">Annulé</span>
+                    )}
+                    {hasSubstitute && !isCancelled && (
+                      <span className="bg-white/80 text-amber-700 text-[8px] px-1 rounded font-black uppercase tracking-tighter shadow-sm">Remplacé</span>
+                    )}
+                  </div>
+                  <span className={`truncate opacity-90 ${isCancelled ? 'line-through' : ''}`}>{subtitle}</span>
+                  {hasSubstitute && !isCancelled && (
+                    <span className="truncate font-bold text-amber-900 text-[9px]">Par: {extendedProps.substitute}</span>
+                  )}
+                  {extendedProps.room && <span className="truncate opacity-75 mt-auto text-[9px]">{extendedProps.room}</span>}
                 </div>
               );
             }}

@@ -67,10 +67,28 @@ export default function WeeklyCalendar({ events, onDateChange, onEventClick, onD
             );
           }
 
+          const isCancelled = extendedProps.isCancelled;
+          const hasSubstitute = !!extendedProps.substituteId;
+
           return (
-            <div className="flex flex-col text-[10px] leading-tight p-0.5 overflow-hidden">
-              <span className="font-bold truncate">{arg.event.title}</span>
-              {extendedProps.teacher && <span className="truncate opacity-80">{extendedProps.teacher}</span>}
+            <div className={`flex flex-col text-[10px] leading-tight p-0.5 overflow-hidden h-full ${isCancelled ? 'opacity-60' : ''}`}>
+              <div className="flex items-center gap-1 flex-wrap">
+                <span className={`font-bold truncate ${isCancelled ? 'line-through' : ''}`}>
+                  {arg.event.title}
+                </span>
+                {isCancelled && (
+                  <span className="bg-white/80 text-red-700 text-[8px] px-1 rounded font-black uppercase tracking-tighter shadow-sm">Annulé</span>
+                )}
+                {hasSubstitute && !isCancelled && (
+                  <span className="bg-white/80 text-amber-700 text-[8px] px-1 rounded font-black uppercase tracking-tighter shadow-sm">Remplacé</span>
+                )}
+              </div>
+              <span className={`truncate opacity-90 ${isCancelled ? 'line-through' : ''}`}>
+                {extendedProps.teacher}
+              </span>
+              {hasSubstitute && !isCancelled && (
+                <span className="truncate font-bold text-amber-900 mt-auto">Par: {extendedProps.substitute}</span>
+              )}
             </div>
           );
         }}

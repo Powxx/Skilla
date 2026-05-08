@@ -59,9 +59,7 @@ export async function GET(request: Request) {
 
   const formattedEvents = lessons.map((lesson) => ({
     id: lesson.id,
-    title: lesson.isCancelled 
-      ? `ANNULÉ: ${lesson.subject.name} - ${lesson.teacher.firstName} ${lesson.teacher.lastName}`
-      : `${lesson.subject.name} - ${lesson.substitute ? `Remplaçant: ${lesson.substitute.lastName}` : `${lesson.teacher.firstName} ${lesson.teacher.lastName}`} (${lesson.class.name})`,
+    title: lesson.subject.name,
     start: lesson.startTime.toISOString(),
     end: lesson.endTime.toISOString(),
     backgroundColor: lesson.isCancelled ? "#ef4444" : lesson.substitute ? "#f59e0b" : "#3b82f6", // Red if cancelled, Orange if sub, Blue default
