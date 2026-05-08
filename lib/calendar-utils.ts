@@ -9,11 +9,12 @@ export const getSpecialCalendarEvents = (date: Date, holidays: any[] = []) => {
     const day = new Date(start);
     day.setDate(start.getDate() + i);
     special.push({
+      id: `break-${day.getTime()}`,
       title: "PAUSE DÉJEUNER",
       start: setMinutes(setHours(day, 12), 0).toISOString(),
-      end: setMinutes(setHours(day, 13), 0).toISOString(),
+      end: setMinutes(setHours(day, 13), 30).toISOString(),
       display: 'background',
-      backgroundColor: '#f8fafc', // slate-50
+      backgroundColor: '#f1f5f9', // slate-100 (slightly darker for visibility)
       extendedProps: { type: 'break' }
     });
   }
