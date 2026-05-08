@@ -12,6 +12,15 @@ export default async function ProfLivretPage({ searchParams }: { searchParams?: 
     redirect("/login");
   }
 
+  // Vérification DB directe en cas de changement d'habilitation sans reconnexion
+  const dbUser = await prisma.user.findUnique({
+    where: { id: session.user.id },
+    select: { canAccessLivrets: true }
+  });
+  if (!dbUser?.canAccessLivrets) {
+    redirect("/prof?access=denied");
+  }
+
   // 1. Get my students (those in my classes)
   const teacherLessons = await prisma.lesson.findMany({
     where: { teacherId: session.user.id },

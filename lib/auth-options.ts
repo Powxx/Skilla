@@ -36,7 +36,8 @@ export const authOptions: NextAuthOptions = {
           
           // 1. Recherche de l'utilisateur
           const user = await prisma.user.findUnique({ 
-            where: { email } 
+            where: { email },
+            select: { id: true, email: true, password: true, role: true, firstName: true, lastName: true, canAccessLivrets: true }
           });
 
           if (!user) {
@@ -63,7 +64,7 @@ export const authOptions: NextAuthOptions = {
             email: user.email,
             name: `${user.firstName} ${user.lastName}`.trim(),
             role: user.role,
-            
+            canAccessLivrets: user.canAccessLivrets,
           };
           
         } catch (error) {
@@ -81,6 +82,7 @@ export const authOptions: NextAuthOptions = {
         console.log("DEBUG JWT: User trouvé lors de la connexion, role =", user.role);
         token.role = user.role as Role;
         token.id = user.id;
+        token.canAccessLivrets = (user as any).canAccessLivrets ?? false;
       }
 
       // Impersonation logic via session update
@@ -110,6 +112,7 @@ export const authOptions: NextAuthOptions = {
         console.log("DEBUG SESSION: Token reçu dans la session, role =", token.role);
         session.user.id = token.id as string;
         session.user.role = token.role as Role;
+        (session.user as any).canAccessLivrets = token.canAccessLivrets ?? false;
         (session as any).impersonated = !!token.impersonated;
         (session as any).originalUserId = token.originalUserId as string | undefined;
       }

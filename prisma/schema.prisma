@@ -93,6 +93,15 @@ model User {
   surveys       SatisfactionSurvey[]
   meetingRequestsSent MeetingRequest[]  @relation("MeetingSender")
   notifications  Notification[]
+
+  // Habilitations spécifiques
+  canAccessLivrets Boolean @default(false)
+}
+
+model GlobalSetting {
+  id    String @id @default(cuid())
+  key   String @unique
+  value String
 }
 
 model StudentProfile {

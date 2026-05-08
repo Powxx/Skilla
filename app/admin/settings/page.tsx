@@ -5,6 +5,7 @@ import prisma from "@/lib/prisma";
 import Link from "next/link";
 import CoreSettingsClient from "./core-settings-client";
 import { getNotificationConfigs } from "@/app/actions/notifications";
+import { getGlobalSettings } from "@/app/actions/settings";
 
 export const dynamic = 'force-dynamic';
 
@@ -15,12 +16,18 @@ export default async function AdminSettingsPage() {
     redirect("/login");
   }
 
-  const [classes, subjects, semesters, notificationConfigs, holidays] = await Promise.all([
+  const [classes, subjects, semesters, notificationConfigs, holidays, globalSettings, teachers] = await Promise.all([
     prisma.class.findMany({ orderBy: { name: 'asc' } }),
     prisma.subject.findMany({ orderBy: { name: 'asc' } }),
     prisma.semester.findMany({ orderBy: { startDate: 'asc' } }),
     getNotificationConfigs(),
     prisma.holiday.findMany({ orderBy: { date: 'asc' } }),
+    getGlobalSettings(),
+    prisma.user.findMany({ 
+      where: { role: "TEACHER" },
+      orderBy: { lastName: 'asc' },
+      select: { id: true, firstName: true, lastName: true, canAccessLivrets: true }
+    }),
   ]);
 
   return (
@@ -49,6 +56,8 @@ export default async function AdminSettingsPage() {
           initialSemesters={semesters} 
           initialNotificationConfigs={notificationConfigs}
           initialHolidays={holidays}
+          globalSettings={globalSettings}
+          teachers={teachers}
         />
       </div>
     </div>
