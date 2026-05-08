@@ -335,3 +335,9 @@ model NotificationConfig {
   targetRoles Role[]   @default([STUDENT])
   updatedAt   DateTime @updatedAt
 }
+
+model Holiday {
+  id   String   @id @default(cuid())
+  date DateTime @unique
+  name String
+}

@@ -1,12 +1,6 @@
 import { startOfWeek, endOfWeek, isWithinInterval, parseISO, setHours, setMinutes } from 'date-fns';
 
-export const HOLIDAYS_2026 = [
-  "2026-01-01", "2026-04-06", "2026-05-01", "2026-05-08", 
-  "2026-05-14", "2026-05-25", "2026-07-14", "2026-08-15", 
-  "2026-11-01", "2026-11-11", "2026-12-25"
-];
-
-export const getSpecialCalendarEvents = (date: Date) => {
+export const getSpecialCalendarEvents = (date: Date, holidays: any[] = []) => {
   const start = startOfWeek(date, { weekStartsOn: 1 });
   const special: any[] = [];
 
@@ -25,8 +19,8 @@ export const getSpecialCalendarEvents = (date: Date) => {
   }
 
   // Holidays
-  HOLIDAYS_2026.forEach(hDate => {
-    const d = parseISO(hDate);
+  holidays.forEach(holiday => {
+    const d = typeof holiday.date === 'string' ? parseISO(holiday.date) : new Date(holiday.date);
     if (isWithinInterval(d, { start: start, end: endOfWeek(start, { weekStartsOn: 1 }) })) {
       // Background shading
       special.push({
@@ -38,7 +32,7 @@ export const getSpecialCalendarEvents = (date: Date) => {
       });
       // Visible label
       special.push({
-        title: "JOUR FÉRIÉ",
+        title: holiday.name || "JOUR FÉRIÉ",
         start: setHours(d, 8).toISOString(),
         end: setHours(d, 20).toISOString(),
         editable: false,

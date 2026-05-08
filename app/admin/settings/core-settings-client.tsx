@@ -10,7 +10,8 @@ export default function CoreSettingsClient({
   initialClasses, 
   initialSubjects, 
   initialSemesters,
-  initialNotificationConfigs = []
+  initialNotificationConfigs = [],
+  initialHolidays = []
 }: any) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
@@ -18,6 +19,7 @@ export default function CoreSettingsClient({
 
   const [newName, setNewName] = useState('');
   const [newSemester, setNewSemester] = useState({ name: '', start: '', end: '' });
+  const [newHoliday, setNewHoliday] = useState({ name: '', date: '' });
 
   const handleUpdateNotifConfig = async (id: string, isEnabled: boolean) => {
     setLoading(true);
@@ -72,6 +74,18 @@ export default function CoreSettingsClient({
     router.refresh();
   };
 
+  const handleAddHoliday = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    await fetch('/api/admin/holidays', {
+      method: 'POST',
+      body: JSON.stringify(newHoliday),
+    });
+    setNewHoliday({ name: '', date: '' });
+    setLoading(false);
+    router.refresh();
+  };
+
   const handleDelete = async (type: string, id: string) => {
     if (!confirm('Voulez-vous vraiment supprimer cet élément ?')) return;
     setLoading(true);
@@ -82,28 +96,34 @@ export default function CoreSettingsClient({
 
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-      <div className="flex border-b border-slate-100 bg-slate-50">
+      <div className="flex border-b border-slate-100 bg-slate-50 overflow-x-auto">
         <button 
           onClick={() => setActiveTab('classes')}
-          className={`px-6 py-4 text-sm font-semibold transition ${activeTab === 'classes' ? 'text-blue-600 border-b-2 border-blue-600 bg-white' : 'text-slate-500 hover:text-slate-700'}`}
+          className={`px-6 py-4 text-sm font-semibold transition whitespace-nowrap ${activeTab === 'classes' ? 'text-blue-600 border-b-2 border-blue-600 bg-white' : 'text-slate-500 hover:text-slate-700'}`}
         >
           Classes ({initialClasses.length})
         </button>
         <button 
           onClick={() => setActiveTab('subjects')}
-          className={`px-6 py-4 text-sm font-semibold transition ${activeTab === 'subjects' ? 'text-blue-600 border-b-2 border-blue-600 bg-white' : 'text-slate-500 hover:text-slate-700'}`}
+          className={`px-6 py-4 text-sm font-semibold transition whitespace-nowrap ${activeTab === 'subjects' ? 'text-blue-600 border-b-2 border-blue-600 bg-white' : 'text-slate-500 hover:text-slate-700'}`}
         >
           Matières ({initialSubjects.length})
         </button>
         <button 
           onClick={() => setActiveTab('semesters')}
-          className={`px-6 py-4 text-sm font-semibold transition ${activeTab === 'semesters' ? 'text-blue-600 border-b-2 border-blue-600 bg-white' : 'text-slate-500 hover:text-slate-700'}`}
+          className={`px-6 py-4 text-sm font-semibold transition whitespace-nowrap ${activeTab === 'semesters' ? 'text-blue-600 border-b-2 border-blue-600 bg-white' : 'text-slate-500 hover:text-slate-700'}`}
         >
-          Semestres / Périodes ({initialSemesters.length})
+          Semestres ({initialSemesters.length})
+        </button>
+        <button 
+          onClick={() => setActiveTab('holidays')}
+          className={`px-6 py-4 text-sm font-semibold transition whitespace-nowrap ${activeTab === 'holidays' ? 'text-blue-600 border-b-2 border-blue-600 bg-white' : 'text-slate-500 hover:text-slate-700'}`}
+        >
+          Jours Fériés ({initialHolidays.length})
         </button>
         <button 
           onClick={() => setActiveTab('notifications')}
-          className={`px-6 py-4 text-sm font-semibold transition ${activeTab === 'notifications' ? 'text-blue-600 border-b-2 border-blue-600 bg-white' : 'text-slate-500 hover:text-slate-700'}`}
+          className={`px-6 py-4 text-sm font-semibold transition whitespace-nowrap ${activeTab === 'notifications' ? 'text-blue-600 border-b-2 border-blue-600 bg-white' : 'text-slate-500 hover:text-slate-700'}`}
         >
           Notifications ({initialNotificationConfigs.length})
         </button>
@@ -204,6 +224,48 @@ export default function CoreSettingsClient({
                     </div>
                   </div>
                   <button onClick={() => handleDelete('semesters', s.id)} className="text-red-400 hover:text-red-600 opacity-0 group-hover:opacity-100 transition">Supprimer</button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'holidays' && (
+          <div className="space-y-6">
+            <form onSubmit={handleAddHoliday} className="grid gap-3 sm:grid-cols-3 items-end">
+              <div className="sm:col-span-1">
+                <label className="text-[10px] uppercase font-bold text-slate-400 mb-1 block">Nom du jour férié</label>
+                <input 
+                  type="text" 
+                  placeholder="Ex: Armistice" 
+                  className="w-full rounded-lg border-slate-200 text-sm"
+                  value={newHoliday.name}
+                  onChange={e => setNewHoliday({...newHoliday, name: e.target.value})}
+                  required
+                />
+              </div>
+              <div>
+                <label className="text-[10px] uppercase font-bold text-slate-400 mb-1 block">Date</label>
+                <input 
+                  type="date" 
+                  className="w-full rounded-lg border-slate-200 text-sm"
+                  value={newHoliday.date}
+                  onChange={e => setNewHoliday({...newHoliday, date: e.target.value})}
+                  required
+                />
+              </div>
+              <button disabled={loading} className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-blue-700 transition">Ajouter</button>
+            </form>
+            <div className="space-y-2">
+              {initialHolidays.map((h: any) => (
+                <div key={h.id} className="flex justify-between items-center p-4 rounded-xl border border-slate-100 bg-slate-50 group">
+                  <div>
+                    <div className="font-bold text-slate-900">{h.name}</div>
+                    <div className="text-xs text-slate-500">
+                      {format(new Date(h.date), 'dd MMMM yyyy', { locale: fr })}
+                    </div>
+                  </div>
+                  <button onClick={() => handleDelete('holidays', h.id)} className="text-red-400 hover:text-red-600 opacity-0 group-hover:opacity-100 transition">Supprimer</button>
                 </div>
               ))}
             </div>

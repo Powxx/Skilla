@@ -7,7 +7,7 @@ import interactionPlugin, { Draggable } from '@fullcalendar/interaction';
 import frLocale from '@fullcalendar/core/locales/fr';
 import { startOfWeek, format, isWithinInterval, parseISO, endOfWeek, addWeeks, setHours, setMinutes, isSameDay } from 'date-fns';
 import { fr } from 'date-fns/locale';
-import { getSpecialCalendarEvents, HOLIDAYS_2026 } from '@/lib/calendar-utils';
+import { getSpecialCalendarEvents } from '@/lib/calendar-utils';
 
 interface AdvancedPlanningClientProps {
   classes: { id: string; name: string }[];
@@ -37,6 +37,7 @@ export default function AdvancedPlanningClient({ classes, teachers, subjects, ro
   const calendarRef = useRef<FullCalendar>(null);
   const [currentDate, setCurrentDate] = useState(new Date());
   const [events, setEvents] = useState<any[]>([]);
+  const [holidays, setHolidays] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
 
@@ -49,6 +50,21 @@ export default function AdvancedPlanningClient({ classes, teachers, subjects, ro
     isCancelled: false,
     substituteId: ""
   });
+
+  const fetchHolidays = async () => {
+    try {
+      const res = await fetch('/api/admin/holidays');
+      const data = await res.json();
+      if (Array.isArray(data)) setHolidays(data);
+    } catch (err) {
+      console.error("Erreur holidays:", err);
+    }
+  };
+
+  useEffect(() => {
+    fetchHolidays();
+  }, []);
+
   useEffect(() => {
     let draggableEl = document.getElementById('external-events');
     if (draggableEl) {
@@ -103,7 +119,7 @@ export default function AdvancedPlanningClient({ classes, teachers, subjects, ro
   // Conflict Checking logic
   const checkConflicts = (start: Date, end: Date, teacherId: string, classId: string, roomId: string, excludeEventId?: string) => {
     // Check holidays
-    const isHoliday = HOLIDAYS_2026.some(h => isSameDay(parseISO(h), start));
+    const isHoliday = holidays.some(h => isSameDay(typeof h.date === 'string' ? parseISO(h.date) : new Date(h.date), start));
     if (isHoliday) return "Impossible de planifier un cours un jour férié.";
 
     // Check lunch break (12:00 - 13:00)
@@ -296,7 +312,7 @@ export default function AdvancedPlanningClient({ classes, teachers, subjects, ro
   };
 
   // Filter events based on selected view + Special events
-  const specialEvents = getSpecialCalendarEvents(currentDate);
+  const specialEvents = getSpecialCalendarEvents(currentDate, holidays);
   const visibleEvents = [
     ...events.filter(e => {
       if (!viewFilter.id) return true;
