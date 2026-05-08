@@ -82,37 +82,29 @@ export default function PortalHeader({ variant, parentChildren = [] }: Props) {
   return (
     <header className="sticky top-0 z-20 border-b border-slate-200 bg-white/80 backdrop-blur-md shadow-sm">
       {isImpersonated && (
-        <div className="bg-orange-600 text-white text-xs font-bold px-4 py-2.5 flex items-center justify-between shadow-inner">
-          <div className="flex items-center gap-3">
-            <div className="flex h-6 w-6 items-center justify-center rounded-full bg-white/20 animate-pulse">
-               <span className="text-[10px]">⚠️</span>
-            </div>
-            <p className="tracking-wide">
-              MODE IMPERSONNALISATION : Vous contrôlez actuellement le compte de <span className="underline decoration-2 underline-offset-4">{(session?.user as any)?.name}</span>
-            </p>
-          </div>
+        <div className="bg-orange-600 text-white text-[10px] font-bold px-4 py-2 flex items-center justify-between">
+          <p className="tracking-wide">
+            MODE IMPERSONNALISATION : Contrôle de <span className="underline decoration-2 underline-offset-4">{(session?.user as any)?.name}</span>
+          </p>
           <button 
             onClick={handleStopImpersonation} 
-            className="px-4 py-1.5 bg-white text-orange-600 rounded-lg text-[10px] font-black uppercase tracking-widest hover:bg-orange-50 transition shadow-sm"
+            className="px-3 py-1 bg-white text-orange-600 rounded-lg font-black uppercase tracking-widest hover:bg-orange-50 transition shadow-sm"
           >
-            Quitter le contrôle
+            Quitter
           </button>
         </div>
       )}
       
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="flex h-16 items-center justify-between gap-4">
-          {/* Logo & Nav */}
-          <div className="flex items-center gap-8">
-            <Link href="/" className="flex items-center gap-2 group">
-              <div className="h-8 w-8 rounded-lg bg-slate-900 flex items-center justify-center text-white font-bold text-xs transition group-hover:scale-105">S</div>
-              <span className="font-bold text-slate-900 tracking-tight hidden sm:block">Skilla</span>
-            </Link>
-
-            <nav className="hidden md:flex items-center gap-1 text-sm font-medium text-slate-400">
-              <Link href={spaceHref()} className="text-slate-900 hover:text-slate-900">{spaceLabel()}</Link>
-              <span className="mx-2 text-slate-300">/</span>
-              <span className="text-slate-500">{currentCrumb}</span>
+      <div className="px-4 sm:px-6 lg:px-8">
+        <div className="flex h-14 items-center justify-between gap-4">
+          {/* Breadcrumbs / Mobile Menu Toggle */}
+          <div className="flex items-center gap-4">
+            <Link href="/" className="lg:hidden h-8 w-8 rounded-lg bg-slate-900 flex items-center justify-center text-white font-bold text-xs">S</Link>
+            
+            <nav className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-wider text-slate-400">
+              <span className="text-slate-900">{spaceLabel()}</span>
+              <span className="text-slate-300">/</span>
+              <span className="text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md">{currentCrumb}</span>
             </nav>
           </div>
 
@@ -132,63 +124,18 @@ export default function PortalHeader({ variant, parentChildren = [] }: Props) {
 
             <div className="flex items-center gap-3 pl-4 border-l border-slate-100">
               <NotificationBell />
-              <div className="text-right hidden sm:block">
-                <p className="text-xs font-bold text-slate-900 leading-none">{session?.user?.name}</p>
-                <p className="text-[10px] font-medium text-slate-400 mt-1 uppercase tracking-wider">{session?.user?.role}</p>
+              <div className="text-right hidden sm:block leading-tight">
+                <p className="text-xs font-bold text-slate-900">{session?.user?.name}</p>
+                <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">{session?.user?.role}</p>
               </div>
               <button
                 onClick={() => signOut({ callbackUrl: "/" })}
-                className="h-9 px-4 rounded-xl bg-slate-50 text-slate-600 text-xs font-bold hover:bg-slate-100 transition border border-slate-200"
+                className="h-8 px-3 rounded-lg bg-slate-50 text-slate-600 text-[10px] font-bold hover:bg-slate-100 transition border border-slate-200 uppercase tracking-widest"
               >
-                Déconnexion
+                Quitter
               </button>
             </div>
           </div>
-        </div>
-      </div>
-
-      {/* Sub-navigation based on role */}
-      <div className="bg-slate-50/50 border-t border-slate-100 overflow-x-auto no-scrollbar">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 flex gap-1 py-1">
-          {variant === "admin" && (
-            <>
-              <NavLink href="/admin" active={pathname === "/admin"}>Accueil</NavLink>
-              <NavLink href="/admin/users" active={pathname.startsWith("/admin/users")}>Utilisateurs</NavLink>
-              <NavLink href="/admin/planning" active={pathname.startsWith("/admin/planning")}>Planning</NavLink>
-              <NavLink href="/admin/report-cards" active={pathname.startsWith("/admin/report-cards")}>Bulletins</NavLink>
-              <NavLink href="/admin/livret" active={pathname.startsWith("/admin/livret")}>Livret</NavLink>
-              <NavLink href="/admin/recap" active={pathname.startsWith("/admin/recap")}>Récapitulatif</NavLink>
-              <NavLink href="/admin/settings" active={pathname === "/admin/settings"}>Config</NavLink>
-              <NavLink href="/admin/settings/competencies" active={pathname.startsWith("/admin/settings/competencies")}>Compétences</NavLink>
-            </>
-          )}
-          {variant === "prof" && (
-            <>
-              <NavLink href="/prof" active={pathname === "/prof"}>Tableau de bord</NavLink>
-              <NavLink href="/prof/planning" active={pathname.startsWith("/prof/planning")}>Planning</NavLink>
-              <NavLink href="/prof/appel" active={pathname.startsWith("/prof/appel")}>Appel</NavLink>
-              <NavLink href="/prof/notes" active={pathname.startsWith("/prof/notes")}>Notes</NavLink>
-              <NavLink href="/prof/livret" active={pathname.startsWith("/prof/livret")}>Livret</NavLink>
-            </>
-          )}
-          {variant === "student" && (
-            <>
-              <NavLink href="/student/dashboard" active={pathname.startsWith("/student/dashboard")}>Synthèse</NavLink>
-              <NavLink href="/student/planning" active={pathname.startsWith("/student/planning")}>Planning</NavLink>
-              <NavLink href="/student/grades" active={pathname.startsWith("/student/grades")}>Notes</NavLink>
-              <NavLink href="/student/livret" active={pathname.startsWith("/student/livret")}>Livret</NavLink>
-              <NavLink href="/student/absences" active={pathname.startsWith("/student/absences")}>Absences</NavLink>
-            </>
-          )}
-          {(variant === "parent" || variant === "employer") && (
-            <>
-              <NavLink href={`/${variant}/dashboard?studentId=${resolvedChildId}`} active={pathname.includes("/dashboard")}>Synthèse</NavLink>
-              <NavLink href={`/${variant}/planning?studentId=${resolvedChildId}`} active={pathname.includes("/planning")}>Planning</NavLink>
-              <NavLink href={`/${variant}/grades?studentId=${resolvedChildId}`} active={pathname.includes("/grades")}>Notes</NavLink>
-              <NavLink href={`/${variant}/livret?studentId=${resolvedChildId}`} active={pathname.includes("/livret")}>Livret</NavLink>
-              <NavLink href={`/${variant}/absences?studentId=${resolvedChildId}`} active={pathname.includes("/absences")}>Absences</NavLink>
-            </>
-          )}
         </div>
       </div>
     </header>
@@ -196,12 +143,5 @@ export default function PortalHeader({ variant, parentChildren = [] }: Props) {
 }
 
 function NavLink({ href, active, children }: { href: string; active: boolean; children: React.ReactNode }) {
-  return (
-    <Link 
-      href={href} 
-      className={`px-4 py-2 text-xs font-bold rounded-lg transition-colors whitespace-nowrap ${active ? 'bg-white text-blue-600 shadow-sm border border-slate-200' : 'text-slate-500 hover:text-slate-900'}`}
-    >
-      {children}
-    </Link>
-  );
+  return null; // No longer used in header
 }

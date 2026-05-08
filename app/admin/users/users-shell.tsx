@@ -151,29 +151,17 @@ export default function UsersShell(props: Props) {
   }
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-      <nav className="mb-8 text-sm text-slate-500">
-        <Link href="/" className="font-medium hover:text-slate-700">
-          Accueil
-        </Link>
-        <span className="mx-2 text-slate-300">/</span>
-        <Link href="/admin" className="font-medium hover:text-slate-700">
-          Admin
-        </Link>
-        <span className="mx-2 text-slate-300">/</span>
-        <span className="text-slate-900">Utilisateurs</span>
-      </nav>
-
-      <header className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+    <div className="h-full flex flex-col gap-6 font-sans text-slate-900">
+      <header className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 shrink-0">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight text-slate-900 sm:text-3xl">
-            Utilisateurs & droits
+          <h1 className="text-xl font-black tracking-tight uppercase tracking-widest text-slate-900">
+            Utilisateurs & Droits
           </h1>
-          <p className="mt-2 max-w-2xl text-sm text-slate-600">
-            Recherche, filtre par rôle (ADMIN, TEACHER, STUDENT, PARENT, EMPLOYER) et gestion des comptes.
+          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">
+            Gestion des comptes et profils d'accès
           </p>
         </div>
-        <div className="flex flex-wrap gap-3">
+        <div className="flex flex-wrap gap-2">
           <input 
             type="file" 
             ref={fileInputRef} 
@@ -184,16 +172,16 @@ export default function UsersShell(props: Props) {
           <button
             type="button"
             onClick={handleExportCSV}
-            className="inline-flex shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white px-5 py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
+            className="px-3 py-1.5 bg-white border border-slate-200 rounded-xl text-[10px] font-black text-slate-400 uppercase tracking-widest hover:text-slate-900 transition shadow-sm"
           >
-            Exporter CSV
+            Export CSV
           </button>
           <button
             type="button"
             onClick={() => fileInputRef.current?.click()}
-            className="inline-flex shrink-0 items-center justify-center rounded-xl border border-sky-200 bg-sky-50 px-5 py-2.5 text-sm font-semibold text-sky-700 shadow-sm transition hover:bg-sky-100"
+            className="px-3 py-1.5 bg-sky-50 border border-sky-100 rounded-xl text-[10px] font-black text-sky-700 uppercase tracking-widest hover:bg-sky-100 transition shadow-sm"
           >
-            Importer CSV
+            Import CSV
           </button>
           <button
             type="button"
@@ -201,49 +189,44 @@ export default function UsersShell(props: Props) {
               setShowCreate(true);
               setFlash(null);
             }}
-            className="inline-flex shrink-0 items-center justify-center rounded-xl bg-slate-900 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800"
+            className="px-4 py-1.5 bg-slate-900 text-white rounded-xl text-[10px] font-black uppercase tracking-[0.2em] shadow-lg shadow-slate-900/20 hover:bg-slate-800 transition"
           >
-            Nouvel utilisateur
+            + Nouveau
           </button>
         </div>
       </header>
 
-      {flash ? (
+      {flash && (
         <div
-          className={`mb-6 rounded-xl border px-4 py-3 text-sm ${flash.type === "ok"
-              ? "border-emerald-200 bg-emerald-50 text-emerald-900"
-              : "border-red-200 bg-red-50 text-red-800"
+          className={`px-4 py-2 rounded-xl border text-[10px] font-bold uppercase tracking-widest shrink-0 ${flash.type === "ok"
+              ? "border-emerald-100 bg-emerald-50 text-emerald-700"
+              : "border-red-100 bg-red-50 text-red-700"
             }`}
-          role={flash.type === "err" ? "alert" : "status"}
         >
           {flash.msg}
         </div>
-      ) : null}
+      )}
 
       <form
         method="GET"
         action="/admin/users"
-        className="mb-8 flex flex-col gap-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm ring-1 ring-slate-900/[0.04] sm:flex-row sm:flex-wrap sm:items-end"
+        className="flex flex-col sm:flex-row items-end gap-3 shrink-0"
       >
-        <label className="block min-w-[12rem] flex-1">
-          <span className="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-500">
-            Recherche
-          </span>
+        <div className="flex-1 w-full">
+          <span className="mb-1 block text-[9px] font-black text-slate-400 uppercase tracking-widest">Recherche</span>
           <input
             name="q"
             defaultValue={initialQuery}
-            placeholder="E-mail, prénom, nom…"
-            className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm outline-none ring-sky-400/20 focus:border-sky-600 focus:ring-4 focus:ring-sky-600/15"
+            placeholder="E-mail, nom..."
+            className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs outline-none focus:ring-blue-500/20"
           />
-        </label>
-        <label className="block w-full sm:w-56">
-          <span className="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-500">
-            Rôle
-          </span>
+        </div>
+        <div className="w-full sm:w-44">
+          <span className="mb-1 block text-[9px] font-black text-slate-400 uppercase tracking-widest">Rôle</span>
           <select
             name="role"
             defaultValue={initialRole}
-            className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm outline-none ring-sky-400/20 focus:border-sky-600 focus:ring-4 focus:ring-sky-600/15"
+            className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs outline-none focus:ring-blue-500/20"
           >
             {ROLE_OPTIONS.map((o) => (
               <option key={`${String(o.value)}_${o.label}`} value={o.value}>
@@ -251,123 +234,67 @@ export default function UsersShell(props: Props) {
               </option>
             ))}
           </select>
-        </label>
-        <div className="flex flex-wrap gap-2">
-          <button
-            type="submit"
-            className="rounded-xl bg-sky-700 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-sky-800"
-          >
-            Filtrer
-          </button>
-          <Link
-            href="/admin/users"
-            className="rounded-xl border border-slate-200 bg-white px-5 py-2.5 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-50"
-          >
-            Réinitialiser
-          </Link>
+        </div>
+        <div className="flex gap-2 w-full sm:w-auto">
+          <button type="submit" className="flex-1 sm:flex-none px-4 py-2 bg-blue-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-blue-700 transition shadow-sm">Filtrer</button>
+          <Link href="/admin/users" className="px-4 py-2 bg-slate-50 border border-slate-200 text-slate-400 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-100 transition">Reset</Link>
         </div>
       </form>
 
-      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm ring-1 ring-slate-900/[0.04]">
-        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 bg-slate-50/80 px-5 py-3 text-sm text-slate-600">
-          <span>
-            <strong className="text-slate-900">{total}</strong> compte(s) · page{" "}
-            <strong className="text-slate-900">{page}</strong> /{" "}
-            {totalPages}
+      <div className="flex-1 flex flex-col min-h-0 bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+        <div className="px-5 py-3 border-b border-slate-100 bg-slate-50 flex items-center justify-between shrink-0">
+          <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+            {total} Comptes • Page {page}/{totalPages}
           </span>
         </div>
-        <div className="overflow-x-auto">
-          <table className="min-w-full text-left text-sm">
-            <thead>
-              <tr className="border-b border-slate-200 bg-white">
-                <th className="px-5 py-3 font-semibold text-slate-700">
-                  Nom
-                </th>
-                <th className="px-5 py-3 font-semibold text-slate-700">
-                  E-mail
-                </th>
-                <th className="px-5 py-3 font-semibold text-slate-700">
-                  Rôle
-                </th>
-                <th className="hidden px-5 py-3 font-semibold text-slate-700 lg:table-cell">
-                  Profils
-                </th>
-                <th className="px-5 py-3 text-right font-semibold text-slate-700">
-                  Actions
-                </th>
+        <div className="flex-1 overflow-auto custom-scrollbar">
+          <table className="w-full text-left text-xs border-collapse">
+            <thead className="sticky top-0 bg-white border-b border-slate-100 z-10">
+              <tr>
+                <th className="px-5 py-3 font-black text-slate-400 uppercase tracking-widest text-[9px]">Nom</th>
+                <th className="px-5 py-3 font-black text-slate-400 uppercase tracking-widest text-[9px]">Email</th>
+                <th className="px-5 py-3 font-black text-slate-400 uppercase tracking-widest text-[9px]">Rôle</th>
+                <th className="hidden px-5 py-3 font-black text-slate-400 uppercase tracking-widest text-[9px] lg:table-cell">Profil</th>
+                <th className="px-5 py-3 font-black text-slate-400 uppercase tracking-widest text-[9px] text-right">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="divide-y divide-slate-50">
               {users.length === 0 ? (
                 <tr>
-                  <td
-                    colSpan={5}
-                    className="px-5 py-12 text-center text-slate-500"
-                  >
-                    Aucun utilisateur trouvé avec ces filtres.
-                  </td>
+                  <td colSpan={5} className="px-5 py-12 text-center text-slate-400 font-bold uppercase tracking-widest italic text-[10px]">Aucun résultat.</td>
                 </tr>
               ) : (
                 users.map((u) => (
-                  <tr key={u.id} className="hover:bg-slate-50/80">
+                  <tr key={u.id} className="hover:bg-slate-50 transition group">
                     <td className="px-5 py-3">
-                      <div className="font-medium text-slate-900">
-                        {u.lastName} {u.firstName}
-                      </div>
-                      {u.hasStudentProfile ? (
-                        <span className="mt-1 inline-flex text-[10px] font-medium uppercase tracking-wide text-slate-400">
-                          Profil élève
-                        </span>
-                      ) : u.lockedRole && u.hasTeacherProfile ? (
-                        <span className="mt-1 inline-flex text-[10px] font-medium uppercase tracking-wide text-slate-400">
-                          Enseignant avec cours
-                        </span>
-                      ) : null}
+                      <div className="font-black text-slate-900 uppercase tracking-tight">{u.lastName} {u.firstName}</div>
+                      {u.hasStudentProfile && <span className="text-[8px] font-bold text-blue-500 uppercase tracking-tighter">Élève</span>}
                     </td>
-                    <td className="px-5 py-3 text-slate-600">{u.email}</td>
+                    <td className="px-5 py-3 text-slate-500 font-medium">{u.email}</td>
                     <td className="px-5 py-3">
-                      <span
-                        className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold ring-1 ${roleBadgeClasses(
-                          u.role,
-                        )}`}
-                      >
-                        {ROLE_EDIT_OPTIONS.find((r) => r.value === u.role)
-                          ?.label ?? u.role}
+                      <span className={`inline-flex px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-widest border ${roleBadgeClasses(u.role)}`}>
+                        {ROLE_EDIT_OPTIONS.find((r) => r.value === u.role)?.label ?? u.role}
                       </span>
                     </td>
-                    <td className="hidden px-5 py-3 text-xs text-slate-600 lg:table-cell">
-                      {u.hasStudentProfile && u.studentClass ? (
-                        <span>Élève · {u.studentClass.name}</span>
-                      ) : u.hasTeacherProfile ? (
-                        <span>Prof · {u.teacherCourseCount} cours</span>
-                      ) : (
-                        <span className="text-slate-400">—</span>
-                      )}
+                    <td className="hidden px-5 py-3 lg:table-cell text-[10px] font-bold text-slate-400 uppercase tracking-tighter">
+                      {u.hasStudentProfile && u.studentClass ? u.studentClass.name : u.hasTeacherProfile ? `${u.teacherCourseCount} cours` : "—"}
                     </td>
                     <td className="px-5 py-3 text-right">
-                      <div className="flex justify-end gap-2">
+                      <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition">
                         <button
-                          type="button"
-                          onClick={() => {
-                            setEditingUser(u);
-                            setFlash(null);
-                          }}
-                          className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-800 hover:bg-slate-50"
+                          onClick={() => setEditingUser(u)}
+                          className="px-2 py-1 bg-white border border-slate-200 rounded-lg text-[9px] font-black text-slate-600 uppercase tracking-widest hover:bg-slate-100"
                         >
-                          Modifier
+                          Éditer
                         </button>
-                        {canDeleteListedUser(u) ? (
+                        {canDeleteListedUser(u) && (
                           <button
-                            type="button"
-                            onClick={() => {
-                              setDeletingUser(u);
-                              setFlash(null);
-                            }}
-                            className="rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-medium text-red-800 hover:bg-red-100"
+                            onClick={() => setDeletingUser(u)}
+                            className="px-2 py-1 bg-red-50 border border-red-100 rounded-lg text-[9px] font-black text-red-600 uppercase tracking-widest hover:bg-red-600 hover:text-white transition"
                           >
-                            Supprimer
+                            ×
                           </button>
-                        ) : null}
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -378,22 +305,22 @@ export default function UsersShell(props: Props) {
         </div>
       </div>
 
-      {totalPages > 1 ? (
-        <div className="mt-6 flex flex-wrap justify-center gap-2">
+      {totalPages > 1 && (
+        <div className="flex justify-center gap-1 shrink-0">
           {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
             <Link
               key={p}
               href={buildPageHref(p)}
-              className={`inline-flex min-w-[2.5rem] items-center justify-center rounded-lg px-3 py-1.5 text-sm font-medium ${p === page
-                  ? "bg-slate-900 text-white"
-                  : "border border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+              className={`h-7 min-w-[1.75rem] flex items-center justify-center rounded-lg text-[10px] font-black transition ${p === page
+                  ? "bg-slate-900 text-white shadow-lg shadow-slate-900/20"
+                  : "bg-white border border-slate-200 text-slate-400 hover:text-slate-900"
                 }`}
             >
               {p}
             </Link>
           ))}
         </div>
-      ) : null}
+      )}
 
       {showCreate ? (
         <CreateUserModal

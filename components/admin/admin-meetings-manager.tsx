@@ -15,51 +15,54 @@ export default function AdminMeetingsManager({ initialMeetings }: { initialMeeti
   };
 
   return (
-    <div className="space-y-4">
-      <h2 className="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
-        📅 Demandes de RDV
+    <div className="flex flex-col h-full min-h-0">
+      <h2 className="text-[10px] font-black text-slate-900 uppercase tracking-[0.2em] mb-4 flex items-center justify-between">
+        <span className="flex items-center gap-2">
+           📅 Demandes de RDV
+        </span>
         {initialMeetings.length > 0 && (
-          <span className="bg-red-500 text-white text-[10px] px-2 py-0.5 rounded-full animate-pulse">
+          <span className="bg-red-500 text-white text-[9px] px-1.5 py-0.5 rounded-md font-black animate-pulse">
             {initialMeetings.length}
           </span>
         )}
       </h2>
 
-      <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
+      <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar space-y-3">
         {initialMeetings.length === 0 ? (
-          <div className="p-8 text-center border-2 border-dashed border-slate-100 rounded-3xl text-slate-400 italic text-sm">
-            Aucune demande en attente.
+          <div className="h-full flex items-center justify-center p-6 text-center border-2 border-dashed border-slate-100 rounded-2xl text-slate-400 italic text-[10px] font-bold uppercase tracking-widest">
+            Aucun RDV.
           </div>
         ) : (
           initialMeetings.map((m) => (
-            <div key={m.id} className="bg-white border border-slate-200 p-4 rounded-2xl shadow-sm hover:shadow-md transition group">
-              <div className="flex justify-between items-start mb-2">
-                <div>
-                  <p className="text-sm font-bold text-slate-900">{m.sender.firstName} {m.sender.lastName}</p>
-                  <p className="text-[10px] text-slate-400 font-bold uppercase tracking-tight">
+            <div key={m.id} className="bg-white border border-slate-200 p-3 rounded-xl shadow-sm hover:shadow-md transition group relative overflow-hidden">
+              <div className="flex justify-between items-start mb-2 relative z-10">
+                <div className="min-w-0">
+                  <p className="text-xs font-black text-slate-900 truncate leading-tight">{m.sender.firstName} {m.sender.lastName}</p>
+                  <p className="text-[9px] text-slate-400 font-bold uppercase tracking-tighter mt-0.5">
                     {m.sender.role} • {format(new Date(m.requestedAt), 'dd MMM HH:mm', { locale: fr })}
                   </p>
                 </div>
-                <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition">
+                <div className="flex gap-1 shrink-0">
                    <button 
                      onClick={() => handleStatusUpdate(m.id, 'SCHEDULED')}
-                     className="p-1.5 bg-emerald-50 text-emerald-600 rounded-lg hover:bg-emerald-100 transition"
+                     className="h-6 w-6 flex items-center justify-center bg-emerald-50 text-emerald-600 rounded-lg hover:bg-emerald-500 hover:text-white transition shadow-sm"
                      title="Accepter"
                    >
                      ✓
                    </button>
                    <button 
                      onClick={() => handleStatusUpdate(m.id, 'REJECTED')}
-                     className="p-1.5 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition"
+                     className="h-6 w-6 flex items-center justify-center bg-red-50 text-red-600 rounded-lg hover:bg-red-500 hover:text-white transition shadow-sm"
                      title="Refuser"
                    >
                      ✕
                    </button>
                 </div>
               </div>
-              <p className="text-xs text-slate-600 bg-slate-50 p-3 rounded-xl border border-slate-100 leading-relaxed italic">
+              <p className="text-[10px] text-slate-600 bg-slate-50 p-2 rounded-lg border border-slate-100 leading-tight italic line-clamp-2 relative z-10">
                 "{m.reason}"
               </p>
+              <div className="absolute top-0 left-0 w-1 h-full bg-blue-500 opacity-20 group-hover:opacity-100 transition"></div>
             </div>
           ))
         )}

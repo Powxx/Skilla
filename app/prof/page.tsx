@@ -19,144 +19,121 @@ export default async function ProfHomePage() {
   const data = await loadTeacherDashboardPayload(session.user.id);
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-700">
-      {/* Hero Welcome */}
-      <div className="relative overflow-hidden rounded-3xl bg-slate-900 p-8 text-white shadow-2xl">
-        <div className="relative z-10">
-          <h1 className="text-3xl font-bold tracking-tight">Bonjour, {data.teacherName} 👋</h1>
-          <p className="mt-2 text-slate-400 font-medium">Vous avez {data.lessonsTodayCount} cours prévus aujourd'hui.</p>
+    <div className="h-full flex flex-col gap-6 font-sans text-slate-900">
+      {/* Hero Welcome Mini */}
+      <div className="flex items-center justify-between shrink-0">
+        <div>
+          <h1 className="text-xl font-black tracking-tight text-slate-900 uppercase tracking-widest">Espace Professeur</h1>
+          <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">Bonjour, {data.teacherName} • {data.lessonsTodayCount} cours aujourd'hui</p>
         </div>
-        <div className="absolute -right-12 -top-12 h-64 w-64 rounded-full bg-blue-500/10 blur-3xl"></div>
+        <div className="flex gap-2">
+           <div className="bg-white px-3 py-1.5 rounded-xl border border-slate-200 shadow-sm flex items-center gap-2">
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">Appels</span>
+              <span className={`text-sm font-black ${data.pendingRollCallsCount > 0 ? 'text-amber-600' : 'text-emerald-600'}`}>
+                {data.pendingRollCallsCount} en attente
+              </span>
+           </div>
+        </div>
       </div>
 
-      {/* Stats Grid */}
-      <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard 
-          label="Appels en attente" 
-          value={data.pendingRollCallsCount} 
-          color="amber" 
-          icon="📋"
-          href="/prof/appel"
-        />
-        <StatCard 
-          label="Cours aujourd'hui" 
-          value={data.lessonsTodayCount} 
-          color="blue" 
-          icon="👨‍🏫"
-          href="/prof/planning"
-        />
-        <StatCard 
-          label="Classes suivies" 
-          value={data.classesCount} 
-          color="indigo" 
-          icon="🏫"
-        />
-        <StatCard 
-          label="Total Élèves" 
-          value={data.studentsCount} 
-          color="emerald" 
-          icon="👥"
-        />
-      </div>
+      <div className="flex-1 grid gap-6 lg:grid-cols-12 min-h-0">
+        {/* Left Col: Quick Stats & Next Lesson (4 cols) */}
+        <div className="lg:col-span-4 flex flex-col gap-6 min-h-0">
+          <div className="grid grid-cols-2 gap-3 shrink-0">
+            <StatCard label="Aujourd'hui" value={data.lessonsTodayCount} color="blue" icon="👨‍🏫" href="/prof/planning" />
+            <StatCard label="Appels" value={data.pendingRollCallsCount} color="amber" icon="📋" href="/prof/appel" />
+            <StatCard label="Classes" value={data.classesCount} color="indigo" icon="🏫" />
+            <StatCard label="Élèves" value={data.studentsCount} color="emerald" icon="👥" />
+          </div>
 
-      <div className="grid gap-8 lg:grid-cols-3">
-        {/* Next Lesson Card */}
-        <div className="lg:col-span-1">
-          <h2 className="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
-             <span className="h-2 w-2 rounded-full bg-blue-600"></span>
-             Prochain cours
-          </h2>
-          {data.nextLesson ? (
-            <div className="rounded-3xl border border-blue-100 bg-blue-50/50 p-6 shadow-sm ring-1 ring-blue-900/5 transition hover:shadow-md">
-              <div className="text-xs font-black uppercase tracking-widest text-blue-600 mb-4">À venir</div>
-              <h3 className="text-xl font-bold text-slate-900">{data.nextLesson.subject}</h3>
-              <div className="mt-4 space-y-3">
-                <div className="flex items-center gap-3 text-sm text-slate-600 font-medium">
-                  <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-white shadow-sm">📍</span>
-                  {data.nextLesson.room}
+          <section className="flex-1 rounded-2xl border border-blue-100 bg-blue-50/50 p-5 shadow-sm flex flex-col min-h-0">
+            <h2 className="text-[10px] font-black text-blue-600 uppercase tracking-[0.2em] mb-4">Prochain cours</h2>
+            {data.nextLesson ? (
+              <div className="flex-1 flex flex-col justify-between">
+                <div>
+                  <h3 className="text-lg font-black text-slate-900 leading-tight">{data.nextLesson.subject}</h3>
+                  <div className="mt-4 space-y-2">
+                    <div className="flex items-center gap-3 text-xs text-slate-600 font-bold">
+                      <span className="h-6 w-6 rounded-lg bg-white flex items-center justify-center shadow-sm">📍</span>
+                      {data.nextLesson.room}
+                    </div>
+                    <div className="flex items-center gap-3 text-xs text-slate-600 font-bold">
+                      <span className="h-6 w-6 rounded-lg bg-white flex items-center justify-center shadow-sm">👥</span>
+                      {data.nextLesson.class}
+                    </div>
+                    <div className="flex items-center gap-3 text-xs text-blue-700 font-black">
+                      <span className="h-6 w-6 rounded-lg bg-white flex items-center justify-center shadow-sm">⏰</span>
+                      {format(new Date(data.nextLesson.start), 'HH:mm')}
+                    </div>
+                  </div>
                 </div>
-                <div className="flex items-center gap-3 text-sm text-slate-600 font-medium">
-                  <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-white shadow-sm">👥</span>
-                  Classe {data.nextLesson.class}
-                </div>
-                <div className="flex items-center gap-3 text-sm text-blue-700 font-bold">
-                  <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-white shadow-sm text-blue-600">⏰</span>
-                  {format(new Date(data.nextLesson.start), 'HH:mm', { locale: fr })}
-                </div>
+                <Link 
+                  href="/prof/planning"
+                  className="mt-6 py-2 bg-white border border-blue-200 text-blue-600 rounded-xl text-center text-[10px] font-black uppercase tracking-widest hover:bg-blue-100 transition shadow-sm"
+                >
+                  Ouvrir le Planning
+                </Link>
               </div>
-              <Link 
-                href="/prof/planning"
-                className="mt-6 block w-full py-3 bg-white border border-blue-200 text-blue-600 rounded-2xl text-center text-xs font-bold uppercase tracking-wider hover:bg-blue-100 transition shadow-sm"
-              >
-                Voir le planning
-              </Link>
-            </div>
-          ) : (
-            <div className="rounded-3xl border border-slate-100 bg-white p-8 text-center text-slate-400 italic text-sm">
-              Plus de cours prévu pour le moment.
-            </div>
-          )}
+            ) : (
+              <div className="h-full flex items-center justify-center text-[10px] text-slate-400 font-bold uppercase tracking-widest italic">
+                Aucun cours.
+              </div>
+            )}
+          </section>
         </div>
 
-        {/* Recent Lessons / Roll Call Reminder */}
-        <div className="lg:col-span-2">
-          <h2 className="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
-             <span className="h-2 w-2 rounded-full bg-slate-900"></span>
-             Dernières séances
-          </h2>
-          <div className="rounded-3xl border border-slate-200 bg-white overflow-hidden shadow-sm">
-             <div className="overflow-x-auto">
-               <table className="w-full text-left text-sm border-collapse">
-                 <thead className="bg-slate-50 border-b border-slate-100">
+        {/* Right Col: Recent Activity (8 cols) */}
+        <div className="lg:col-span-8 flex flex-col min-h-0">
+          <section className="flex-1 bg-white rounded-2xl border border-slate-200 shadow-sm flex flex-col min-h-0 overflow-hidden">
+             <div className="px-5 py-4 border-b border-slate-100 bg-slate-50 shrink-0">
+                <h2 className="text-[10px] font-black text-slate-900 uppercase tracking-[0.2em]">Dernières séances & Appels</h2>
+             </div>
+             <div className="flex-1 overflow-auto">
+               <table className="w-full text-left text-xs border-collapse">
+                 <thead className="sticky top-0 bg-white border-b border-slate-100 z-10">
                    <tr>
-                     <th className="px-6 py-4 font-bold text-slate-500 uppercase tracking-widest text-[10px]">Cours</th>
-                     <th className="px-6 py-4 font-bold text-slate-500 uppercase tracking-widest text-[10px]">Date & Heure</th>
-                     <th className="px-6 py-4 font-bold text-slate-500 uppercase tracking-widest text-[10px]">Appel</th>
-                     <th className="px-6 py-4 font-bold text-slate-500 uppercase tracking-widest text-[10px]">Action</th>
+                     <th className="px-5 py-3 font-black text-slate-400 uppercase tracking-widest text-[9px]">Cours</th>
+                     <th className="px-5 py-3 font-black text-slate-400 uppercase tracking-widest text-[9px]">Date</th>
+                     <th className="px-5 py-3 font-black text-slate-400 uppercase tracking-widest text-[9px]">Statut</th>
+                     <th className="px-5 py-3 font-black text-slate-400 uppercase tracking-widest text-[9px] text-right">Action</th>
                    </tr>
                  </thead>
                  <tbody className="divide-y divide-slate-50">
                    {data.recentLessons.map((l) => (
-                     <tr key={l.id} className="hover:bg-slate-50/50 transition">
-                       <td className="px-6 py-4">
-                         <div className="font-bold text-slate-900">{l.subject}</div>
-                         <div className="text-xs text-slate-500">{l.class}</div>
+                     <tr key={l.id} className="hover:bg-slate-50/50 transition group">
+                       <td className="px-5 py-3">
+                         <div className="font-black text-slate-900">{l.subject}</div>
+                         <div className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">{l.class}</div>
                        </td>
-                       <td className="px-6 py-4 text-slate-600 font-medium">
-                         {format(new Date(l.start), 'dd/MM HH:mm', { locale: fr })}
+                       <td className="px-5 py-3 font-bold text-slate-600">
+                         {format(new Date(l.start), 'dd/MM HH:mm')}
                        </td>
-                       <td className="px-6 py-4">
+                       <td className="px-5 py-3">
                          {l.isValidated ? (
-                           <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-1 text-[10px] font-bold text-emerald-600 border border-emerald-100">
-                             ✓ FAIT
-                           </span>
+                           <span className="text-[9px] font-black text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded uppercase tracking-tighter border border-emerald-100">✓ FAIT</span>
                          ) : (
-                           <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-1 text-[10px] font-bold text-amber-600 border border-amber-100">
-                             ⚠ À FAIRE
-                           </span>
+                           <span className="text-[9px] font-black text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded uppercase tracking-tighter border border-amber-100 animate-pulse">⚠ À FAIRE</span>
                          )}
                        </td>
-                       <td className="px-6 py-4">
+                       <td className="px-5 py-3 text-right">
                          <Link 
                            href="/prof/appel" 
-                           className="text-blue-600 font-bold hover:underline text-xs"
+                           className="inline-block px-3 py-1 bg-slate-50 border border-slate-200 rounded-lg text-[10px] font-black text-blue-600 uppercase tracking-widest hover:bg-blue-600 hover:text-white transition"
                          >
-                           {l.isValidated ? "Modifier" : "Faire l'appel"}
+                           {l.isValidated ? "Éditer" : "Appel"}
                          </Link>
                        </td>
                      </tr>
                    ))}
-                   {data.recentLessons.length === 0 && (
-                     <tr>
-                       <td colSpan={4} className="px-6 py-12 text-center text-slate-400 italic">
-                         Aucune séance récente trouvée.
-                       </td>
-                     </tr>
-                   )}
                  </tbody>
                </table>
+               {data.recentLessons.length === 0 && (
+                 <div className="p-12 text-center text-[10px] text-slate-400 font-bold uppercase tracking-widest italic">
+                    Aucune séance récente.
+                 </div>
+               )}
              </div>
-          </div>
+          </section>
         </div>
       </div>
     </div>
@@ -165,20 +142,20 @@ export default async function ProfHomePage() {
 
 function StatCard({ label, value, color, icon, href }: { label: string, value: number, color: 'blue' | 'indigo' | 'amber' | 'emerald', icon: string, href?: string }) {
   const colors = {
-    blue: "bg-blue-50 text-blue-600 border-blue-100 ring-blue-500/10",
-    indigo: "bg-indigo-50 text-indigo-600 border-indigo-100 ring-indigo-500/10",
-    amber: "bg-amber-50 text-amber-600 border-amber-100 ring-amber-500/10",
-    emerald: "bg-emerald-50 text-emerald-600 border-emerald-100 ring-emerald-500/10"
+    blue: "bg-blue-50 text-blue-600 border-blue-100",
+    indigo: "bg-indigo-50 text-indigo-600 border-indigo-100",
+    amber: "bg-amber-50 text-amber-600 border-amber-100",
+    emerald: "bg-emerald-50 text-emerald-600 border-emerald-100"
   };
 
   const Content = (
-    <div className={`group rounded-3xl border p-6 transition-all duration-300 hover:scale-[1.02] hover:shadow-lg ${colors[color]} ${href ? 'cursor-pointer' : ''}`}>
-      <div className="flex items-center justify-between">
-        <span className="text-2xl">{icon}</span>
-        {href && <span className="text-xs font-bold opacity-0 transition group-hover:opacity-100">Ouvrir →</span>}
+    <div className={`p-4 rounded-2xl border shadow-sm transition-all duration-300 hover:shadow-md ${colors[color]} ${href ? 'hover:scale-[1.02]' : ''}`}>
+      <div className="flex items-center justify-between mb-2">
+        <span className="text-lg">{icon}</span>
+        {href && <span className="text-[9px] font-black opacity-40 uppercase tracking-widest">→</span>}
       </div>
-      <p className="mt-4 text-3xl font-black tracking-tight">{value}</p>
-      <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mt-1">{label}</p>
+      <p className="text-xl font-black tracking-tight leading-none">{value}</p>
+      <p className="text-[9px] font-black uppercase tracking-widest text-slate-500 mt-1 truncate">{label}</p>
     </div>
   );
 

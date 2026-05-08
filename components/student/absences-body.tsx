@@ -38,119 +38,104 @@ export default function AbsencesBody({ student, contextNote }: Props) {
   );
 
   return (
-    <main className="mx-auto max-w-4xl px-4 py-10 text-slate-900 sm:px-6 lg:px-8">
-      {contextNote ? (
-        <div className="mb-8 rounded-xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-950">
+    <div className="h-full flex flex-col gap-6 font-sans text-slate-900">
+      {contextNote && (
+        <div className="px-4 py-2 rounded-xl border border-sky-100 bg-sky-50 text-[10px] font-bold text-sky-700 uppercase tracking-widest shrink-0">
           {contextNote}
         </div>
-      ) : null}
-
-      <div className="mb-10">
-        <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
-          Absences & retards
-        </h1>
-        <p className="mt-2 text-sm text-slate-600">
-          {student.lastName} {student.firstName} · {student.class?.name ?? "Non assignée"}
-        </p>
-      </div>
-
-      <div className="mb-10 grid gap-4 sm:grid-cols-2">
-        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm ring-1 ring-slate-900/[0.04]">
-          <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-            Absences totales
-          </p>
-          <p className="mt-3 text-4xl font-semibold tabular-nums text-slate-900">
-            {absencesOnly.length}
-          </p>
-        </div>
-        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm ring-1 ring-slate-900/[0.04]">
-          <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-            Retards totaux
-          </p>
-          <p className="mt-3 text-4xl font-semibold tabular-nums text-slate-900">
-            {retardsOnly.length}
-          </p>
-        </div>
-      </div>
-
-      {student.attendances.length === 0 ? (
-        <p className="rounded-2xl border border-dashed border-slate-300 bg-white/80 px-6 py-16 text-center text-sm text-slate-500">
-          Aucune absence ni retard enregistré pour le moment.
-        </p>
-      ) : (
-        <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm ring-1 ring-slate-900/[0.04]">
-          <div className="border-b border-slate-100 bg-slate-50/90 px-5 py-3">
-            <h2 className="text-sm font-semibold text-slate-900">Historique</h2>
-          </div>
-          <ul className="divide-y divide-slate-100">
-            {student.attendances.map((a) => {
-              if (a.status === "PRESENT") return null;
-
-              const justified = isJustifiedAttendance(a.status);
-              const unjustifiedVis = !justified ? (
-                <span
-                  className="inline-flex h-2.5 w-2.5 shrink-0 rounded-full bg-red-600 ring-2 ring-white"
-                  title="Non justifié"
-                  aria-label="Événement non justifié (pastille rouge)"
-                />
-              ) : (
-                <span
-                  className="h-2.5 w-2.5 shrink-0 rounded-full bg-emerald-400"
-                  title="Justifié"
-                  aria-hidden
-                />
-              );
-
-              return (
-                <li
-                  key={a.id}
-                  className="flex flex-wrap items-center gap-x-4 gap-y-3 px-5 py-4 sm:flex-nowrap"
-                >
-                  <div className="flex min-w-[2rem] items-center justify-start sm:justify-center">
-                    {unjustifiedVis}
-                  </div>
-                  <div className="min-w-[6.5rem] text-sm tabular-nums text-slate-600">
-                    {new Date(a.lesson.startTime).toLocaleDateString("fr-FR", {
-                      weekday: "short",
-                      day: "numeric",
-                      month: "short",
-                      year: "numeric",
-                    })}
-                  </div>
-                  <div className="flex min-w-[6rem] flex-1 flex-col gap-0.5">
-                    <div className="flex items-center gap-2">
-                      <span
-                        className={`inline-flex w-fit rounded-full px-2 py-0.5 text-xs font-semibold uppercase tracking-wide ring-1 ${a.status === "ABSENT" || a.status === "EXCUSED"
-                          ? "bg-red-50 text-red-900 ring-red-200/90"
-                          : "bg-orange-50 text-orange-950 ring-orange-200/90"}`}
-                      >
-                        {typeLabel(a.status)}
-                      </span>
-                      <span className="text-sm font-medium text-slate-600">
-                        {a.lesson.subject.name}
-                      </span>
-                    </div>
-                    <span className="text-sm font-medium text-slate-900 mt-1">
-                      {statusLabel(a.status)}
-                    </span>
-                    {a.status === "LATE" && a.lateDuration ? (
-                      <span className="mt-1 inline-flex items-center gap-1.5 text-xs font-bold text-orange-700 bg-orange-100/50 w-fit px-2 py-0.5 rounded-md border border-orange-200">
-                        <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                        Retard de {a.lateDuration} min
-                      </span>
-                    ) : null}
-                    {a.reason ? (
-                      <span className="line-clamp-2 text-xs text-slate-500 mt-1 italic">
-                        &ldquo;{a.reason}&rdquo;
-                      </span>
-                    ) : null}
-                  </div>
-                </li>
-              );
-            })}
-          </ul>
-        </div>
       )}
-    </main>
+
+      <header className="flex items-center justify-between shrink-0">
+        <div>
+          <h1 className="text-xl font-black tracking-tight text-slate-900 uppercase tracking-widest">
+            Absences & Retards
+          </h1>
+          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">
+            {student.lastName} {student.firstName} • {student.class?.name ?? "Non assignée"}
+          </p>
+        </div>
+      </header>
+
+      <div className="grid gap-4 sm:grid-cols-2 shrink-0">
+        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm flex items-center justify-between">
+          <div>
+            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Absences</p>
+            <p className="mt-1 text-3xl font-black tabular-nums text-red-600">{absencesOnly.length}</p>
+          </div>
+          <div className="h-10 w-10 rounded-full bg-red-50 flex items-center justify-center border border-red-100 text-red-400">🚫</div>
+        </div>
+        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm flex items-center justify-between">
+          <div>
+            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Retards</p>
+            <p className="mt-1 text-3xl font-black tabular-nums text-amber-600">{retardsOnly.length}</p>
+          </div>
+          <div className="h-10 w-10 rounded-full bg-amber-50 flex items-center justify-center border border-amber-100 text-amber-400">⏳</div>
+        </div>
+      </div>
+
+      <div className="flex-1 min-h-0 flex flex-col bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+        <div className="px-5 py-3 border-b border-slate-100 bg-slate-50 shrink-0">
+          <h2 className="text-[10px] font-black text-slate-900 uppercase tracking-widest">Historique détaillé</h2>
+        </div>
+        
+        <div className="flex-1 overflow-y-auto custom-scrollbar">
+          {student.attendances.length === 0 ? (
+            <div className="h-full flex items-center justify-center p-12 text-center text-[10px] font-black text-slate-400 uppercase tracking-widest italic">
+              Aucun événement enregistré.
+            </div>
+          ) : (
+            <ul className="divide-y divide-slate-50">
+              {student.attendances.map((a) => {
+                if (a.status === "PRESENT") return null;
+
+                const justified = isJustifiedAttendance(a.status);
+
+                return (
+                  <li key={a.id} className="flex items-center gap-4 px-5 py-4 hover:bg-slate-50 transition group">
+                    <div className={`h-2 w-2 shrink-0 rounded-full ${justified ? 'bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.5)]' : 'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.5)] animate-pulse'}`} />
+                    
+                    <div className="min-w-[80px] text-[10px] font-black text-slate-400 uppercase tabular-nums">
+                      {new Date(a.lesson.startTime).toLocaleDateString("fr-FR", {
+                        weekday: "short",
+                        day: "numeric",
+                        month: "short"
+                      })}
+                    </div>
+
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className={`px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-widest border ${
+                          a.status === "ABSENT" || a.status === "EXCUSED"
+                            ? "bg-red-50 text-red-700 border-red-100"
+                            : "bg-amber-50 text-amber-700 border-amber-100"
+                        }`}>
+                          {typeLabel(a.status)}
+                        </span>
+                        <span className="text-[11px] font-black text-slate-900 uppercase truncate">
+                          {a.lesson.subject.name}
+                        </span>
+                      </div>
+                      
+                      <div className="flex items-center gap-3 mt-1">
+                         <span className="text-[9px] font-bold text-slate-400 uppercase">{statusLabel(a.status)}</span>
+                         {a.status === "LATE" && a.lateDuration && (
+                            <span className="text-[9px] font-black text-amber-600 bg-amber-50 px-1 rounded uppercase tracking-tighter">+{a.lateDuration} min</span>
+                         )}
+                      </div>
+
+                      {a.reason && (
+                        <p className="text-[10px] text-slate-500 italic mt-1 line-clamp-1 opacity-70">
+                          &ldquo;{a.reason}&rdquo;
+                        </p>
+                      )}
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </div>
+      </div>
+    </div>
   );
 }
