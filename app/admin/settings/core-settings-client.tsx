@@ -6,6 +6,8 @@ import { fr } from 'date-fns/locale';
 import { useRouter } from 'next/navigation';
 import { updateNotificationConfig } from '@/app/actions/notifications';
 
+import { cleanupOldNotifications } from '@/app/actions/maintenance';
+
 export default function CoreSettingsClient({ 
   initialClasses, 
   initialSubjects, 
@@ -20,6 +22,18 @@ export default function CoreSettingsClient({
   const [newName, setNewName] = useState('');
   const [newSemester, setNewSemester] = useState({ name: '', start: '', end: '' });
   const [newHoliday, setNewHoliday] = useState({ name: '', date: '' });
+
+  const handleManualCleanup = async () => {
+    if (!confirm("Voulez-vous supprimer toutes les notifications datant de plus d'un mois ?")) return;
+    setLoading(true);
+    const res = await cleanupOldNotifications();
+    setLoading(false);
+    if (res.ok) {
+      alert(`Nettoyage réussi : ${res.count} notifications supprimées.`);
+    } else {
+      alert("Erreur lors du nettoyage : " + res.error);
+    }
+  };
 
   const handleUpdateNotifConfig = async (id: string, isEnabled: boolean) => {
     setLoading(true);
@@ -274,10 +288,17 @@ export default function CoreSettingsClient({
 
         {activeTab === 'notifications' && (
           <div className="space-y-4">
-            <div className="bg-blue-50/50 p-3 rounded-xl border border-blue-100 shrink-0">
+            <div className="bg-blue-50/50 p-3 rounded-xl border border-blue-100 shrink-0 flex justify-between items-center gap-4">
               <p className="text-[10px] text-blue-700 font-bold uppercase tracking-widest leading-relaxed">
                 Configurez les déclencheurs de notifications automatiques.
               </p>
+              <button 
+                onClick={handleManualCleanup}
+                disabled={loading}
+                className="px-3 py-1.5 bg-white border border-blue-200 text-blue-600 rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-blue-50 transition shadow-sm shrink-0"
+              >
+                Nettoyer l'historique (+1 mois)
+              </button>
             </div>
 
             <div className="grid gap-3">
