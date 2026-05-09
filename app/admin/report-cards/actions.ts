@@ -5,12 +5,34 @@ import { revalidatePath } from "next/cache";
 import { createNotification, checkEventEnabled } from "@/app/actions/notifications";
 
 export async function calculateStudentAverages(studentId: string, semesterId: string) {
-  const grades = await prisma.grade.findMany({
-    where: { studentId, semesterId },
-    include: { subject: true }
+  // 1. Get the student's class and its subjects (implicitly via lessons or skillMatrix, 
+  // but let's assume we want ALL subjects existing in the system that might be relevant, 
+  // or better, find subjects linked to lessons for this student's class)
+  const student = await prisma.user.findUnique({
+    where: { id: studentId },
+    select: { classId: true }
   });
 
+  const [grades, classSubjects] = await Promise.all([
+    prisma.grade.findMany({
+      where: { studentId, semesterId },
+      include: { subject: true }
+    }),
+    student?.classId ? prisma.subject.findMany({
+      where: {
+        lessons: {
+          some: { classId: student.classId }
+        }
+      }
+    }) : prisma.subject.findMany()
+  ]);
+
   const subjectAverages: Record<string, { sum: number, count: number, name: string }> = {};
+
+  // Initialize all class subjects with 0
+  classSubjects.forEach(s => {
+    subjectAverages[s.id] = { sum: 0, count: 0, name: s.name };
+  });
 
   grades.forEach(g => {
     const sId = g.subjectId;
@@ -25,8 +47,8 @@ export async function calculateStudentAverages(studentId: string, semesterId: st
   return Object.entries(subjectAverages).map(([id, data]) => ({
     subjectId: id,
     subjectName: data.name,
-    average: data.count > 0 ? data.sum / data.count : 0
-  }));
+    average: data.count > 0 ? data.sum / data.count : null // Use null for "no grade"
+  })).sort((a, b) => a.subjectName.localeCompare(b.subjectName));
 }
 
 export async function saveReportCard(data: {

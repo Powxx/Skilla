@@ -44,8 +44,6 @@ export default function WeeklyCalendar({ events, onDateChange, onEventClick, onD
           if (info.event.extendedProps.type === 'holiday' || info.event.extendedProps.type === 'break' || info.event.extendedProps.type === 'holiday-label') return;
           if (onEventClick) {
             onEventClick(info);
-          } else {
-            alert(`Cours: ${info.event.title}\nProf: ${info.event.extendedProps.teacher}`);
           }
         }}
         eventContent={(arg) => {

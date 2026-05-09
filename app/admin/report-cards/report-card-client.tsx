@@ -87,12 +87,15 @@ export default function ReportCardClient({ students, semesters }: any) {
               {averages.map((a: any) => (
                 <div key={a.subjectId} className="flex justify-between items-center p-4 bg-slate-50 rounded-2xl border border-slate-100">
                   <span className="font-bold text-slate-700">{a.subjectName}</span>
-                  <span className="text-lg font-black text-blue-600">{a.average.toFixed(2)}<span className="text-[10px] text-slate-400 ml-1">/20</span></span>
+                  <span className="text-lg font-black text-blue-600">
+                    {a.average !== null ? a.average.toFixed(2) : '—'}
+                    {a.average !== null && <span className="text-[10px] text-slate-400 ml-1">/20</span>}
+                  </span>
                 </div>
               ))}
               {averages.length === 0 && (
                 <div className="p-8 text-center text-slate-400 italic text-sm">
-                  Aucune note trouvée pour ce semestre.
+                  Aucune matière trouvée pour cette classe.
                 </div>
               )}
             </div>
@@ -158,7 +161,12 @@ export default function ReportCardClient({ students, semesters }: any) {
                 <div className="bg-slate-50 p-6 rounded-3xl border border-slate-100 text-right">
                    <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Moyenne Générale</h3>
                    <p className="text-5xl font-black text-blue-600">
-                     {(averages.reduce((acc: number, cur: any) => acc + cur.average, 0) / (averages.length || 1)).toFixed(2)}
+                     {(() => {
+                       const gradedSubjects = averages.filter((a: any) => a.average !== null);
+                       if (gradedSubjects.length === 0) return '—';
+                       const sum = gradedSubjects.reduce((acc: number, cur: any) => acc + cur.average, 0);
+                       return (sum / gradedSubjects.length).toFixed(2);
+                     })()}
                      <span className="text-lg text-slate-400 ml-2">/ 20</span>
                    </p>
                 </div>
@@ -177,7 +185,9 @@ export default function ReportCardClient({ students, semesters }: any) {
                      {averages.map((a: any) => (
                        <tr key={a.subjectId}>
                          <td className="py-6 font-bold text-slate-900">{a.subjectName}</td>
-                         <td className="py-6 text-right font-black text-slate-900 text-lg">{a.average.toFixed(2)}</td>
+                         <td className="py-6 text-right font-black text-slate-900 text-lg">
+                           {a.average !== null ? a.average.toFixed(2) : '—'}
+                         </td>
                          <td className="py-6 text-right text-slate-400 italic text-sm">—</td>
                        </tr>
                      ))}
