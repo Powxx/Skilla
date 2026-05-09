@@ -79,43 +79,6 @@ export async function GET(request: Request) {
     }
   }));
 
-  // --- Inject lunch break events ---
-  const lunchSettings = await prisma.globalSetting.findMany({
-    where: { key: { in: ['LUNCH_START', 'LUNCH_END'] } }
-  });
-  const lunchMap: Record<string, string> = {};
-  lunchSettings.forEach(s => { lunchMap[s.key] = s.value; });
-
-  const lunchStart = lunchMap['LUNCH_START'] || '12:00';
-  const lunchEnd   = lunchMap['LUNCH_END']   || '13:30';
-
-  const weekStart = startOfWeek(date, { weekStartsOn: 1 });
-  const weekEnd = endOfWeek(date, { weekStartsOn: 1 });
-
-  const lunchEvents: any[] = [];
-  for (let i = 0; i < 5; i++) { // Mon → Fri
-    const day = new Date(weekStart);
-    day.setDate(day.getDate() + i);
-    
-    // Set hours in UTC to avoid timezone shifting
-    const start = new Date(day);
-    start.setUTCHours(Number(lunchStart.split(':')[0]), Number(lunchStart.split(':')[1]), 0, 0);
-    
-    const end = new Date(day);
-    end.setUTCHours(Number(lunchEnd.split(':')[0]), Number(lunchEnd.split(':')[1]), 0, 0);
-
-    lunchEvents.push({
-      id: `lunch-${i}`,
-      title: 'Pause repas',
-      start: start.toISOString(),
-      end:   end.toISOString(),
-      display: 'background',
-      backgroundColor: '#fef9c3',
-      borderColor: '#fde68a',
-      extendedProps: { type: 'break' }
-    });
-  }
-
   // --- Inject holiday events ---
   const holidays = await prisma.holiday.findMany({
     where: {
@@ -151,7 +114,7 @@ export async function GET(request: Request) {
     });
   });
 
-  return NextResponse.json([...formattedEvents, ...lunchEvents, ...holidayEvents]);
+  return NextResponse.json([...formattedEvents, ...holidayEvents]);
 }
 
 export async function POST(request: Request) {

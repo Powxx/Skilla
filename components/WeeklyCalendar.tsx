@@ -57,42 +57,34 @@ export default function WeeklyCalendar({ events, onDateChange, onEventClick, onD
           }
 
           if (extendedProps?.type === 'holiday-label') {
-            return (
-              <div className="flex items-center justify-center h-full text-lg font-black opacity-20 rotate-12 pointer-events-none uppercase tracking-widest text-red-600">
-                {arg.event.title}
-              </div>
-            );
+            return {
+              html: `<div class="flex items-center justify-center h-full text-lg font-black opacity-20 rotate-12 pointer-events-none uppercase tracking-widest text-red-600">
+                ${arg.event.title}
+              </div>`
+            };
           }
 
           const isCancelled = extendedProps?.isCancelled;
           const hasSubstitute = !!extendedProps?.substituteId;
 
-          return (
-            <div className={`flex flex-col text-[10px] leading-tight p-1.5 overflow-hidden h-full text-white ${isCancelled ? 'opacity-60' : ''}`}>
-              <div className="flex items-center gap-1 flex-wrap mb-0.5">
-                <span className={`font-black truncate ${isCancelled ? 'line-through' : ''}`}>
-                  {arg.event.title}
+          return {
+             html: `<div class="flex flex-col text-[10px] leading-tight p-1.5 overflow-hidden h-full text-white ${isCancelled ? 'opacity-60' : ''}">
+              <div class="flex items-center gap-1 flex-wrap mb-0.5">
+                <span class="font-black truncate ${isCancelled ? 'line-through' : ''}">
+                  ${arg.event.title || 'Cours'}
                 </span>
-                {isCancelled && (
-                  <span className="bg-white text-red-700 text-[7px] px-1 rounded font-black uppercase tracking-tighter shadow-sm">Off</span>
-                )}
-                {hasSubstitute && !isCancelled && (
-                  <span className="bg-white text-amber-700 text-[7px] px-1 rounded font-black uppercase tracking-tighter shadow-sm">Sub</span>
-                )}
+                ${isCancelled ? '<span class="bg-white text-red-700 text-[7px] px-1 rounded font-black uppercase tracking-tighter shadow-sm">Off</span>' : ''}
+                ${hasSubstitute && !isCancelled ? '<span class="bg-white text-amber-700 text-[7px] px-1 rounded font-black uppercase tracking-tighter shadow-sm">Sub</span>' : ''}
               </div>
-              <div className="mt-auto space-y-0.5">
-                <p className={`truncate text-[9px] font-bold opacity-90 ${isCancelled ? 'line-through' : ''}`}>
-                  {extendedProps?.teacher}
+              <div class="mt-auto space-y-0.5">
+                <p class="truncate text-[9px] font-bold opacity-90 ${isCancelled ? 'line-through' : ''}">
+                  ${extendedProps?.teacher || ''}
                 </p>
-                {extendedProps?.room && !isCancelled && (
-                   <p className="text-[8px] font-black uppercase tracking-widest opacity-70">{extendedProps.room}</p>
-                )}
-                {hasSubstitute && !isCancelled && (
-                  <p className="truncate font-black text-amber-200 text-[8px] uppercase tracking-tighter">Par: {extendedProps.substitute}</p>
-                )}
+                ${extendedProps?.room && !isCancelled ? `<p class="text-[8px] font-black uppercase tracking-widest opacity-70">${extendedProps.room}</p>` : ''}
+                ${hasSubstitute && !isCancelled ? `<p class="truncate font-black text-amber-200 text-[8px] uppercase tracking-tighter">Par: ${extendedProps.substitute}</p>` : ''}
               </div>
-            </div>
-          );
+            </div>`
+          };
         }}
       />
     </div>
