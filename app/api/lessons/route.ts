@@ -96,14 +96,13 @@ export async function GET(request: Request) {
   for (let i = 0; i < 5; i++) { // Mon → Fri
     const day = new Date(weekStart);
     day.setDate(day.getDate() + i);
-    const [sh, sm] = lunchStart.split(':').map(Number);
-    const [eh, em] = lunchEnd.split(':').map(Number);
-    const start = new Date(day); start.setHours(sh, sm, 0, 0);
-    const end   = new Date(day); end.setHours(eh, em, 0, 0);
     
-    // Ensure correct day even if time causes overflow
-    start.setDate(day.getDate());
-    end.setDate(day.getDate());
+    // Set hours in UTC to avoid timezone shifting
+    const start = new Date(day);
+    start.setUTCHours(Number(lunchStart.split(':')[0]), Number(lunchStart.split(':')[1]), 0, 0);
+    
+    const end = new Date(day);
+    end.setUTCHours(Number(lunchEnd.split(':')[0]), Number(lunchEnd.split(':')[1]), 0, 0);
 
     lunchEvents.push({
       id: `lunch-${i}`,
