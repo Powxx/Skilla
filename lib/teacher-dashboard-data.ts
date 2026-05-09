@@ -67,7 +67,9 @@ export async function loadTeacherDashboardPayload(teacherId: string): Promise<Te
     prisma.lesson.findMany({
       where: {
         teacherId,
-        startTime: { lte: now }
+        startTime: { lte: now },
+        isAttendanceValidated: false,
+        isCancelled: false
       },
       orderBy: { startTime: 'desc' },
       take: 5,
