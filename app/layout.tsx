@@ -1,9 +1,11 @@
 import "./globals.css";
 import type { Metadata } from "next";
 import { Providers } from "@/components/Providers";
+import { Analytics } from '@vercel/analytics/react';
+import { SpeedInsights } from '@vercel/speed-insights/next';
 
 export const metadata: Metadata = {
-  title: "Skilla - Gestion de Planning",
+  title: "ECM Academie - Gestion de Planning",
   description: "Plateforme de gestion pour alternance",
 };
 
@@ -15,7 +17,11 @@ export default function RootLayout({
   return (
     <html lang="fr">
       <body>
-        <Providers>{children}</Providers>
+        <Providers>
+          {children}
+          <Analytics />
+          <SpeedInsights />
+        </Providers>
       </body>
     </html>
   );
