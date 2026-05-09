@@ -158,35 +158,49 @@ export default function ReportCardClient({ students, semesters }: any) {
                    <p className="text-2xl font-black text-slate-900">{students.find((s: any) => s.id === selectedStudent)?.name}</p>
                    <p className="text-slate-500 font-medium">Classe : {students.find((s: any) => s.id === selectedStudent)?.className}</p>
                 </div>
-                <div className="bg-slate-50 p-6 rounded-3xl border border-slate-100 text-right">
-                   <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Moyenne Générale</h3>
-                   <p className="text-5xl font-black text-blue-600">
-                     {(() => {
-                       const gradedSubjects = averages.filter((a: any) => a.average !== null);
-                       if (gradedSubjects.length === 0) return '—';
-                       const sum = gradedSubjects.reduce((acc: number, cur: any) => acc + cur.average, 0);
-                       return (sum / gradedSubjects.length).toFixed(2);
-                     })()}
-                     <span className="text-lg text-slate-400 ml-2">/ 20</span>
-                   </p>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="bg-slate-50 p-6 rounded-3xl border border-slate-100 text-right">
+                     <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Moyenne Élève</h3>
+                     <p className="text-4xl font-black text-blue-600">
+                       {(() => {
+                         const graded = averages.filter((a: any) => a.average !== null);
+                         if (graded.length === 0) return '—';
+                         return (graded.reduce((acc: number, cur: any) => acc + cur.average, 0) / graded.length).toFixed(2);
+                       })()}
+                     </p>
+                  </div>
+                  <div className="bg-slate-50 p-6 rounded-3xl border border-slate-100 text-right">
+                     <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Moyenne Classe</h3>
+                     <p className="text-4xl font-black text-slate-900">
+                       {(() => {
+                         const graded = averages.filter((a: any) => a.classAverage !== null);
+                         if (graded.length === 0) return '—';
+                         return (graded.reduce((acc: number, cur: any) => acc + cur.classAverage, 0) / graded.length).toFixed(2);
+                       })()}
+                     </p>
+                  </div>
                 </div>
               </section>
 
               <section>
                  <table className="w-full border-collapse">
                    <thead>
-                     <tr className="border-b-2 border-slate-100">
-                       <th className="py-4 text-left text-xs font-black uppercase tracking-widest text-slate-400">Matière</th>
-                       <th className="py-4 text-right text-xs font-black uppercase tracking-widest text-slate-400">Moyenne</th>
-                       <th className="py-4 text-right text-xs font-black uppercase tracking-widest text-slate-400">Appréciation</th>
+                     <tr className="border-b-2 border-slate-900">
+                       <th className="py-4 text-left text-xs font-black uppercase tracking-widest text-slate-900">Matière</th>
+                       <th className="py-4 text-right text-xs font-black uppercase tracking-widest text-slate-900">Moy. Élève</th>
+                       <th className="py-4 text-right text-xs font-black uppercase tracking-widest text-slate-900">Moy. Classe</th>
+                       <th className="py-4 text-right text-xs font-black uppercase tracking-widest text-slate-900">Appréciation</th>
                      </tr>
                    </thead>
                    <tbody className="divide-y divide-slate-100">
                      {averages.map((a: any) => (
                        <tr key={a.subjectId}>
                          <td className="py-6 font-bold text-slate-900">{a.subjectName}</td>
-                         <td className="py-6 text-right font-black text-slate-900 text-lg">
+                         <td className="py-6 text-right font-black text-blue-600 text-lg">
                            {a.average !== null ? a.average.toFixed(2) : '—'}
+                         </td>
+                         <td className="py-6 text-right font-bold text-slate-500">
+                           {a.classAverage !== null ? a.classAverage.toFixed(2) : '—'}
                          </td>
                          <td className="py-6 text-right text-slate-400 italic text-sm">
                            {a.comments || "—"}

@@ -5,52 +5,54 @@ import { revalidatePath } from "next/cache";
 import { createNotification, checkEventEnabled } from "@/app/actions/notifications";
 
 export async function calculateStudentAverages(studentId: string, semesterId: string) {
-  // 1. Get the student's class and its subjects (implicitly via lessons or skillMatrix, 
-  // but let's assume we want ALL subjects existing in the system that might be relevant, 
-  // or better, find subjects linked to lessons for this student's class)
   const student = await prisma.user.findUnique({
     where: { id: studentId },
     select: { classId: true }
   });
 
-  const [grades, classSubjects] = await Promise.all([
-    prisma.grade.findMany({
-      where: { studentId, semesterId },
-      include: { subject: true }
-    }),
-    student?.classId ? prisma.subject.findMany({
-      where: {
-        lessons: {
-          some: { classId: student.classId }
-        }
-      }
-    }) : prisma.subject.findMany()
-  ]);
+  if (!student?.classId) return [];
 
-  const subjectAverages: Record<string, { sum: number, count: number, name: string, comments: string[] }> = {};
-
-  // Initialize all class subjects with 0
-  classSubjects.forEach(s => {
-    subjectAverages[s.id] = { sum: 0, count: 0, name: s.name, comments: [] };
+  // 1. Get all grades for the class in this semester
+  const classGrades = await prisma.grade.findMany({
+    where: { semesterId, student: { classId: student.classId } },
+    include: { subject: true }
   });
 
-  grades.forEach(g => {
-    const sId = g.subjectId;
-    if (!subjectAverages[sId]) {
-      subjectAverages[sId] = { sum: 0, count: 0, name: g.subject.name, comments: [] };
+  // 2. Aggregate class data
+  const classStats: Record<string, { sum: number, count: number }> = {};
+  classGrades.forEach(g => {
+    if (!classStats[g.subjectId]) classStats[g.subjectId] = { sum: 0, count: 0 };
+    classStats[g.subjectId].sum += g.value * (g.coefficient || 1);
+    classStats[g.subjectId].count += (g.coefficient || 1);
+  });
+
+  // 3. Aggregate student data
+  const studentGrades = classGrades.filter(g => g.studentId === studentId);
+  const studentStats: Record<string, { sum: number, count: number, name: string, comments: string[] }> = {};
+  
+  // Initialize with class subjects
+  const classSubjects = await prisma.subject.findMany({
+    where: { lessons: { some: { classId: student.classId } } }
+  });
+  classSubjects.forEach(s => {
+    studentStats[s.id] = { sum: 0, count: 0, name: s.name, comments: [] };
+  });
+
+  studentGrades.forEach(g => {
+    if (!studentStats[g.subjectId]) {
+      studentStats[g.subjectId] = { sum: 0, count: 0, name: g.subject.name, comments: [] };
     }
     const coef = g.coefficient || 1;
-    subjectAverages[sId].sum += g.value * coef;
-    subjectAverages[sId].count += coef;
-    if (g.comment) {
-      subjectAverages[sId].comments.push(g.comment);
-    }
+    studentStats[g.subjectId].sum += g.value * coef;
+    studentStats[g.subjectId].count += coef;
+    if (g.comment) studentStats[g.subjectId].comments.push(g.comment);
   });
 
-  return Object.entries(subjectAverages).map(([id, data]) => ({
+  return Object.entries(studentStats).map(([id, data]) => ({
     subjectId: id,
     subjectName: data.name,
     average: data.count > 0 ? data.sum / data.count : null,
+    classAverage: classStats[id] && classStats[id].count > 0 ? classStats[id].sum / classStats[id].count : null,
     comments: data.comments.join(" ; ")
   })).sort((a, b) => a.subjectName.localeCompare(b.subjectName));
 }
