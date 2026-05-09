@@ -122,14 +122,6 @@ export default async function AdminHomePage() {
            <section className="flex-1 bg-white rounded-2xl border border-slate-200 p-5 shadow-sm flex flex-col min-h-0">
               <AdminMeetingsManager initialMeetings={pendingMeetings} />
            </section>
-           
-           <section className="bg-slate-900 p-5 rounded-2xl text-white shadow-xl shrink-0">
-              <h2 className="text-[10px] font-black uppercase tracking-[0.2em] text-white/40 mb-3">Accès Rapides</h2>
-              <div className="grid grid-cols-2 gap-2">
-                 <Link href="/prof" className="block p-3 rounded-xl bg-white/5 hover:bg-white/10 transition text-[9px] font-black uppercase tracking-widest text-center">Espace Professeur</Link>
-                 <Link href="/student" className="block p-3 rounded-xl bg-white/5 hover:bg-white/10 transition text-[9px] font-black uppercase tracking-widest text-center">Espace Élève</Link>
-              </div>
-           </section>
         </div>
       </div>
     </div>
