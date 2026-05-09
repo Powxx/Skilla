@@ -36,6 +36,7 @@ export default function AdvancedPlanningClient({ classes, teachers, subjects, ro
   const calendarRef = useRef<FullCalendar>(null);
   const [currentDate, setCurrentDate] = useState(new Date());
   const [events, setEvents] = useState<any[]>([]);
+  const [holidays, setHolidays] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
 
@@ -48,6 +49,20 @@ export default function AdvancedPlanningClient({ classes, teachers, subjects, ro
     isCancelled: false,
     substituteId: ""
   });
+
+  const fetchHolidays = async () => {
+    try {
+      const res = await fetch('/api/admin/holidays');
+      const data = await res.json();
+      if (Array.isArray(data)) setHolidays(data);
+    } catch (err) {
+      console.error("Erreur holidays:", err);
+    }
+  };
+
+  useEffect(() => {
+    fetchHolidays();
+  }, []);
 
   useEffect(() => {
     let draggableEl = document.getElementById('external-events');
