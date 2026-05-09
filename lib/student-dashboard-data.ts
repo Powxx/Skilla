@@ -84,13 +84,16 @@ export async function loadStudentDashboardPayload(
   const nextLesson = student.class?.lessons[0] || null;
 
   // 4. Upcoming Homework
+  const now = new Date();
+  const homeworkEndDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+
   const homeworkLessons = student.class ? await prisma.lesson.findMany({
     where: {
       classId: student.class.id,
-      homework: { not: "" },
+      homework: { not: null },
       startTime: { 
-        gte: new Date(), 
-        lte: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) 
+        gte: now, 
+        lte: homeworkEndDate 
       }
     },
     orderBy: { startTime: 'asc' },
@@ -98,13 +101,13 @@ export async function loadStudentDashboardPayload(
     include: { subject: { select: { name: true } } }
   }) : [];
 
+  console.log(`Debug Homework: Student ${student.id}, Class ${student.class?.id}, Found ${homeworkLessons.length} lessons with homework.`);
+
   const homeworks = homeworkLessons.map(l => ({
     subjectName: l.subject.name,
     content: l.homework!,
     date: l.startTime.toISOString()
   }));
-
-  // 5. Chart Rows (Order by date asc for chart)
   const chartRows: DashboardChartRow[] = [...student.grades].reverse().map((g) => {
     const d = g.createdAt;
     return {
