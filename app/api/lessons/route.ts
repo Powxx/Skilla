@@ -80,6 +80,8 @@ export async function GET(request: Request) {
   }));
 
   // --- Inject holiday events ---
+  const weekStart = startOfWeek(date, { weekStartsOn: 1 });
+  const weekEnd = endOfWeek(date, { weekStartsOn: 1 });
   const holidays = await prisma.holiday.findMany({
     where: {
       date: {
