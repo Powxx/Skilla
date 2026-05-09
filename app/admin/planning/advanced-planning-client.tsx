@@ -7,7 +7,6 @@ import interactionPlugin, { Draggable } from '@fullcalendar/interaction';
 import frLocale from '@fullcalendar/core/locales/fr';
 import { startOfWeek, format, isWithinInterval, parseISO, endOfWeek, addWeeks, setHours, setMinutes, isSameDay } from 'date-fns';
 import { fr } from 'date-fns/locale';
-import { getSpecialCalendarEvents } from '@/lib/calendar-utils';
 
 interface AdvancedPlanningClientProps {
   classes: { id: string; name: string }[];
@@ -37,7 +36,6 @@ export default function AdvancedPlanningClient({ classes, teachers, subjects, ro
   const calendarRef = useRef<FullCalendar>(null);
   const [currentDate, setCurrentDate] = useState(new Date());
   const [events, setEvents] = useState<any[]>([]);
-  const [holidays, setHolidays] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
 
@@ -50,20 +48,6 @@ export default function AdvancedPlanningClient({ classes, teachers, subjects, ro
     isCancelled: false,
     substituteId: ""
   });
-
-  const fetchHolidays = async () => {
-    try {
-      const res = await fetch('/api/admin/holidays');
-      const data = await res.json();
-      if (Array.isArray(data)) setHolidays(data);
-    } catch (err) {
-      console.error("Erreur holidays:", err);
-    }
-  };
-
-  useEffect(() => {
-    fetchHolidays();
-  }, []);
 
   useEffect(() => {
     let draggableEl = document.getElementById('external-events');
@@ -311,18 +295,17 @@ export default function AdvancedPlanningClient({ classes, teachers, subjects, ro
     }
   };
 
-  // Filter events based on selected view + Special events
-  const specialEvents = getSpecialCalendarEvents(currentDate, holidays);
-  const visibleEvents = [
-    ...events.filter(e => {
-      if (!viewFilter.id) return true;
-      if (viewFilter.type === 'class') return e.extendedProps.classId === viewFilter.id;
-      if (viewFilter.type === 'teacher') return e.extendedProps.teacherId === viewFilter.id;
-      if (viewFilter.type === 'room') return e.extendedProps.roomId === viewFilter.id;
-      return true;
-    }),
-    ...specialEvents
-  ];
+  // Filter events based on selected view
+  const visibleEvents = events.filter(e => {
+    // Background events (lunch, holidays) are always visible
+    if (e.extendedProps?.type === 'break' || e.extendedProps?.type === 'holiday' || e.extendedProps?.type === 'holiday-label') return true;
+    
+    if (!viewFilter.id) return true;
+    if (viewFilter.type === 'class') return e.extendedProps.classId === viewFilter.id;
+    if (viewFilter.type === 'teacher') return e.extendedProps.teacherId === viewFilter.id;
+    if (viewFilter.type === 'room') return e.extendedProps.roomId === viewFilter.id;
+    return true;
+  });
 
   // Calculate Stats
   const calculateStats = () => {

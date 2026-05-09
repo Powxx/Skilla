@@ -4,24 +4,12 @@ import React, { useState, useEffect } from 'react';
 import WeeklyCalendar from '@/components/WeeklyCalendar';
 import { startOfWeek, format } from 'date-fns';
 import { fr } from 'date-fns/locale';
-import { getSpecialCalendarEvents } from '@/lib/calendar-utils';
 
 export default function PlanningClient({ classId, teacherId }: { classId?: string; teacherId?: string }) {
   const [events, setEvents] = useState<any[]>([]);
-  const [holidays, setHolidays] = useState<any[]>([]);
   const [currentDate, setCurrentDate] = useState(new Date());
   const [loading, setLoading] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<any>(null);
-
-  const fetchHolidays = async () => {
-    try {
-      const res = await fetch('/api/admin/holidays');
-      const data = await res.json();
-      if (Array.isArray(data)) setHolidays(data);
-    } catch (err) {
-      console.error("Erreur holidays:", err);
-    }
-  };
 
   const fetchLessons = async (date: Date) => {
     if (!classId && !teacherId) return;
@@ -48,10 +36,6 @@ export default function PlanningClient({ classId, teacherId }: { classId?: strin
   };
 
   useEffect(() => {
-    fetchHolidays();
-  }, []);
-
-  useEffect(() => {
     fetchLessons(currentDate);
   }, [currentDate, classId, teacherId]);
 
@@ -65,7 +49,7 @@ export default function PlanningClient({ classId, teacherId }: { classId?: strin
         </div>
       )}
       <WeeklyCalendar 
-        events={[...events, ...getSpecialCalendarEvents(currentDate, holidays)]} 
+        events={events} 
         onDateChange={(newDate) => {
           if (newDate.getTime() !== currentDate.getTime()) {
             setCurrentDate(newDate);
@@ -73,7 +57,7 @@ export default function PlanningClient({ classId, teacherId }: { classId?: strin
         }} 
         onEventClick={(info) => {
           // Don't open for special events (lunch, holidays)
-          if (info.event.id) {
+          if (info.event.extendedProps?.type !== 'break' && info.event.extendedProps?.type !== 'holiday' && info.event.extendedProps?.type !== 'holiday-label') {
             setSelectedEvent(info.event);
           }
         }}

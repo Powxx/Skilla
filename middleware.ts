@@ -52,11 +52,6 @@ export async function middleware(req: NextRequest) {
   if (pathname.startsWith("/prof") && token.role !== "TEACHER" && token.role !== "ADMIN") {
     return NextResponse.redirect(new URL("/login", req.url));
   }
-
-  // Accès livrets : uniquement pour les profs habilités (canAccessLivrets) ou admins
-  if (pathname.startsWith("/prof/livret") && token.role === "TEACHER" && !token.canAccessLivrets) {
-    return NextResponse.redirect(new URL("/prof?access=denied", req.url));
-  }
   if (pathname.startsWith("/student") && token.role !== "STUDENT" && token.role !== "ADMIN") {
     return NextResponse.redirect(new URL("/login", req.url));
   }

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useTransition } from 'react';
+import React, { useState, useTransition, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import LivretBody from '@/components/livret/livret-body';
 import { updateSkillLevel, addCompetency } from './actions';
@@ -8,10 +8,28 @@ import { updateSkillLevel, addCompetency } from './actions';
 export default function ProfLivretClient({ students, initialEvaluations, selectedStudentId, category }: any) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
+  const [evaluations, setEvaluations] = useState(initialEvaluations);
+
+  // Sync with props when navigation happens
+  useEffect(() => {
+    setEvaluations(initialEvaluations);
+  }, [initialEvaluations]);
 
   const onUpdate = (compName: string, level: number) => {
+    // Optimistic update
+    const previousEvaluations = [...evaluations];
+    setEvaluations(evaluations.map((e: any) => 
+      e.name === compName ? { ...e, level } : e
+    ));
+
     startTransition(async () => {
-      await updateSkillLevel(selectedStudentId, compName, level, category);
+      try {
+        await updateSkillLevel(selectedStudentId, compName, level, category);
+      } catch (error) {
+        // Rollback on error
+        setEvaluations(previousEvaluations);
+        alert("Erreur lors de la mise à jour");
+      }
     });
   };
 
@@ -36,10 +54,10 @@ export default function ProfLivretClient({ students, initialEvaluations, selecte
       <div className="lg:col-span-3 space-y-8">
         <LivretBody 
           studentName={students.find((s: any) => s.id === selectedStudentId)?.name || "L'élève"}
-          competencies={initialEvaluations} 
+          competencies={evaluations} 
           isEditable={true}
           onUpdate={(id, level) => {
-            const comp = initialEvaluations.find((e: any) => e.id === id);
+            const comp = evaluations.find((e: any) => e.id === id);
             if (comp) onUpdate(comp.name, level);
           }}
         />

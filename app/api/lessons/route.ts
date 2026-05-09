@@ -62,7 +62,7 @@ export async function GET(request: Request) {
     title: lesson.subject.name,
     start: lesson.startTime.toISOString(),
     end: lesson.endTime.toISOString(),
-    backgroundColor: lesson.isCancelled ? "#ef4444" : lesson.substitute ? "#f59e0b" : "#3b82f6", // Red if cancelled, Orange if sub, Blue default
+    backgroundColor: lesson.isCancelled ? "#ef4444" : lesson.substitute ? "#f59e0b" : "#3b82f6",
     extendedProps: {
       teacher: `${lesson.teacher.firstName} ${lesson.teacher.lastName}`,
       teacherId: lesson.teacherId,
@@ -80,7 +80,75 @@ export async function GET(request: Request) {
     }
   }));
 
-  return NextResponse.json(formattedEvents);
+  // --- Inject lunch break events ---
+  const lunchSettings = await prisma.globalSetting.findMany({
+    where: { key: { in: ['LUNCH_START', 'LUNCH_END'] } }
+  });
+  const lunchMap: Record<string, string> = {};
+  lunchSettings.forEach(s => { lunchMap[s.key] = s.value; });
+
+  const lunchStart = lunchMap['LUNCH_START'] || '12:00';
+  const lunchEnd   = lunchMap['LUNCH_END']   || '13:30';
+
+  const weekStart = startOfWeek(date, { weekStartsOn: 1 });
+  const weekEnd = endOfWeek(date, { weekStartsOn: 1 });
+
+  const lunchEvents: any[] = [];
+  for (let i = 0; i < 5; i++) { // Mon → Fri
+    const day = new Date(weekStart);
+    day.setDate(day.getDate() + i);
+    const [sh, sm] = lunchStart.split(':').map(Number);
+    const [eh, em] = lunchEnd.split(':').map(Number);
+    const start = new Date(day); start.setHours(sh, sm, 0, 0);
+    const end   = new Date(day); end.setHours(eh, em, 0, 0);
+    lunchEvents.push({
+      id: `lunch-${i}`,
+      title: 'Pause repas',
+      start: start.toISOString(),
+      end:   end.toISOString(),
+      display: 'background',
+      backgroundColor: '#fef9c3',
+      borderColor: '#fde68a',
+      extendedProps: { type: 'break' }
+    });
+  }
+
+  // --- Inject holiday events ---
+  const holidays = await prisma.holiday.findMany({
+    where: {
+      date: {
+        gte: weekStart,
+        lte: weekEnd,
+      }
+    }
+  });
+
+  const holidayEvents: any[] = [];
+  holidays.forEach(h => {
+    // Shading
+    holidayEvents.push({
+      id: `holiday-bg-${h.id}`,
+      start: new Date(new Date(h.date).setHours(8, 0, 0, 0)).toISOString(),
+      end: new Date(new Date(h.date).setHours(20, 0, 0, 0)).toISOString(),
+      display: 'background',
+      backgroundColor: '#fee2e2',
+      extendedProps: { type: 'holiday' }
+    });
+    // Label
+    holidayEvents.push({
+      id: `holiday-label-${h.id}`,
+      title: h.name,
+      start: new Date(new Date(h.date).setHours(8, 0, 0, 0)).toISOString(),
+      end: new Date(new Date(h.date).setHours(20, 0, 0, 0)).toISOString(),
+      editable: false,
+      backgroundColor: 'transparent',
+      borderColor: 'transparent',
+      textColor: '#ef4444',
+      extendedProps: { type: 'holiday-label' }
+    });
+  });
+
+  return NextResponse.json([...formattedEvents, ...lunchEvents, ...holidayEvents]);
 }
 
 export async function POST(request: Request) {

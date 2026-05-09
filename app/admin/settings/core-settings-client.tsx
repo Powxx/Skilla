@@ -20,6 +20,7 @@ export default function CoreSettingsClient({
 }: any) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
+  const [teacherLoadingMap, setTeacherLoadingMap] = useState<Record<string, boolean>>({});
   const [activeTab, setActiveTab] = useState('classes');
 
   const [newName, setNewName] = useState('');
@@ -29,6 +30,13 @@ export default function CoreSettingsClient({
   // Planning settings
   const [lunchStart, setLunchStart] = useState(globalSettings.LUNCH_START || "12:00");
   const [lunchEnd, setLunchEnd] = useState(globalSettings.LUNCH_END || "13:30");
+
+  const [teacherList, setTeacherList] = useState(teachers);
+
+  // Sync with props
+  useEffect(() => {
+    setTeacherList(teachers);
+  }, [teachers]);
 
   const handleUpdateLunch = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -41,10 +49,23 @@ export default function CoreSettingsClient({
   };
 
   const handleUpdateTeacherAccess = async (userId: string, current: boolean) => {
-    setLoading(true);
-    await updateTeacherLivretAccess(userId, !current);
-    setLoading(false);
-    router.refresh();
+    // Optimistic update
+    const previousList = [...teacherList];
+    setTeacherList(teacherList.map((t: any) => 
+      t.id === userId ? { ...t, canAccessLivrets: !current } : t
+    ));
+
+    setTeacherLoadingMap(prev => ({ ...prev, [userId]: true }));
+    try {
+      await updateTeacherLivretAccess(userId, !current);
+    } catch (error) {
+      // Rollback
+      setTeacherList(previousList);
+      alert("Erreur lors de la mise à jour des droits");
+    } finally {
+      setTeacherLoadingMap(prev => ({ ...prev, [userId]: false }));
+      router.refresh();
+    }
   };
 
   const handleManualCleanup = async () => {
@@ -602,7 +623,7 @@ export default function CoreSettingsClient({
                 borderRadius: '1rem', padding: '1rem', textAlign: 'center',
               }}>
                 <div style={{ fontSize: '1.5rem', fontWeight: 900, color: '#16a34a' }}>
-                  {teachers.filter((t: any) => t.canAccessLivrets).length}
+                  {teacherList.filter((t: any) => t.canAccessLivrets).length}
                 </div>
                 <div style={{ fontSize: '0.6rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.1em', color: '#15803d', marginTop: '0.2rem' }}>
                   Prof. habilités
@@ -613,7 +634,7 @@ export default function CoreSettingsClient({
                 borderRadius: '1rem', padding: '1rem', textAlign: 'center',
               }}>
                 <div style={{ fontSize: '1.5rem', fontWeight: 900, color: '#ea580c' }}>
-                  {teachers.filter((t: any) => !t.canAccessLivrets).length}
+                  {teacherList.filter((t: any) => !t.canAccessLivrets).length}
                 </div>
                 <div style={{ fontSize: '0.6rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.1em', color: '#c2410c', marginTop: '0.2rem' }}>
                   Sans accès
@@ -623,7 +644,7 @@ export default function CoreSettingsClient({
 
             {/* Teacher list */}
             <div className="space-y-2">
-              {teachers.map((teacher: any) => (
+              {teacherList.map((teacher: any) => (
                 <div
                   key={teacher.id}
                   style={{
@@ -664,7 +685,7 @@ export default function CoreSettingsClient({
                   {/* Toggle switch */}
                   <button
                     onClick={() => handleUpdateTeacherAccess(teacher.id, teacher.canAccessLivrets)}
-                    disabled={loading}
+                    disabled={!!teacherLoadingMap[teacher.id]}
                     aria-label={teacher.canAccessLivrets ? 'Révoquer accès livrets' : 'Accorder accès livrets'}
                     style={{
                       position: 'relative',
@@ -674,26 +695,39 @@ export default function CoreSettingsClient({
                       background: teacher.canAccessLivrets
                         ? 'linear-gradient(135deg, #16a34a, #22c55e)'
                         : '#e2e8f0',
-                      cursor: loading ? 'not-allowed' : 'pointer',
+                      cursor: teacherLoadingMap[teacher.id] ? 'not-allowed' : 'pointer',
                       transition: 'background 0.3s ease',
                       boxShadow: teacher.canAccessLivrets ? '0 2px 8px rgba(22,163,74,0.4)' : 'inset 0 2px 4px rgba(0,0,0,0.08)',
                       flexShrink: 0,
-                      opacity: loading ? 0.6 : 1,
+                      opacity: teacherLoadingMap[teacher.id] ? 0.6 : 1,
                     }}
                   >
-                    <span
-                      style={{
-                        position: 'absolute',
-                        top: '0.2rem',
-                        left: teacher.canAccessLivrets ? 'calc(100% - 1.35rem)' : '0.2rem',
-                        width: '1.35rem', height: '1.35rem',
+                    {teacherLoadingMap[teacher.id] ? (
+                      <span style={{
+                        position: 'absolute', top: '50%', left: '50%',
+                        transform: 'translate(-50%, -50%)',
+                        width: '0.875rem', height: '0.875rem',
+                        border: '2px solid rgba(255,255,255,0.4)',
+                        borderTopColor: 'white',
                         borderRadius: '50%',
-                        background: 'white',
-                        boxShadow: '0 2px 6px rgba(0,0,0,0.2)',
-                        transition: 'left 0.25s ease',
+                        animation: 'spin 0.6s linear infinite',
                         display: 'block',
-                      }}
-                    />
+                      }} />
+                    ) : (
+                      <span
+                        style={{
+                          position: 'absolute',
+                          top: '0.2rem',
+                          left: teacher.canAccessLivrets ? 'calc(100% - 1.35rem)' : '0.2rem',
+                          width: '1.35rem', height: '1.35rem',
+                          borderRadius: '50%',
+                          background: 'white',
+                          boxShadow: '0 2px 6px rgba(0,0,0,0.2)',
+                          transition: 'left 0.25s ease',
+                          display: 'block',
+                        }}
+                      />
+                    )}
                   </button>
                 </div>
               ))}

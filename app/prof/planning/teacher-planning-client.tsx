@@ -114,6 +114,7 @@ export default function TeacherPlanningClient({ teacherId, teachers }: { teacher
           }
         }}
         onEventClick={(info) => {
+          if (info.event.extendedProps?.type === 'break' || info.event.extendedProps?.type === 'holiday' || info.event.extendedProps?.type === 'holiday-label') return;
           setSelectedEvent(info.event);
           setFeedback(null);
           setSubstituteId("");
