@@ -194,9 +194,9 @@ model Attendance {
   lateDuration Int?
   reason       String?
   lessonId     String
-  lesson       Lesson           @relation(fields: [lessonId], references: [id])
+  lesson       Lesson           @relation(fields: [lessonId], references: [id], onDelete: Cascade)
   studentId    String
-  student      User             @relation(fields: [studentId], references: [id])
+  student      User             @relation(fields: [studentId], references: [id], onDelete: Cascade)
 }
 
 // --- NOTES & BULLETINS ---
@@ -209,13 +209,13 @@ model Grade {
   createdAt    DateTime @default(now())
 
   studentId    String
-  student      User     @relation(fields: [studentId], references: [id])
+  student      User     @relation(fields: [studentId], references: [id], onDelete: Cascade)
   
   subjectId    String
-  subject      Subject  @relation(fields: [subjectId], references: [id])
+  subject      Subject  @relation(fields: [subjectId], references: [id], onDelete: Cascade)
   
   semesterId   String
-  semester     Semester @relation(fields: [semesterId], references: [id])
+  semester     Semester @relation(fields: [semesterId], references: [id], onDelete: Cascade)
 }
 
 model ReportCard {
@@ -223,9 +223,11 @@ model ReportCard {
   generalAppraisal  String?
   distinction       String?  
   semesterId        String
-  semester          Semester @relation(fields: [semesterId], references: [id])
+  semester          Semester @relation(fields: [semesterId], references: [id], onDelete: Cascade)
   studentId         String
-  student           User     @relation(fields: [studentId], references: [id])
+  student           User     @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([studentId, semesterId])
 }
 
 // --- ENTREPRISE & RH ---
