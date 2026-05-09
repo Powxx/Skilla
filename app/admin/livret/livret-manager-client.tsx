@@ -38,16 +38,24 @@ export default function AdminLivretManagerClient({ classes, students }: Props) {
     // Unique competency names for this class
     const compNames = Array.from(new Set(selectedClass.competencies.map((cc: any) => cc.name)));
 
-    return compNames.map((name: any, index) => {
-      // For the livret view, we might want to average or pick one (here we take SCHOOL as primary)
-      const evalItem = selectedStudent.evaluations.find((e: any) => e.competency === name && e.category === 'SCHOOL');
+    return compNames.flatMap((name: any, index) => {
+      const schoolEval = selectedStudent.evaluations.find((e: any) => e.competency === name && e.category === 'SCHOOL');
+      const enterpriseEval = selectedStudent.evaluations.find((e: any) => e.competency === name && e.category === 'ENTERPRISE');
       
-      return {
-        id: `comp-${index}`,
-        name: name as string,
-        level: evalItem?.level || 1,
-        lastUpdated: new Date().toISOString()
-      };
+      return [
+        {
+          id: `comp-${index}-school`,
+          name: `${name} (École)`,
+          level: schoolEval?.level || 1,
+          lastUpdated: new Date().toISOString()
+        },
+        {
+          id: `comp-${index}-enterprise`,
+          name: `${name} (Entreprise)`,
+          level: enterpriseEval?.level || 1,
+          lastUpdated: new Date().toISOString()
+        }
+      ];
     });
   }, [selectedStudent, selectedClass]);
 
