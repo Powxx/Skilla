@@ -1,4 +1,5 @@
 import prisma from "@/lib/prisma";
+import { startOfDay } from "date-fns";
 import type { DashboardChartRow } from "@/app/student/dashboard/dashboard-client";
 import type { DashboardClientProps } from "@/app/student/dashboard/dashboard-client";
 
@@ -84,24 +85,22 @@ export async function loadStudentDashboardPayload(
   const nextLesson = student.class?.lessons[0] || null;
 
   // 4. Upcoming Homework
-  const now = new Date();
-  const homeworkEndDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+  const now = startOfDay(new Date());
 
   const homeworkLessons = student.class ? await prisma.lesson.findMany({
     where: {
       classId: student.class.id,
       homework: { not: null },
       startTime: { 
-        gte: now, 
-        lte: homeworkEndDate 
+        gte: now
       }
     },
     orderBy: { startTime: 'asc' },
-    take: 10,
+    take: 20,
     include: { subject: { select: { name: true } } }
   }) : [];
 
-  console.log(`Debug Homework: Student ${student.id}, Class ${student.class?.id}, Found ${homeworkLessons.length} lessons with homework.`);
+  console.log(`Debug Homework: Student ${student.id}, Class ${student.class?.id}, Found ${homeworkLessons.length} lessons with homework from ${now.toISOString()}.`);
 
   const homeworks = homeworkLessons.map(l => ({
     subjectName: l.subject.name,
