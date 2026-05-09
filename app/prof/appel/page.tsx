@@ -22,14 +22,24 @@ export default async function ProfAppelPage() {
   const todayStart = startOfDay(now);
   const todayEnd = endOfDay(now);
 
-  // Fetch lessons for today for this teacher
+  // Fetch lessons for today + all past unvalidated lessons for this teacher
   const lessons = await prisma.lesson.findMany({
     where: {
       teacherId: session.user.id,
-      startTime: {
-        gte: todayStart,
-        lte: todayEnd,
-      },
+      OR: [
+        {
+          startTime: {
+            gte: todayStart,
+            lte: todayEnd,
+          },
+        },
+        {
+          startTime: {
+            lt: todayStart,
+          },
+          isAttendanceValidated: false,
+        }
+      ],
       isCancelled: false,
     },
     include: {
@@ -37,7 +47,7 @@ export default async function ProfAppelPage() {
       subject: { select: { name: true } },
       room: { select: { name: true } },
     },
-    orderBy: { startTime: "asc" },
+    orderBy: { startTime: "desc" },
   });
 
   return (

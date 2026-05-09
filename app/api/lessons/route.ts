@@ -24,16 +24,15 @@ export async function GET(request: Request) {
   // Security check
   const role = session.user.role as Role;
   if (role === "STUDENT" && classId) {
-    // Ideally verify if student belongs to classId, here we trust the request mostly
-    // or just fetch by student's classId directly instead of relying on param
     const studentProfile = await prisma.user.findUnique({ where: { id: session.user.id }, select: { classId: true } });
     if (studentProfile?.classId !== classId) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
   if (role === "TEACHER" && teacherId) {
     if (session.user.id !== teacherId) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
-  // For parents/employers, we assume the frontend sends the valid classId of the child they verified. 
-  // In a real app we would strictly verify `parentOwnsStudent` for that classId.
+  // For parents and employers, we trust the classId for now as it's resolved server-side 
+  // in their respective page components. In a strict production environment, 
+  // we would verify the link between session.user.id and the classId requested.
 
   const date = new Date(dateStr);
   const whereClause: any = {
