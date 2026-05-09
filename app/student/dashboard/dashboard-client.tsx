@@ -94,7 +94,7 @@ export default function StudentDashboardClient({
                   <h3 className="text-xl font-black leading-tight">{nextLesson.subjectName}</h3>
                   <p className="text-white/60 text-xs mt-1 flex items-center gap-2">
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
-                    {format(new Date(nextLesson.startTime), 'HH:mm')} — {nextLesson.roomName}
+                    {format(new Date(nextLesson.startTime), 'dd/MM à HH:mm')} — {nextLesson.roomName}
                   </p>
                 </div>
               ) : (
@@ -114,7 +114,7 @@ export default function StudentDashboardClient({
                 <div key={idx} className="p-3 rounded-xl border border-slate-50 bg-slate-50/50 hover:border-blue-100 transition">
                    <div className="flex justify-between items-start mb-1">
                      <p className="text-[9px] font-black text-blue-600 uppercase tracking-tighter">{hw.subjectName}</p>
-                     <p className="text-[9px] text-slate-400 font-bold">{format(new Date(hw.date), 'dd/MM')}</p>
+                     <p className="text-[9px] text-slate-400 font-bold">{format(new Date(hw.date), 'dd/MM/yyyy')}</p>
                    </div>
                    <p className="text-xs text-slate-700 leading-snug line-clamp-2">{hw.content}</p>
                 </div>

@@ -47,7 +47,7 @@ export default function EmployerDashboardClient({ students }: { students: any[] 
                       <li key={i} className="flex justify-between items-center bg-slate-50 px-3 py-2 rounded-xl border border-slate-100/50">
                         <div className="min-w-0">
                           <p className="text-[10px] font-black text-slate-800 truncate uppercase tracking-tighter">{a.subject}</p>
-                          <p className="text-[8px] text-slate-400 font-bold uppercase">{format(new Date(a.date), 'dd/MM HH:mm')}</p>
+                          <p className="text-[8px] text-slate-400 font-bold uppercase">{format(new Date(a.date), 'dd/MM/yyyy HH:mm')}</p>
                         </div>
                         <span className={`text-[8px] font-black px-1.5 py-0.5 rounded-md uppercase tracking-widest ${a.status === 'LATE' ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-700'}`}>
                           {a.status}
