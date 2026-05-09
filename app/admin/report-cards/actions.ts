@@ -27,27 +27,31 @@ export async function calculateStudentAverages(studentId: string, semesterId: st
     }) : prisma.subject.findMany()
   ]);
 
-  const subjectAverages: Record<string, { sum: number, count: number, name: string }> = {};
+  const subjectAverages: Record<string, { sum: number, count: number, name: string, comments: string[] }> = {};
 
   // Initialize all class subjects with 0
   classSubjects.forEach(s => {
-    subjectAverages[s.id] = { sum: 0, count: 0, name: s.name };
+    subjectAverages[s.id] = { sum: 0, count: 0, name: s.name, comments: [] };
   });
 
   grades.forEach(g => {
     const sId = g.subjectId;
     if (!subjectAverages[sId]) {
-      subjectAverages[sId] = { sum: 0, count: 0, name: g.subject.name };
+      subjectAverages[sId] = { sum: 0, count: 0, name: g.subject.name, comments: [] };
     }
     const coef = g.coefficient || 1;
     subjectAverages[sId].sum += g.value * coef;
     subjectAverages[sId].count += coef;
+    if (g.comment) {
+      subjectAverages[sId].comments.push(g.comment);
+    }
   });
 
   return Object.entries(subjectAverages).map(([id, data]) => ({
     subjectId: id,
     subjectName: data.name,
-    average: data.count > 0 ? data.sum / data.count : null // Use null for "no grade"
+    average: data.count > 0 ? data.sum / data.count : null,
+    comments: data.comments.join(" ; ")
   })).sort((a, b) => a.subjectName.localeCompare(b.subjectName));
 }
 

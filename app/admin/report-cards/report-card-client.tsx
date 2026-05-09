@@ -188,7 +188,9 @@ export default function ReportCardClient({ students, semesters }: any) {
                          <td className="py-6 text-right font-black text-slate-900 text-lg">
                            {a.average !== null ? a.average.toFixed(2) : '—'}
                          </td>
-                         <td className="py-6 text-right text-slate-400 italic text-sm">—</td>
+                         <td className="py-6 text-right text-slate-400 italic text-sm">
+                           {a.comments || "—"}
+                         </td>
                        </tr>
                      ))}
                    </tbody>

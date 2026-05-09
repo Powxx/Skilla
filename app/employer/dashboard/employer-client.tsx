@@ -62,7 +62,7 @@ export default function EmployerDashboardClient({ students }: { students: any[] 
               <div className="p-5 flex flex-col min-h-0">
                 <h3 className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-3 flex items-center justify-between">
                    <span>Compétences</span>
-                   <Link href={`/employer/livret?studentId=${s.studentId}`} className="text-blue-600 hover:underline tracking-tighter">Bulletin →</Link>
+                   <Link href={`/employer/livret?studentId=${s.studentId}`} className="text-blue-600 hover:underline tracking-tighter">Livret →</Link>
                 </h3>
                 {s.skills.length === 0 ? (
                   <div className="flex-1 flex items-center justify-center text-[9px] text-slate-400 font-bold uppercase italic">En attente.</div>

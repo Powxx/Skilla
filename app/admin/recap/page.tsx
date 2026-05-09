@@ -31,9 +31,20 @@ export default async function AdminRecapPage() {
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 px-4 py-12 sm:px-6 lg:px-8">
       <div className="mx-auto max-w-7xl">
-        <header className="mb-12">
-          <h1 className="text-3xl font-black tracking-tight text-slate-900">Récapitulatif Global</h1>
-          <p className="mt-2 text-slate-500 font-medium">Vision d'ensemble des liaisons Élèves / Parents / Employeurs.</p>
+        <header className="mb-12 flex justify-between items-end">
+          <div>
+            <h1 className="text-3xl font-black tracking-tight text-slate-900">Récapitulatif Global</h1>
+            <p className="mt-2 text-slate-500 font-medium">Vision d'ensemble des liaisons Élèves / Parents / Employeurs.</p>
+          </div>
+          <Link 
+            href="/admin/recap/report-cards"
+            className="bg-blue-600 text-white px-6 py-3 rounded-2xl text-xs font-black uppercase tracking-widest hover:bg-blue-700 transition shadow-lg shadow-blue-500/20 flex items-center gap-2"
+          >
+            <span>Suivi des Bulletins</span>
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-4 h-4">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 7.5h1.5m-1.5 3h1.5m-7.5 3h7.5m-7.5 3h7.5m3-9h3.375c.621 0 1.125.504 1.125 1.125V18a2.25 2.25 0 01-2.25 2.25M16.5 7.5V18a2.25 2.25 0 002.25 2.25M16.5 7.5V4.875c0-.621-.504-1.125-1.125-1.125H4.125C3.504 3.75 3 4.254 3 4.875V18a2.25 2.25 0 002.25 2.25h13.5M6 7.5h3v3H6v-3z" />
+            </svg>
+          </Link>
         </header>
 
         <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-xl">

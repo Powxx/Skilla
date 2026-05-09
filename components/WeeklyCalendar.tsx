@@ -32,13 +32,16 @@ export default function WeeklyCalendar({ events, onDateChange, onEventClick, onD
         }}
         slotMinTime="08:00:00"
         slotMaxTime="20:00:00"
+        slotDuration="00:30:00"
+        slotEventOverlap={false}
         allDaySlot={false}
         weekends={false}
         events={events}
-        height="100%"
+        height={850}
         expandRows={true}
         selectable={editable}
         select={onDateSelect}
+        eventMinHeight={40}
         eventClassNames="cursor-pointer hover:opacity-80 transition-opacity rounded-lg overflow-hidden border-none shadow-sm"
         eventClick={(info) => {
           if (info.event.extendedProps.type === 'holiday' || info.event.extendedProps.type === 'break' || info.event.extendedProps.type === 'holiday-label') return;
