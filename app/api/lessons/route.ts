@@ -100,6 +100,11 @@ export async function GET(request: Request) {
     const [eh, em] = lunchEnd.split(':').map(Number);
     const start = new Date(day); start.setHours(sh, sm, 0, 0);
     const end   = new Date(day); end.setHours(eh, em, 0, 0);
+    
+    // Ensure correct day even if time causes overflow
+    start.setDate(day.getDate());
+    end.setDate(day.getDate());
+
     lunchEvents.push({
       id: `lunch-${i}`,
       title: 'Pause repas',
