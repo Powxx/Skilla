@@ -35,7 +35,7 @@ export default async function EmployerDashboardPage({
           Aucun alternant rattaché à votre compte tuteur.
         </p>
         <p className="mt-2 text-sm">
-          Contactez la Skilla Academy pour lier vos apprentis à votre compte.
+          Contactez la ECM Academie pour lier vos apprentis à votre compte.
         </p>
       </div>
     );

@@ -32,7 +32,8 @@ export default async function AdminHomePage() {
       <header className="flex flex-col sm:flex-row justify-between items-center gap-4 shrink-0">
         <div>
            <h1 className="text-xl font-black tracking-tight text-slate-900 uppercase tracking-widest">Pilotage Administratif</h1>
-           <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">Gestion globale de la Skilla Academy</p>
+           <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">Gestion globale de la ECM Academie</p>
+
         </div>
         <div className="flex gap-2">
            <Link href="/admin/impersonate" className="px-3 py-1.5 bg-white border border-slate-200 rounded-xl text-[10px] font-black text-slate-400 uppercase tracking-widest hover:text-slate-900 transition shadow-sm">

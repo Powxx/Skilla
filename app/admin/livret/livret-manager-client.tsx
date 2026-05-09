@@ -127,7 +127,7 @@ export default function AdminLivretManagerClient({ classes, students }: Props) {
              <div className="flex justify-between items-start">
                 <div>
                    <h1 className="text-4xl font-black text-slate-900 uppercase">Livret d'Apprentissage</h1>
-                   <p className="text-xl text-slate-500 font-bold mt-2">Skilla Academy - Rapport Annuel</p>
+                   <p className="text-xl text-slate-500 font-bold mt-2">ECM Academie - Rapport Annuel</p>
                 </div>
                 <div className="text-right">
                    <p className="text-lg font-black text-slate-900">{selectedStudent.lastName} {selectedStudent.firstName}</p>

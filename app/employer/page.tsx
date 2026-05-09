@@ -26,7 +26,7 @@ export default async function EmployerHomePage() {
         <p className="font-bold text-lg">Aucun alternant rattaché</p>
         <p className="mt-2 text-sm opacity-80">
           Votre compte n'est actuellement lié à aucun apprenti. 
-          Veuillez contacter l'administration de Skilla Academy pour régulariser votre contrat de tutorat.
+          Veuillez contacter l'administration de ECM Academie pour régulariser votre contrat de tutorat.
         </p>
       </div>
     </div>

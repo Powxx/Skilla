@@ -147,7 +147,7 @@ export default function ReportCardClient({ students, semesters }: any) {
                   <p className="text-xl text-slate-500 mt-2">{semesters.find((s: any) => s.id === selectedSemester)?.name}</p>
                 </div>
                 <div className="text-right">
-                  <p className="text-2xl font-bold text-slate-900">Skilla Academy</p>
+                  <p className="text-2xl font-bold text-slate-900">ECM Academie</p>
                   <p className="text-sm text-slate-500">Portail Académique</p>
                 </div>
               </header>

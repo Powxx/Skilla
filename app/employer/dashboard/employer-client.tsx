@@ -11,7 +11,7 @@ export default function EmployerDashboardClient({ students }: { students: any[] 
       <header className="flex items-center justify-between shrink-0">
         <div>
           <h1 className="text-xl font-black tracking-tight text-slate-900 uppercase tracking-widest">Dashboard Tuteur</h1>
-          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Suivi des alternants Skilla Academy</p>
+          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Suivi des alternants ECM Academie</p>
         </div>
       </header>
 
