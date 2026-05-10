@@ -113,6 +113,11 @@ export default async function AdminUsersPage({
           hasTeacherProfile,
           studentClass: u.class ?? null,
           teacherCourseCount,
+          canAccessLivrets: u.canAccessLivrets,
+          canManageUsers: u.canManageUsers,
+          canManageSettings: u.canManageSettings,
+          canManagePlanning: u.canManagePlanning,
+          canManageRH: u.canManageRH,
     };
   });
 

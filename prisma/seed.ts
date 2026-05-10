@@ -63,6 +63,7 @@ await prisma.room.deleteMany()
   // 5. UTILISATEURS PAR RÔLE (3 par rôle majeur)
 
   // ADMINS
+  const superAdmin = await prisma.user.create({ data: { firstName: "Super", lastName: "Admin", name: "Super Admin", email: "superadmin@skilla.edu", password: hashPassword("superadmin"), role: Role.SUPER_ADMIN } })
   const admin1 = await prisma.user.create({ data: { firstName: "Sophie", lastName: "Admin", name: "Sophie Admin", email: "sophie@skilla.edu", password: hashPassword("admin"), role: Role.ADMIN } })
   const admin2 = await prisma.user.create({ data: { firstName: "Thomas", lastName: "Directeur", name: "Thomas Directeur", email: "thomas@skilla.edu", password: hashPassword("admin"), role: Role.ADMIN } })
   const admin3 = await prisma.user.create({ data: { firstName: "Admin", lastName: "General", name: "Admin General", email: "admin@skilla.edu", password: hashPassword("admin"), role: Role.ADMIN } })

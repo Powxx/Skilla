@@ -65,6 +65,10 @@ export const authOptions: NextAuthOptions = {
             name: `${user.firstName} ${user.lastName}`.trim(),
             role: user.role,
             canAccessLivrets: user.canAccessLivrets,
+            canManageUsers: user.canManageUsers,
+            canManageSettings: user.canManageSettings,
+            canManagePlanning: user.canManagePlanning,
+            canManageRH: user.canManageRH,
           };
           
         } catch (error) {
@@ -130,6 +134,12 @@ export const authOptions: NextAuthOptions = {
       options: {
         httpOnly: true,
         sameSite: 'lax',
+        path: '/',
+        secure: process.env.NODE_ENV === "production",
+      },
+    },
+  },
+};  sameSite: 'lax',
         path: '/',
         secure: process.env.NODE_ENV === "production",
       },

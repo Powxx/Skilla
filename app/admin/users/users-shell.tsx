@@ -5,9 +5,11 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { createUser, deleteUserSafe, updateUser, importUsersAction } from "./actions";
+import { createUser, deleteUserSafe, updateUser, importUsersAction, updateAdminPermissions } from "./actions";
 import Papa from "papaparse";
 import { useRef } from "react";
+import { useSession } from "next-auth/react";
+import { Shield, ShieldAlert, ShieldCheck } from "lucide-react";
 
 const inputClass =
   "w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-sky-600 focus:ring-2 focus:ring-sky-600/20";
@@ -23,6 +25,11 @@ export type ListedUserRow = {
   hasTeacherProfile: boolean;
   studentClass: { id: string; name: string } | null;
   teacherCourseCount: number;
+  canAccessLivrets: boolean;
+  canManageUsers: boolean;
+  canManageSettings: boolean;
+  canManagePlanning: boolean;
+  canManageRH: boolean;
 };
 
 type ClassOption = { id: string; name: string };
@@ -140,6 +147,7 @@ export default function UsersShell(props: Props) {
   const [showCreate, setShowCreate] = useState(false);
   const [editingUser, setEditingUser] = useState<ListedUserRow | null>(null);
   const [deletingUser, setDeletingUser] = useState<ListedUserRow | null>(null);
+  const [managingPermissions, setManagingPermissions] = useState<ListedUserRow | null>(null);
 
   function buildPageHref(pg: number) {
     const p = new URLSearchParams();
@@ -433,6 +441,7 @@ function CreateUserModal({
             onChange={(e) => setRole(e.target.value as Role)}
             className={inputClass}
           >
+            {isSuperAdmin && <option value={Role.SUPER_ADMIN}>Super Administrateur</option>}
             <option value={Role.ADMIN}>Administrateur</option>
             <option value={Role.TEACHER}>Professeur</option>
             <option value={Role.STUDENT}>Élève</option>
@@ -552,7 +561,8 @@ function EditUserModal({
               onChange={(e) => setRole(e.target.value as Role)}
               className={inputClass}
             >
-              {ROLE_EDIT_OPTIONS.map((r) => (
+              {isSuperAdmin && <option value={Role.SUPER_ADMIN}>Super Administrateur</option>}
+              {ROLE_EDIT_OPTIONS.filter(r => r.value !== Role.SUPER_ADMIN).map((r) => (
                   <option key={r.value} value={r.value}>
                     {r.label}
                   </option>
@@ -707,6 +717,70 @@ function ModalActions({
   );
 }
 
+function AdminPermissionsModal({
+  user,
+  pending,
+  onClose,
+  onSave,
+}: {
+  user: ListedUserRow;
+  pending: boolean;
+  onClose: () => void;
+  onSave: (p: any) => void;
+}) {
+  const [permissions, setPermissions] = useState({
+    canManageUsers: user.canManageUsers,
+    canManageSettings: user.canManageSettings,
+    canManagePlanning: user.canManagePlanning,
+    canManageRH: user.canManageRH,
+    canAccessLivrets: user.canAccessLivrets,
+  });
+
+  return (
+    <DialogPortal title="Droits Administrateur" subtitle={`${user.lastName} ${user.firstName}`} onClose={onClose}>
+      <div className="p-6 space-y-4">
+        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4">
+          Définissez les accès de cet administrateur
+        </p>
+        
+        <div className="space-y-3">
+          {[
+            { key: 'canManageUsers', label: 'Gestion des Utilisateurs', icon: Shield },
+            { key: 'canManageSettings', label: 'Configuration Système', icon: ShieldAlert },
+            { key: 'canManagePlanning', label: 'Gestion de l\'Emploi du temps', icon: ShieldCheck },
+            { key: 'canManageRH', label: 'Gestion RH & Contrats', icon: Shield },
+            { key: 'canAccessLivrets', label: 'Accès aux Livrets', icon: ShieldCheck },
+          ].map((item) => (
+            <label key={item.key} className="flex items-center justify-between p-3 rounded-xl border border-slate-100 hover:bg-slate-50 transition cursor-pointer">
+              <div className="flex items-center gap-3">
+                <item.icon className="h-4 w-4 text-slate-400" />
+                <span className="text-sm font-semibold text-slate-700">{item.label}</span>
+              </div>
+              <input 
+                type="checkbox" 
+                checked={(permissions as any)[item.key]} 
+                onChange={(e) => setPermissions({ ...permissions, [item.key]: e.target.checked })}
+                className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-600"
+              />
+            </label>
+          ))}
+        </div>
+
+        <div className="mt-6 flex justify-end gap-2 border-t border-slate-100 pt-4">
+          <button onClick={onClose} className="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50 rounded-xl transition">Annuler</button>
+          <button 
+            disabled={pending}
+            onClick={() => onSave(permissions)}
+            className="px-6 py-2 bg-slate-900 text-white text-sm font-bold rounded-xl shadow-lg hover:bg-slate-800 transition disabled:opacity-50"
+          >
+            {pending ? "Enregistrement..." : "Sauvegarder"}
+          </button>
+        </div>
+      </div>
+    </DialogPortal>
+  );
+}
+
 function DialogPortal({
   title,
   subtitle,
@@ -740,5 +814,19 @@ function DialogPortal({
         {children}
       </div>
     </div>
+  );
+}
+    onClick={onClose}
+            className="rounded-lg p-2 text-slate-500 hover:bg-slate-100"
+          >
+            ×
+          </button>
+        </div>
+        {children}
+      </div>
+    </div>
+  );
+}
+/div>
   );
 }

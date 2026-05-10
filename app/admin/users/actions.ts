@@ -8,6 +8,7 @@ import { getServerSession } from "next-auth/next";
 import { revalidatePath } from "next/cache";
 
 const ADMIN_ROLES: Role[] = [
+  Role.SUPER_ADMIN,
   Role.ADMIN,
   Role.TEACHER,
   Role.STUDENT,
@@ -17,7 +18,7 @@ const ADMIN_ROLES: Role[] = [
 
 async function requireAdmin() {
   const session = await getServerSession(authOptions);
-  if (session?.user?.role !== "ADMIN") {
+  if (session?.user?.role !== "ADMIN" && session?.user?.role !== "SUPER_ADMIN") {
     return null;
   }
   return session;
@@ -25,6 +26,7 @@ async function requireAdmin() {
 
 function roleLabelsFr(r: Role): string {
   const map: Record<Role, string> = {
+    SUPER_ADMIN: "Super Admin",
     ADMIN: "Administrateur",
     TEACHER: "Professeur",
     STUDENT: "Élève",
@@ -32,6 +34,35 @@ function roleLabelsFr(r: Role): string {
     COMPANY_TUTOR: "Employeur",
   };
   return map[r];
+}
+
+...
+
+export async function updateAdminPermissions(input: {
+  userId: string;
+  canManageUsers?: boolean;
+  canManageSettings?: boolean;
+  canManagePlanning?: boolean;
+  canManageRH?: boolean;
+  canAccessLivrets?: boolean;
+}): Promise<MutationResult> {
+  const session = await requireAdmin();
+  if (session?.user?.role !== "SUPER_ADMIN") {
+    return { ok: false, error: "Action réservée aux Super Administrateurs." };
+  }
+
+  const { userId, ...permissions } = input;
+
+  try {
+    await prisma.user.update({
+      where: { id: userId },
+      data: permissions,
+    });
+    revalidatePath("/admin/users");
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: "Erreur lors de la mise à jour des permissions." };
+  }
 }
 
 export type MutationResult<T = unknown> =

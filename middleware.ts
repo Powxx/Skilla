@@ -37,6 +37,7 @@ export async function middleware(req: NextRequest) {
   // Redirection automatique si on est sur la home ou le login alors qu'on est déjà connecté
   if (pathname === "/" || pathname === "/login") {
     switch (token.role) {
+      case "SUPER_ADMIN":
       case "ADMIN": return NextResponse.redirect(new URL("/admin", req.url));
       case "TEACHER": return NextResponse.redirect(new URL("/prof", req.url));
       case "STUDENT": return NextResponse.redirect(new URL("/student/dashboard", req.url));
@@ -46,19 +47,19 @@ export async function middleware(req: NextRequest) {
   }
 
   // Vérification des droits
-  if (pathname.startsWith("/admin") && token.role !== "ADMIN") {
+  if (pathname.startsWith("/admin") && token.role !== "ADMIN" && token.role !== "SUPER_ADMIN") {
     return NextResponse.redirect(new URL("/login", req.url));
   }
-  if (pathname.startsWith("/prof") && token.role !== "TEACHER" && token.role !== "ADMIN") {
+  if (pathname.startsWith("/prof") && token.role !== "TEACHER" && token.role !== "ADMIN" && token.role !== "SUPER_ADMIN") {
     return NextResponse.redirect(new URL("/login", req.url));
   }
-  if (pathname.startsWith("/student") && token.role !== "STUDENT" && token.role !== "ADMIN") {
+  if (pathname.startsWith("/student") && token.role !== "STUDENT" && token.role !== "ADMIN" && token.role !== "SUPER_ADMIN") {
     return NextResponse.redirect(new URL("/login", req.url));
   }
-  if (pathname.startsWith("/parent") && token.role !== "RESPONSIBLE" && token.role !== "ADMIN") {
+  if (pathname.startsWith("/parent") && token.role !== "RESPONSIBLE" && token.role !== "ADMIN" && token.role !== "SUPER_ADMIN") {
     return NextResponse.redirect(new URL("/login", req.url));
   }
-  if (pathname.startsWith("/employer") && token.role !== "COMPANY_TUTOR" && token.role !== "ADMIN") {
+  if (pathname.startsWith("/employer") && token.role !== "COMPANY_TUTOR" && token.role !== "ADMIN" && token.role !== "SUPER_ADMIN") {
     return NextResponse.redirect(new URL("/login", req.url));
   }
 

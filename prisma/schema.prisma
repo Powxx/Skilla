@@ -97,6 +97,10 @@ model User {
 
   // Habilitations spécifiques
   canAccessLivrets Boolean @default(false)
+  canManageUsers   Boolean @default(false)
+  canManageSettings Boolean @default(false)
+  canManagePlanning Boolean @default(false)
+  canManageRH      Boolean @default(false)
 }
 
 model GlobalSetting {

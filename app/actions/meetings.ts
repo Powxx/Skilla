@@ -25,7 +25,7 @@ export async function createMeetingRequest(reason: string) {
 
 export async function updateMeetingStatus(id: string, status: any, scheduledAt?: Date, adminNotes?: string) {
   const session = await getServerSession(authOptions);
-  if (session?.user?.role !== "ADMIN") throw new Error("Unauthorized");
+  if (session?.user?.role !== "ADMIN" && session?.user?.role !== "SUPER_ADMIN") throw new Error("Unauthorized");
 
   const meeting = await prisma.meetingRequest.update({
     where: { id },
