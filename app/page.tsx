@@ -2,6 +2,7 @@ import Link from "next/link";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth-options";
 import { redirect } from "next/navigation";
+import { getGlobalSettings } from "@/app/actions/settings";
 
 export const dynamic = 'force-dynamic';
 export const fetchCache = 'force-no-store';
@@ -26,6 +27,8 @@ const stats = [
 
 export default async function Home() {
   const session = await getServerSession(authOptions);
+  const settings = await getGlobalSettings();
+  const schoolName = settings.SCHOOL_SHORT_NAME || settings.SCHOOL_NAME || "Skilla";
 
   if (session?.user) {
     const role = session.user.role;
@@ -56,11 +59,11 @@ export default async function Home() {
               className="flex h-10 w-10 items-center justify-center rounded-lg bg-slate-900 text-sm font-semibold tracking-tight text-white shadow-sm ring-1 ring-slate-900/10"
               aria-hidden
             >
-              S
+              {schoolName[0]?.toUpperCase()}
             </span>
             <div>
               <p className="text-sm font-semibold tracking-tight text-slate-900">
-                Skilla
+                {schoolName}
               </p>
               <p className="text-xs text-slate-500">
                 Vie scolaire & emplois du temps
@@ -141,7 +144,7 @@ export default async function Home() {
 
       <footer className="relative z-10 border-t border-slate-200 bg-white/80 py-6 text-center text-xs text-slate-500 backdrop-blur-md">
         <div className="mx-auto max-w-5xl px-6">
-          Skilla  Données d&apos;exemple non reliées à une
+          {schoolName} — Données d&apos;exemple non reliées à une
           base réelle sur cette page.
         </div>
       </footer>

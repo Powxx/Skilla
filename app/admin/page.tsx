@@ -1,11 +1,12 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import AdminMeetingsManager from "@/components/admin/admin-meetings-manager";
+import { getGlobalSettings } from "@/app/actions/settings";
 
 export const dynamic = 'force-dynamic';
 
 export default async function AdminHomePage() {
-  const [pendingSubsCount, pendingMeetings, pendingSubs] = await Promise.all([
+  const [pendingSubsCount, pendingMeetings, pendingSubs, globalSettings] = await Promise.all([
     prisma.substitutionRequest.count({ where: { status: "PENDING" } }),
     prisma.meetingRequest.findMany({
       where: { status: "PENDING" },
@@ -15,15 +16,18 @@ export default async function AdminHomePage() {
     prisma.substitutionRequest.findMany({
         where: { status: "PENDING" },
         include: { originalTeacher: { select: { firstName: true, lastName: true } } }
-    })
+    }),
+    getGlobalSettings()
   ]);
+
+  const schoolName = globalSettings.SCHOOL_NAME || "ECM Academie";
 
   return (
     <div className="h-full flex flex-col gap-6 font-sans text-slate-900">
       <header className="flex flex-col sm:flex-row justify-between items-center gap-4 shrink-0">
         <div>
            <h1 className="text-xl font-black tracking-tight text-slate-900 uppercase tracking-widest">Pilotage Administratif</h1>
-           <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">Gestion globale de la ECM Academie</p>
+           <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">Gestion globale de la {schoolName}</p>
         </div>
         <div className="flex gap-2">
            <Link href="/admin/impersonate" className="px-3 py-1.5 bg-white border border-slate-200 rounded-xl text-[10px] font-black text-slate-400 uppercase tracking-widest hover:text-slate-900 transition shadow-sm">

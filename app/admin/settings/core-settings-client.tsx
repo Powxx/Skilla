@@ -34,6 +34,14 @@ export default function CoreSettingsClient({
 
   const [teacherList, setTeacherList] = useState(teachers);
 
+  // Establishment settings
+  const [schoolName, setSchoolName] = useState(globalSettings.SCHOOL_NAME || "");
+  const [schoolShortName, setSchoolShortName] = useState(globalSettings.SCHOOL_SHORT_NAME || "");
+  const [schoolAddress, setSchoolAddress] = useState(globalSettings.SCHOOL_ADDRESS || "");
+  const [schoolPhone, setSchoolPhone] = useState(globalSettings.SCHOOL_PHONE || "");
+  const [schoolEmail, setSchoolEmail] = useState(globalSettings.SCHOOL_EMAIL || "");
+  const [schoolWebsite, setSchoolWebsite] = useState(globalSettings.SCHOOL_WEBSITE || "");
+
   // Sync with props
   useEffect(() => {
     setTeacherList(teachers);
@@ -46,6 +54,22 @@ export default function CoreSettingsClient({
     await updateGlobalSetting("LUNCH_END", lunchEnd);
     setLoading(false);
     alert("Paramètres de repas mis à jour.");
+    router.refresh();
+  };
+
+  const handleUpdateEstablishment = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    await Promise.all([
+      updateGlobalSetting("SCHOOL_NAME", schoolName),
+      updateGlobalSetting("SCHOOL_SHORT_NAME", schoolShortName),
+      updateGlobalSetting("SCHOOL_ADDRESS", schoolAddress),
+      updateGlobalSetting("SCHOOL_PHONE", schoolPhone),
+      updateGlobalSetting("SCHOOL_EMAIL", schoolEmail),
+      updateGlobalSetting("SCHOOL_WEBSITE", schoolWebsite),
+    ]);
+    setLoading(false);
+    alert("Informations de l'établissement mises à jour.");
     router.refresh();
   };
 
@@ -164,6 +188,12 @@ export default function CoreSettingsClient({
           Classes ({initialClasses.length})
         </button>
         <button 
+          onClick={() => setActiveTab('establishment')}
+          className={`px-5 py-3 text-[10px] font-black uppercase tracking-widest transition whitespace-nowrap ${activeTab === 'establishment' ? 'text-blue-600 border-b-2 border-blue-600 bg-white' : 'text-slate-400 hover:text-slate-600'}`}
+        >
+          Établissement
+        </button>
+        <button 
           onClick={() => setActiveTab('subjects')}
           className={`px-5 py-3 text-[10px] font-black uppercase tracking-widest transition whitespace-nowrap ${activeTab === 'subjects' ? 'text-blue-600 border-b-2 border-blue-600 bg-white' : 'text-slate-400 hover:text-slate-600'}`}
         >
@@ -211,6 +241,92 @@ export default function CoreSettingsClient({
       </div>
 
       <div className="flex-1 min-h-0 overflow-y-auto p-5 custom-scrollbar">
+        {activeTab === 'establishment' && (
+          <div className="space-y-6 max-w-2xl">
+            <div className="bg-slate-900 rounded-3xl p-8 text-white relative overflow-hidden">
+               <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/10 blur-3xl -mr-20 -mt-20 rounded-full"></div>
+               <div className="relative z-10">
+                 <h3 className="text-xl font-black uppercase tracking-widest mb-2">Identité de l'école</h3>
+                 <p className="text-slate-400 text-xs font-medium leading-relaxed max-w-md">
+                   Ces informations sont utilisées pour personnaliser les en-têtes, les bulletins, et les communications automatiques.
+                 </p>
+               </div>
+            </div>
+
+            <form onSubmit={handleUpdateEstablishment} className="grid gap-6 sm:grid-cols-2">
+              <div className="sm:col-span-2 space-y-1">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block">Nom complet de l'établissement</label>
+                <input 
+                  type="text" 
+                  className="w-full rounded-2xl border-slate-200 text-sm py-3 focus:ring-blue-500/20"
+                  value={schoolName}
+                  onChange={e => setSchoolName(e.target.value)}
+                  placeholder="Ex: ECM Academie"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block">Nom court (Sidebar)</label>
+                <input 
+                  type="text" 
+                  className="w-full rounded-2xl border-slate-200 text-sm py-3 focus:ring-blue-500/20"
+                  value={schoolShortName}
+                  onChange={e => setSchoolShortName(e.target.value)}
+                  placeholder="Ex: Skilla"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block">Téléphone</label>
+                <input 
+                  type="text" 
+                  className="w-full rounded-2xl border-slate-200 text-sm py-3 focus:ring-blue-500/20"
+                  value={schoolPhone}
+                  onChange={e => setSchoolPhone(e.target.value)}
+                  placeholder="01 23 45 67 89"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block">Email de contact</label>
+                <input 
+                  type="email" 
+                  className="w-full rounded-2xl border-slate-200 text-sm py-3 focus:ring-blue-500/20"
+                  value={schoolEmail}
+                  onChange={e => setSchoolEmail(e.target.value)}
+                  placeholder="contact@ecole.edu"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block">Site Web</label>
+                <input 
+                  type="text" 
+                  className="w-full rounded-2xl border-slate-200 text-sm py-3 focus:ring-blue-500/20"
+                  value={schoolWebsite}
+                  onChange={e => setSchoolWebsite(e.target.value)}
+                  placeholder="https://www.ecole.edu"
+                />
+              </div>
+              <div className="sm:col-span-2 space-y-1">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block">Adresse</label>
+                <textarea 
+                  className="w-full rounded-2xl border-slate-200 text-sm py-3 focus:ring-blue-500/20 min-h-[80px]"
+                  value={schoolAddress}
+                  onChange={e => setSchoolAddress(e.target.value)}
+                  placeholder="123 rue de l'Éducation, 75000 Paris"
+                />
+              </div>
+              
+              <div className="sm:col-span-2">
+                <button 
+                  type="submit" 
+                  disabled={loading}
+                  className="w-full py-4 bg-blue-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-blue-700 transition shadow-lg shadow-blue-500/20"
+                >
+                  {loading ? "Enregistrement..." : "Mettre à jour l'identité de l'établissement"}
+                </button>
+              </div>
+            </form>
+          </div>
+        )}
+
         {activeTab === 'classes' && (
           <div className="space-y-5">
             <form onSubmit={handleAddClass} className="flex gap-2 shrink-0 sticky top-0 bg-white pb-4 z-10">
