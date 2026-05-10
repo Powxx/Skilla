@@ -458,7 +458,7 @@ export default function CoreSettingsClient({
                   </span>
                 </div>
                 <p style={{ color: '#cbd5e1', fontSize: '0.7rem', fontWeight: 600 }}>
-                  Définissez la plage horaire bloquée pour la pause déjeuner dans le planning.
+                  Définissez la plage horaire bloquée pour la pause déjeuner dans l'emploi du temps.
                 </p>
               </div>
             </div>
@@ -581,7 +581,7 @@ export default function CoreSettingsClient({
             </div>
 
             <p className="text-[9px] text-slate-400 font-bold uppercase leading-relaxed tracking-widest text-center">
-              Ces horaires s'affichent comme zone grisée sur le planning de tous les utilisateurs.
+              Ces horaires s'affichent comme zone grisée sur l'emploi du temps de tous les utilisateurs.
             </p>
           </div>
         )}

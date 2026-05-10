@@ -71,7 +71,7 @@ export default async function ProfHomePage() {
                   href="/prof/planning"
                   className="mt-6 py-2 bg-white border border-blue-200 text-blue-600 rounded-xl text-center text-[10px] font-black uppercase tracking-widest hover:bg-blue-100 transition shadow-sm"
                 >
-                  Ouvrir le Planning
+                  Ouvrir l'Emploi du temps
                 </Link>
               </div>
             ) : (

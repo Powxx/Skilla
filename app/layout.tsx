@@ -5,7 +5,7 @@ import { Analytics } from '@vercel/analytics/react';
 import { SpeedInsights } from '@vercel/speed-insights/next';
 
 export const metadata: Metadata = {
-  title: "ECM Academie - Gestion de Planning",
+  title: "ECM Academie - Gestion d'Emploi du temps",
   description: "Plateforme de gestion pour alternance",
 };
 

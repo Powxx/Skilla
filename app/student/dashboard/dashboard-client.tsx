@@ -101,7 +101,7 @@ export default function StudentDashboardClient({
                 <p className="mt-3 text-white/40 text-xs italic">Aucun cours prévu.</p>
               )}
               <Link href="/student/planning" className="mt-4 text-[9px] font-black uppercase tracking-widest bg-white/10 hover:bg-white/20 transition px-3 py-1.5 rounded-lg inline-block">
-                Planning →
+                Emploi du temps →
               </Link>
             </div>
             <div className="absolute top-0 right-0 w-32 h-32 bg-blue-600/20 blur-3xl -mr-10 -mt-10 rounded-full"></div>

@@ -60,7 +60,7 @@ export default function PortalHeader({ variant, parentChildren = [] }: Props) {
      switch (sub) {
        case "notes": case "grades": currentCrumb = "Notes"; break;
        case "appel": case "absences": currentCrumb = "Absences"; break;
-       case "planning": currentCrumb = "Planning"; break;
+       case "planning": currentCrumb = "Emploi du temps"; break;
        case "dashboard": currentCrumb = "Tableau de bord"; break;
        case "users": currentCrumb = "Utilisateurs"; break;
        case "settings": currentCrumb = "Configuration"; break;

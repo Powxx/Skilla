@@ -6,7 +6,7 @@ import AdvancedPlanningClient from "./advanced-planning-client";
 import Link from "next/link";
 
 export const metadata = {
-  title: "Gestion du Planning — Admin",
+  title: "Gestion de l'Emploi du temps — Admin",
 };
 
 export default async function AdminPlanningPage() {
@@ -41,13 +41,13 @@ export default async function AdminPlanningPage() {
           <span aria-hidden className="mx-2 text-slate-300">/</span>
           <Link href="/admin" className="font-medium hover:text-slate-700">Admin</Link>
           <span aria-hidden className="mx-2 text-slate-300">/</span>
-          <span className="text-slate-900">Planning & Cours</span>
+          <span className="text-slate-900">Emploi du temps & Cours</span>
         </nav>
 
         <header className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <h1 className="text-2xl font-semibold tracking-tight text-slate-900 sm:text-3xl">
-              Constructeur de Planning
+              Constructeur d'Emploi du temps
             </h1>
             <p className="mt-2 max-w-xl text-sm text-slate-600">
               Configurez les cours à gauche et glissez-les dans le calendrier au centre.

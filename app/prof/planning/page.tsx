@@ -7,7 +7,7 @@ import TeacherPlanningClient from "./teacher-planning-client";
 export const dynamic = 'force-dynamic';
 
 export const metadata = {
-  title: "Mon Planning — Professeur",
+  title: "Mon Emploi du temps — Professeur",
 };
 
 export default async function ProfPlanningPage() {
@@ -31,7 +31,7 @@ export default async function ProfPlanningPage() {
       <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
         <header className="mb-8">
           <h1 className="text-2xl font-semibold tracking-tight text-slate-900 sm:text-3xl">
-            Mon Planning
+            Mon Emploi du temps
           </h1>
           <p className="mt-2 text-sm text-slate-600">
             Consultez votre emploi du temps et demandez des remplacements si nécessaire.

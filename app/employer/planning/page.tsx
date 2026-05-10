@@ -6,7 +6,7 @@ import prisma from "@/lib/prisma";
 import PlanningClient from "@/components/planning-client";
 
 export const metadata = {
-  title: "Planning de l'élève — Entreprise",
+  title: "Emploi du temps de l'élève — Entreprise",
 };
 
 export default async function EmployerPlanningPage({
@@ -40,7 +40,7 @@ export default async function EmployerPlanningPage({
       <div className="mx-auto max-w-xl px-4 py-16 text-center text-slate-600">
         <p className="font-medium text-slate-900">Aucune classe assignée.</p>
         <p className="mt-2 text-sm">
-          Le planning de cet apprenti n'est pas disponible.
+          L'emploi du temps de cet apprenti n'est pas disponible.
         </p>
       </div>
     );
@@ -49,7 +49,7 @@ export default async function EmployerPlanningPage({
   return (
     <div className="mx-auto max-w-6xl px-4 py-8 text-slate-900 sm:px-6 lg:px-8">
       <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl mb-8">
-        Planning de {studentData.firstName} {studentData.lastName}
+        Emploi du temps de {studentData.firstName} {studentData.lastName}
       </h1>
       <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm ring-1 ring-slate-900/[0.04]">
         <PlanningClient classId={studentData.classId} />

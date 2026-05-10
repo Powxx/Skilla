@@ -41,7 +41,7 @@ export default function PortalSidebar({ variant, resolvedChildId }: Props) {
       navItems.push(
         { href: "/admin", label: "Accueil", icon: LayoutDashboard },
         { href: "/admin/users", label: "Utilisateurs", icon: Users },
-        { href: "/admin/planning", label: "Planning", icon: Calendar },
+        { href: "/admin/planning", label: "Emploi du temps", icon: Calendar },
         { href: "/admin/report-cards", label: "Bulletins", icon: FileText },
         { href: "/admin/livret", label: "Livret", icon: BookOpen },
         { href: "/admin/recap", label: "Récapitulatif", icon: BarChart },
@@ -51,7 +51,7 @@ export default function PortalSidebar({ variant, resolvedChildId }: Props) {
     case "prof":
       navItems.push(
         { href: "/prof", label: "Dashboard", icon: LayoutDashboard },
-        { href: "/prof/planning", label: "Planning", icon: Calendar },
+        { href: "/prof/planning", label: "Emploi du temps", icon: Calendar },
         { href: "/prof/appel", label: "Appel", icon: Clock },
         { href: "/prof/notes", label: "Notes", icon: GraduationCap },
         { href: "/prof/livret", label: "Livret", icon: BookOpen }
@@ -60,7 +60,7 @@ export default function PortalSidebar({ variant, resolvedChildId }: Props) {
     case "student":
       navItems.push(
         { href: "/student/dashboard", label: "Synthèse", icon: LayoutDashboard },
-        { href: "/student/planning", label: "Planning", icon: Calendar },
+        { href: "/student/planning", label: "Emploi du temps", icon: Calendar },
         { href: "/student/grades", label: "Notes", icon: GraduationCap },
         { href: "/student/livret", label: "Livret", icon: BookOpen },
         { href: "/student/absences", label: "Absences", icon: Clock }
@@ -72,7 +72,7 @@ export default function PortalSidebar({ variant, resolvedChildId }: Props) {
       const suffix = resolvedChildId ? `?studentId=${resolvedChildId}` : "";
       navItems.push(
         { href: `${prefix}/dashboard${suffix}`, label: "Synthèse", icon: LayoutDashboard },
-        { href: `${prefix}/planning${suffix}`, label: "Planning", icon: Calendar },
+        { href: `${prefix}/planning${suffix}`, label: "Emploi du temps", icon: Calendar },
         { href: `${prefix}/grades${suffix}`, label: "Notes", icon: GraduationCap },
         { href: `${prefix}/livret${suffix}`, label: "Livret", icon: BookOpen },
         { href: `${prefix}/absences${suffix}`, label: "Absences", icon: Clock }

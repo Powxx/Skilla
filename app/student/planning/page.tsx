@@ -5,7 +5,7 @@ import prisma from "@/lib/prisma";
 import PlanningClient from "@/components/planning-client";
 
 export const metadata = {
-  title: "Mon Planning — Élève",
+  title: "Mon Emploi du temps — Élève",
 };
 
 export default async function StudentPlanningPage() {
@@ -34,7 +34,7 @@ export default async function StudentPlanningPage() {
   return (
     <div className="mx-auto max-w-6xl px-4 py-8 text-slate-900 sm:px-6 lg:px-8">
       <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl mb-8">
-        Mon Planning
+        Mon Emploi du temps
       </h1>
       <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm ring-1 ring-slate-900/[0.04]">
         <PlanningClient classId={studentData.classId} />
