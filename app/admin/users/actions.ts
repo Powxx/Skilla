@@ -66,6 +66,7 @@ export async function createUser(input: {
   }
 
   const passwordHash = await bcrypt.hash(password, 10);
+  const fullName = `${firstName} ${lastName}`;
 
   try {
     if (role === Role.STUDENT) {
@@ -81,20 +82,24 @@ export async function createUser(input: {
           role,
           firstName,
           lastName,
+          name: fullName,
+          class: { connect: { id: classe.id } }, // Important pour le planning élève
           studentProfile: { create: { classId: classe.id } },
         },
       });
     } else if (role === Role.TEACHER) {
       await prisma.user.create({
         data: {
-          name: `${firstName} ${lastName}`,
+          email,
+          password: passwordHash,
+          role,
           firstName,
           lastName,
-          // Remplacer teacherProfile par contract
+          name: fullName,
           contract: { 
             create: { 
-              hourlyRate: 0,    // Valeur par défaut requise par ton schéma
-              monthlyHours: 0   // Valeur par défaut requise par ton schéma
+              hourlyRate: 0,
+              monthlyHours: 0
             } 
           },
         },
@@ -107,6 +112,7 @@ export async function createUser(input: {
           role,
           firstName,
           lastName,
+          name: fullName,
         },
       });
     }
@@ -213,10 +219,13 @@ export async function updateUser(input: {
     if (!classe) return { ok: false, error: "Classe introuvable." };
   }
 
+  const fullName = `${firstName} ${lastName}`;
+
   const data: Prisma.UserUpdateInput = {
     email,
     firstName,
     lastName,
+    name: fullName,
     role: newRole,
   };
 
@@ -239,6 +248,7 @@ export async function updateUser(input: {
     data.studentProfile = {
       create: { classId: studentClassId!.trim() },
     };
+    data.class = { connect: { id: studentClassId!.trim() } };
   }
 
   /** Professeur sans cours → autre rôle : retirer le profil Teacher. */
@@ -254,9 +264,14 @@ export async function updateUser(input: {
 
     /** Si élève existe : mettre à jour la classe uniquement lorsque reste STUDENT et fourni classId différent intention */
     if (newRole === Role.STUDENT && existing.studentProfile && studentClassId?.trim()) {
-      await prisma.user.updateMany({
-        where: { id: userId }, // On cherche l'utilisateur dont l'ID correspond à userId
-        data: { classId: studentClassId.trim() },
+      await prisma.user.update({
+        where: { id: userId },
+        data: { 
+          classId: studentClassId.trim(),
+          studentProfile: {
+            update: { classId: studentClassId.trim() }
+          }
+        },
       });
     }
   } catch (e: unknown) {
@@ -354,6 +369,7 @@ export async function importUsersAction(users: Array<{
     const email = user.email.trim().toLowerCase();
     const firstName = user.firstName.trim();
     const lastName = user.lastName.trim();
+    const fullName = `${firstName} ${lastName}`;
     const role = user.role;
     const password = user.password || "Skilla2026!"; // Default password if none provided
 
@@ -371,28 +387,44 @@ export async function importUsersAction(users: Array<{
         if (targetClass) {
           await prisma.user.upsert({
             where: { email },
-            update: { firstName, lastName, role, classId: targetClass.id },
+            update: { firstName, lastName, name: fullName, role, class: { connect: { id: targetClass.id } } },
             create: {
               email,
               password: passwordHash,
               role,
               firstName,
               lastName,
-              classId: targetClass.id,
+              name: fullName,
+              class: { connect: { id: targetClass.id } },
               studentProfile: { create: { classId: targetClass.id } }
             }
           });
         }
-      } else {
+      } else if (role === Role.TEACHER) {
         await prisma.user.upsert({
           where: { email },
-          update: { firstName, lastName, role },
+          update: { firstName, lastName, name: fullName, role },
           create: {
             email,
             password: passwordHash,
             role,
             firstName,
-            lastName
+            lastName,
+            name: fullName,
+            contract: { create: { hourlyRate: 0, monthlyHours: 0 } }
+          }
+        });
+      } else {
+        await prisma.user.upsert({
+          where: { email },
+          update: { firstName, lastName, name: fullName, role },
+          create: {
+            email,
+            password: passwordHash,
+            role,
+            firstName,
+            lastName,
+            name: fullName
           }
         });
       }
