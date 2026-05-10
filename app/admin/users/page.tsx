@@ -80,6 +80,11 @@ export default async function AdminUsersPage({
                 id: true,
               },
             },
+            canAccessLivrets: true,
+            canManageUsers: true,
+            canManageSettings: true,
+            canManagePlanning: true,
+            canManageRH: true,
             // 3. On compte les leçons (lessons) directement depuis l'User
             _count: {
               select: { lessons: true },

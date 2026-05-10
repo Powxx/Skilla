@@ -10,6 +10,7 @@ datasource db {
 
 // --- ENUMS ---
 enum Role {
+  SUPER_ADMIN
   ADMIN
   TEACHER
   STUDENT

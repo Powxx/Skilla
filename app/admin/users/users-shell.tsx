@@ -369,7 +369,10 @@ export default function UsersShell(props: Props) {
               pending={running}
               onClose={() => setManagingPermissions(null)}
               onSave={(p) => transition(async () => {
-                  const res = await updateAdminPermissions(managingPermissions.id, p);
+                  const res = await updateAdminPermissions({
+                userId: managingPermissions.id,
+                ...p,
+              });
                   setManagingPermissions(null);
                   setFlash(res.ok ? { type: "ok", msg: "Permissions mises à jour." } : { type: "err", msg: res.error });
                   router.refresh();
