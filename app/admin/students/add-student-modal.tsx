@@ -1,8 +1,8 @@
 "use client";
 
 import { useActionState, useEffect, useRef, useState } from "react";
-import type { CreateStudentState } from "./actions";
-import { createStudent } from "./actions";
+import { createUser } from "../users/actions";
+import { Role } from "@prisma/client";
 
 type ClassOption = { id: string; name: string };
 
@@ -10,16 +10,42 @@ type Props = {
   classes: ClassOption[];
 };
 
-const initialState: CreateStudentState = {};
-
 export default function AddStudentModal({ classes }: Props) {
   const [open, setOpen] = useState(false);
+  const [pending, setPending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  
   const dialogRef = useRef<HTMLDialogElement>(null);
   const firstFieldRef = useRef<HTMLInputElement>(null);
-  const [state, formAction, pending] = useActionState(
-    createStudent,
-    initialState,
-  );
+
+  useEffect(() => {
+    const dlg = dialogRef.current;
+    if (!dlg) return;
+    if (open && !dlg.open) dlg.showModal();
+    if (!open && dlg.open) dlg.close();
+  }, [open]);
+
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+      e.preventDefault();
+      setPending(true);
+      setError(null);
+      const fd = new FormData(e.currentTarget);
+      const res = await createUser({
+          email: fd.get("email") as string,
+          password: fd.get("password") as string,
+          firstName: fd.get("firstName") as string,
+          lastName: fd.get("lastName") as string,
+          classId: fd.get("classId") as string,
+          role: Role.STUDENT
+      });
+      if (res.ok) {
+          setOpen(false);
+          window.location.reload();
+      } else {
+          setError(res.error || "Erreur lors de la création.");
+      }
+      setPending(false);
+  };
 
   useEffect(() => {
     const dlg = dialogRef.current;
@@ -93,16 +119,16 @@ export default function AddStudentModal({ classes }: Props) {
         </div>
 
         <div className="max-h-[min(70vh,32rem)] overflow-y-auto px-5 py-4">
-          {state?.error ? (
+          {error ? (
             <div
               className="mb-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800"
               role="alert"
             >
-              {state.error}
+              {error}
             </div>
           ) : null}
 
-          <form action={formAction} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid gap-2 sm:grid-cols-2 sm:gap-3">
               <label className="block sm:col-span-1">
                 <span className="mb-1 block text-xs font-medium text-slate-600">

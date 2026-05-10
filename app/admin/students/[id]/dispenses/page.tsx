@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { setDispensation } from "./actions";
+import { setDispensation } from "../../actions";
 
 export default async function AdminStudentDispensationPage({ params }: { params: { id: string } }) {
   const student = await prisma.user.findUnique({
