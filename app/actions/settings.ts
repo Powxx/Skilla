@@ -29,3 +29,22 @@ export async function updateTeacherLivretAccess(userId: string, canAccess: boole
   revalidatePath("/admin/settings");
   revalidatePath("/admin/users");
 }
+
+export async function getCalendarToken(userId: string) {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { calendarToken: true }
+  });
+
+  if (user?.calendarToken) return user.calendarToken;
+
+  // Generate if missing (for old users)
+  const updatedUser = await prisma.user.update({
+    where: { id: userId },
+    data: { calendarToken: crypto.randomUUID() },
+    select: { calendarToken: true }
+  });
+
+  return updatedUser.calendarToken;
+}
+

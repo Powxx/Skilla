@@ -47,6 +47,7 @@ model User {
   email         String?   @unique
   password      String?
   role          Role      @default(STUDENT)
+  calendarToken String?   @unique @default(cuid())
   
   // Noms : On garde les deux pour supporter ton code de création et de login
   name          String?   // Format combiné "Prénom Nom"
