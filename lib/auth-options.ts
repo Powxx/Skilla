@@ -7,11 +7,11 @@ import prisma from "@/lib/prisma";
 export const authOptions: NextAuthOptions = {
   pages: {
     signIn: "/login",
-    error: "/login", // Redirige les erreurs vers la page de login
+    error: "/login",
   },
   session: { 
     strategy: "jwt", 
-    maxAge: 30 * 24 * 60 * 60 // 30 jours
+    maxAge: 30 * 24 * 60 * 60 
   },
   secret: process.env.NEXTAUTH_SECRET,
   
@@ -27,38 +27,33 @@ export const authOptions: NextAuthOptions = {
           const emailRaw = credentials?.email?.trim();
           const password = credentials?.password;
 
-          if (!emailRaw || !password) {
-            console.log("DEBUG AUTH: Email ou mot de passe manquant");
-            return null;
-          }
+          if (!emailRaw || !password) return null;
 
           const email = emailRaw.toLowerCase();
           
-          // 1. Recherche de l'utilisateur
           const user = await prisma.user.findUnique({ 
             where: { email },
-            select: { id: true, email: true, password: true, role: true, firstName: true, lastName: true, canAccessLivrets: true }
+            select: { 
+              id: true, 
+              email: true, 
+              password: true, 
+              role: true, 
+              firstName: true, 
+              lastName: true, 
+              canAccessLivrets: true,
+              canManageUsers: true,
+              canManageSettings: true,
+              canManagePlanning: true,
+              canManageRH: true
+            }
           });
 
-          if (!user) {
-            console.log(`DEBUG AUTH: Aucun utilisateur trouvé pour ${email}`);
-            return null;
-          }
+          if (!user || !user.password) return null;
 
-          // 2. Vérification du mot de passe
-          if (!user.password) {
-            console.log(`DEBUG AUTH: Mot de passe manquant pour ${email}`);
-            return null;
-          }
           const isPasswordValid = await bcrypt.compare(password, user.password);
           
-          if (!isPasswordValid) {
-            console.log(`DEBUG AUTH: Mot de passe incorrect pour ${email}`);
-            return null;
-          }
+          if (!isPasswordValid) return null;
 
-          // 3. Retourne l'objet user si tout est OK
-          console.log(`DEBUG AUTH: Connexion réussie pour ${email}`);
           return {
             id: user.id,
             email: user.email,
@@ -72,7 +67,6 @@ export const authOptions: NextAuthOptions = {
           };
           
         } catch (error) {
-          console.error("DEBUG AUTH ERROR:", error);
           return null;
         }
       },
@@ -81,15 +75,16 @@ export const authOptions: NextAuthOptions = {
 
   callbacks: {
     async jwt({ token, user, trigger, session }) {
-      // S'exécute lors de la connexion initiale
       if (user) {
-        console.log("DEBUG JWT: User trouvé lors de la connexion, role =", user.role);
         token.role = user.role as Role;
         token.id = user.id;
         token.canAccessLivrets = (user as any).canAccessLivrets ?? false;
+        token.canManageUsers = (user as any).canManageUsers ?? false;
+        token.canManageSettings = (user as any).canManageSettings ?? false;
+        token.canManagePlanning = (user as any).canManagePlanning ?? false;
+        token.canManageRH = (user as any).canManageRH ?? false;
       }
 
-      // Impersonation logic via session update
       if (trigger === "update" && session?.impersonateUser) {
         token.originalUserId = token.originalUserId || token.id;
         token.originalUserRole = token.originalUserRole || token.role;
@@ -111,12 +106,14 @@ export const authOptions: NextAuthOptions = {
       return token;
     },
     async session({ session, token }) {
-      // Transmet les infos du JWT vers la session accessible côté client
       if (session.user) {
-        console.log("DEBUG SESSION: Token reçu dans la session, role =", token.role);
         session.user.id = token.id as string;
         session.user.role = token.role as Role;
         (session.user as any).canAccessLivrets = token.canAccessLivrets ?? false;
+        (session.user as any).canManageUsers = token.canManageUsers ?? false;
+        (session.user as any).canManageSettings = token.canManageSettings ?? false;
+        (session.user as any).canManagePlanning = token.canManagePlanning ?? false;
+        (session.user as any).canManageRH = token.canManageRH ?? false;
         (session as any).impersonated = !!token.impersonated;
         (session as any).originalUserId = token.originalUserId as string | undefined;
       }
@@ -124,7 +121,6 @@ export const authOptions: NextAuthOptions = {
     },
   },
 
-  // Configuration des cookies pour la production (HTTPS)
   useSecureCookies: process.env.NODE_ENV === "production",
   cookies: {
     sessionToken: {
@@ -134,12 +130,6 @@ export const authOptions: NextAuthOptions = {
       options: {
         httpOnly: true,
         sameSite: 'lax',
-        path: '/',
-        secure: process.env.NODE_ENV === "production",
-      },
-    },
-  },
-};  sameSite: 'lax',
         path: '/',
         secure: process.env.NODE_ENV === "production",
       },

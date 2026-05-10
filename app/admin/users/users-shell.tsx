@@ -9,7 +9,7 @@ import { createUser, deleteUserSafe, updateUser, importUsersAction, updateAdminP
 import Papa from "papaparse";
 import { useRef } from "react";
 import { useSession } from "next-auth/react";
-import { Shield, ShieldAlert, ShieldCheck } from "lucide-react";
+import { Shield, ShieldAlert, ShieldCheck, Key } from "lucide-react";
 
 const inputClass =
   "w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-sky-600 focus:ring-2 focus:ring-sky-600/20";
@@ -46,6 +46,7 @@ type Props = {
 
 const ROLE_OPTIONS: { value: Role | ""; label: string }[] = [
   { value: "", label: "Tous les rôles" },
+  { value: Role.SUPER_ADMIN, label: "Super Admin" },
   { value: Role.ADMIN, label: "Administrateur" },
   { value: Role.TEACHER, label: "Professeur" },
   { value: Role.STUDENT, label: "Élève" },
@@ -57,6 +58,8 @@ const ROLE_EDIT_OPTIONS = ROLE_OPTIONS.filter((o) => o.value !== "");
 
 function roleBadgeClasses(role: Role) {
   switch (role) {
+    case Role.SUPER_ADMIN:
+      return "bg-red-100 text-red-900 ring-red-200";
     case Role.ADMIN:
       return "bg-violet-100 text-violet-900 ring-violet-200";
     case Role.TEACHER:
@@ -79,14 +82,19 @@ function canDeleteListedUser(u: ListedUserRow): boolean {
 }
 
 export default function UsersShell(props: Props) {
-  const { users, total, page, pageSize, classes, initialQuery, initialRole } =
-    props;
+  const { users, total, page, pageSize, classes, initialQuery, initialRole } = props;
   const router = useRouter();
+  const { data: session } = useSession();
+  const isSuperAdmin = session?.user?.role === Role.SUPER_ADMIN;
+
   const [running, transition] = useTransition();
-  const [flash, setFlash] = useState<{ type: "ok" | "err"; msg: string } | null>(
-    null,
-  );
+  const [flash, setFlash] = useState<{ type: "ok" | "err"; msg: string } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const [showCreate, setShowCreate] = useState(false);
+  const [editingUser, setEditingUser] = useState<ListedUserRow | null>(null);
+  const [deletingUser, setDeletingUser] = useState<ListedUserRow | null>(null);
+  const [managingPermissions, setManagingPermissions] = useState<ListedUserRow | null>(null);
 
   const handleExportCSV = () => {
     const data = users.map(u => ({
@@ -144,11 +152,6 @@ export default function UsersShell(props: Props) {
 
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
 
-  const [showCreate, setShowCreate] = useState(false);
-  const [editingUser, setEditingUser] = useState<ListedUserRow | null>(null);
-  const [deletingUser, setDeletingUser] = useState<ListedUserRow | null>(null);
-  const [managingPermissions, setManagingPermissions] = useState<ListedUserRow | null>(null);
-
   function buildPageHref(pg: number) {
     const p = new URLSearchParams();
     if (initialQuery.trim()) p.set("q", initialQuery.trim());
@@ -170,76 +173,35 @@ export default function UsersShell(props: Props) {
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <input 
-            type="file" 
-            ref={fileInputRef} 
-            onChange={handleImportCSV} 
-            accept=".csv" 
-            className="hidden" 
-          />
-          <button
-            type="button"
-            onClick={handleExportCSV}
-            className="px-3 py-1.5 bg-white border border-slate-200 rounded-xl text-[10px] font-black text-slate-400 uppercase tracking-widest hover:text-slate-900 transition shadow-sm"
-          >
+          <input type="file" ref={fileInputRef} onChange={handleImportCSV} accept=".csv" className="hidden" />
+          <button type="button" onClick={handleExportCSV} className="px-3 py-1.5 bg-white border border-slate-200 rounded-xl text-[10px] font-black text-slate-400 uppercase tracking-widest hover:text-slate-900 transition shadow-sm">
             Export CSV
           </button>
-          <button
-            type="button"
-            onClick={() => fileInputRef.current?.click()}
-            className="px-3 py-1.5 bg-sky-50 border border-sky-100 rounded-xl text-[10px] font-black text-sky-700 uppercase tracking-widest hover:bg-sky-100 transition shadow-sm"
-          >
+          <button type="button" onClick={() => fileInputRef.current?.click()} className="px-3 py-1.5 bg-sky-50 border border-sky-100 rounded-xl text-[10px] font-black text-sky-700 uppercase tracking-widest hover:bg-sky-100 transition shadow-sm">
             Import CSV
           </button>
-          <button
-            type="button"
-            onClick={() => {
-              setShowCreate(true);
-              setFlash(null);
-            }}
-            className="px-4 py-1.5 bg-slate-900 text-white rounded-xl text-[10px] font-black uppercase tracking-[0.2em] shadow-lg shadow-slate-900/20 hover:bg-slate-800 transition"
-          >
+          <button type="button" onClick={() => { setShowCreate(true); setFlash(null); }} className="px-4 py-1.5 bg-slate-900 text-white rounded-xl text-[10px] font-black uppercase tracking-[0.2em] shadow-lg shadow-slate-900/20 hover:bg-slate-800 transition">
             + Nouveau
           </button>
         </div>
       </header>
 
       {flash && (
-        <div
-          className={`px-4 py-2 rounded-xl border text-[10px] font-bold uppercase tracking-widest shrink-0 ${flash.type === "ok"
-              ? "border-emerald-100 bg-emerald-50 text-emerald-700"
-              : "border-red-100 bg-red-50 text-red-700"
-            }`}
-        >
+        <div className={`px-4 py-2 rounded-xl border text-[10px] font-bold uppercase tracking-widest shrink-0 ${flash.type === "ok" ? "border-emerald-100 bg-emerald-50 text-emerald-700" : "border-red-100 bg-red-50 text-red-700"}`}>
           {flash.msg}
         </div>
       )}
 
-      <form
-        method="GET"
-        action="/admin/users"
-        className="flex flex-col sm:flex-row items-end gap-3 shrink-0"
-      >
+      <form method="GET" action="/admin/users" className="flex flex-col sm:flex-row items-end gap-3 shrink-0">
         <div className="flex-1 w-full">
           <span className="mb-1 block text-[9px] font-black text-slate-400 uppercase tracking-widest">Recherche</span>
-          <input
-            name="q"
-            defaultValue={initialQuery}
-            placeholder="E-mail, nom..."
-            className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs outline-none focus:ring-blue-500/20"
-          />
+          <input name="q" defaultValue={initialQuery} placeholder="E-mail, nom..." className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs outline-none focus:ring-blue-500/20" />
         </div>
         <div className="w-full sm:w-44">
           <span className="mb-1 block text-[9px] font-black text-slate-400 uppercase tracking-widest">Rôle</span>
-          <select
-            name="role"
-            defaultValue={initialRole}
-            className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs outline-none focus:ring-blue-500/20"
-          >
+          <select name="role" defaultValue={initialRole} className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs outline-none focus:ring-blue-500/20">
             {ROLE_OPTIONS.map((o) => (
-              <option key={`${String(o.value)}_${o.label}`} value={o.value}>
-                {o.label}
-              </option>
+              <option key={`${String(o.value)}_${o.label}`} value={o.value}>{o.label}</option>
             ))}
           </select>
         </div>
@@ -251,9 +213,7 @@ export default function UsersShell(props: Props) {
 
       <div className="flex-1 flex flex-col min-h-0 bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
         <div className="px-5 py-3 border-b border-slate-100 bg-slate-50 flex items-center justify-between shrink-0">
-          <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
-            {total} Comptes • Page {page}/{totalPages}
-          </span>
+          <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{total} Comptes • Page {page}/{totalPages}</span>
         </div>
         <div className="flex-1 overflow-auto custom-scrollbar">
           <table className="w-full text-left text-xs border-collapse">
@@ -289,6 +249,15 @@ export default function UsersShell(props: Props) {
                     </td>
                     <td className="px-5 py-3 text-right">
                       <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition">
+                        {isSuperAdmin && u.role === Role.ADMIN && (
+                            <button
+                                onClick={() => setManagingPermissions(u)}
+                                className="px-2 py-1 bg-white border border-slate-200 rounded-lg text-[9px] font-black text-violet-600 uppercase tracking-widest hover:bg-violet-50"
+                                title="Permissions"
+                            >
+                                <Key className="h-3 w-3" />
+                            </button>
+                        )}
                         <button
                           onClick={() => setEditingUser(u)}
                           className="px-2 py-1 bg-white border border-slate-200 rounded-lg text-[9px] font-black text-slate-600 uppercase tracking-widest hover:bg-slate-100"
@@ -335,6 +304,7 @@ export default function UsersShell(props: Props) {
           classes={classes}
           onClose={() => setShowCreate(false)}
           pending={running}
+          isSuperAdmin={isSuperAdmin}
           onSubmitRecord={(payload) =>
             transition(async () => {
               const res = await createUser(payload);
@@ -356,6 +326,7 @@ export default function UsersShell(props: Props) {
           user={editingUser}
           onClose={() => setEditingUser(null)}
           pending={running}
+          isSuperAdmin={isSuperAdmin}
           onSubmitRecord={(input) =>
             transition(async () => {
               const res = await updateUser(input);
@@ -391,6 +362,20 @@ export default function UsersShell(props: Props) {
           }
         />
       ) : null}
+      
+      {managingPermissions ? (
+          <AdminPermissionsModal
+              user={managingPermissions}
+              pending={running}
+              onClose={() => setManagingPermissions(null)}
+              onSave={(p) => transition(async () => {
+                  const res = await updateAdminPermissions(managingPermissions.id, p);
+                  setManagingPermissions(null);
+                  setFlash(res.ok ? { type: "ok", msg: "Permissions mises à jour." } : { type: "err", msg: res.error });
+                  router.refresh();
+              })}
+          />
+      ) : null}
     </div>
   );
 }
@@ -409,11 +394,13 @@ function CreateUserModal({
   pending,
   onClose,
   onSubmitRecord,
+  isSuperAdmin,
 }: {
   classes: ClassOption[];
   pending: boolean;
   onClose: () => void;
   onSubmitRecord: (p: CreateUserPayload) => void;
+  isSuperAdmin: boolean;
 }) {
   const [role, setRole] = useState<Role>(Role.STUDENT);
 
@@ -504,12 +491,14 @@ function EditUserModal({
   pending,
   onClose,
   onSubmitRecord,
+  isSuperAdmin,
 }: {
   classes: ClassOption[];
   user: ListedUserRow;
   pending: boolean;
   onClose: () => void;
   onSubmitRecord: (p: UpdateUserPayload) => void;
+  isSuperAdmin: boolean;
 }) {
   const [role, setRole] = useState<Role>(user.role);
   const roleLocked = user.lockedRole;
@@ -814,19 +803,5 @@ function DialogPortal({
         {children}
       </div>
     </div>
-  );
-}
-    onClick={onClose}
-            className="rounded-lg p-2 text-slate-500 hover:bg-slate-100"
-          >
-            ×
-          </button>
-        </div>
-        {children}
-      </div>
-    </div>
-  );
-}
-/div>
   );
 }

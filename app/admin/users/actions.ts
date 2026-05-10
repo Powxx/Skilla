@@ -36,7 +36,9 @@ function roleLabelsFr(r: Role): string {
   return map[r];
 }
 
-...
+export type MutationResult<T = unknown> =
+  | { ok: true; data?: T }
+  | { ok: false; error: string };
 
 export async function updateAdminPermissions(input: {
   userId: string;
