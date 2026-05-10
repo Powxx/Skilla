@@ -24,11 +24,12 @@ export default function AdvancedPlanningClient({ classes, teachers, subjects, ro
     classId: "",
     roomId: "",
     periodicity: "none",
-    occurrences: 5
+    occurrences: 5,
+    isFree: false
   });
 
   const selectedTeacher = teachers.find(t => t.id === config.teacherId);
-  const selectedSubject = subjects.find(s => s.id === config.subjectId);
+  const selectedSubject = config.isFree ? { name: "Cycle Libre" } : subjects.find(s => s.id === config.subjectId);
   const selectedClass = classes.find(c => c.id === config.classId);
   const selectedRoom = rooms.find(r => r.id === config.roomId);
 
@@ -395,7 +396,18 @@ export default function AdvancedPlanningClient({ classes, teachers, subjects, ro
   // Calculate Stats
   const calculateStats = () => {
     const stats: any = { teachers: {}, classes: {} };
+    
+    // Use a Set to track processed group IDs to avoid double counting
+    const processedGroups = new Set();
+    
     events.forEach(e => {
+      // Check if this event is part of a group
+      const groupId = e.extendedProps.groupId;
+      if (groupId) {
+          if (processedGroups.has(groupId)) return;
+          processedGroups.add(groupId);
+      }
+      
       const start = parseISO(e.start);
       const end = parseISO(e.end);
       const durationHours = (end.getTime() - start.getTime()) / (1000 * 60 * 60);
@@ -442,16 +454,24 @@ export default function AdvancedPlanningClient({ classes, teachers, subjects, ro
               {teachers.map(t => <option key={t.id} value={t.id}>{t.lastName} {t.firstName}</option>)}
             </select>
           </div>
-          <div>
-            <label className="block text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Matière *</label>
-            <select className="w-full text-xs rounded-xl border-slate-200 py-1.5 focus:ring-blue-500/20" value={config.subjectId} onChange={e => setConfig({...config, subjectId: e.target.value})}>
-              <option value="">-- Choisir --</option>
-              {selectedTeacher ? selectedTeacher.subjects.map(s => <option key={s.id} value={s.id}>{s.name}</option>) : subjects.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-            </select>
-            {selectedTeacher && selectedTeacher.subjects.length === 0 && (
-              <p className="text-[8px] font-bold text-orange-600 mt-1 uppercase">Aucune matière assignée.</p>
-            )}
+          <div className="space-y-3">
+              <label className="flex items-center gap-2 text-[9px] font-black text-slate-900 uppercase cursor-pointer">
+                 <input type="checkbox" checked={config.isFree} onChange={e => setConfig({...config, isFree: e.target.checked})} />
+                 Cycle Libre
+              </label>
           </div>
+          {!config.isFree && (
+            <div>
+              <label className="block text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Matière *</label>
+              <select className="w-full text-xs rounded-xl border-slate-200 py-1.5 focus:ring-blue-500/20" value={config.subjectId} onChange={e => setConfig({...config, subjectId: e.target.value})}>
+                <option value="">-- Choisir --</option>
+                {selectedTeacher ? selectedTeacher.subjects.map(s => <option key={s.id} value={s.id}>{s.name}</option>) : subjects.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+              </select>
+              {selectedTeacher && selectedTeacher.subjects.length === 0 && (
+                <p className="text-[8px] font-bold text-orange-600 mt-1 uppercase">Aucune matière assignée.</p>
+              )}
+            </div>
+          )}
           <div>
             <label className="block text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Salle</label>
             <select className="w-full text-xs rounded-xl border-slate-200 py-1.5 focus:ring-blue-500/20" value={config.roomId} onChange={e => setConfig({...config, roomId: e.target.value})}>
