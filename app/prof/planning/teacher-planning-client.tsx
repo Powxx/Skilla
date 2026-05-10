@@ -11,6 +11,7 @@ export default function TeacherPlanningClient({ teacherId, teachers }: { teacher
   const [loading, setLoading] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<any>(null);
   const [substituteId, setSubstituteId] = useState("");
+  const [subjectId, setSubjectId] = useState("");
   const [summary, setSummary] = useState("");
   const [homework, setHomework] = useState("");
   const [activeTab, setActiveTab] = useState<'info' | 'substitute' | 'content'>('info');
@@ -209,10 +210,22 @@ export default function TeacherPlanningClient({ teacherId, teachers }: { teacher
 
               {activeTab === 'substitute' && (
                 <div className="space-y-6 py-4">
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Matière concernée</label>
+                    <select 
+                        className="w-full text-xs rounded-xl border-slate-200 py-2"
+                        value={subjectId}
+                        onChange={(e) => setSubjectId(e.target.value)}
+                    >
+                        <option value="">{selectedEvent.extendedProps?.subject} (Par défaut)</option>
+                        {teachers.find((t: any) => t.id === teacherId)?.subjects.map((s: any) => (
+                            <option key={s.id} value={s.id}>{s.name}</option>
+                        ))}
+                    </select>
+                  </div>
                   <div className="p-4 bg-orange-50 border border-orange-100 rounded-2xl">
                      <p className="text-sm text-orange-800 font-medium leading-relaxed">
                        Vous ne pouvez pas assurer ce cours ? Cliquez sur le bouton ci-dessous pour demander un remplacement. 
-                       L'administration sera notifiée et se chargera de trouver un remplaçant qualifié.
                      </p>
                   </div>
                   <button 

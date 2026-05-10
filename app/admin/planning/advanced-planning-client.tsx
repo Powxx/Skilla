@@ -48,7 +48,8 @@ export default function AdvancedPlanningClient({ classes, teachers, subjects, ro
   const [selectedEvent, setSelectedEvent] = useState<any>(null);
   const [eventFormData, setEventFormData] = useState({
     isCancelled: false,
-    substituteId: ""
+    substituteId: "",
+    subjectId: ""
   });
 
   const fetchHolidays = async () => {
@@ -308,7 +309,8 @@ export default function AdvancedPlanningClient({ classes, teachers, subjects, ro
     setSelectedEvent(event);
     setEventFormData({
       isCancelled: props.isCancelled || false,
-      substituteId: props.substituteId || ""
+      substituteId: props.substituteId || "",
+      subjectId: props.subjectId || ""
     });
   };
 
@@ -320,7 +322,8 @@ export default function AdvancedPlanningClient({ classes, teachers, subjects, ro
       const payload = {
         id: selectedEvent.id,
         isCancelled: eventFormData.isCancelled,
-        substituteId: eventFormData.substituteId || null
+        substituteId: eventFormData.substituteId || null,
+        subjectId: eventFormData.subjectId || null
       };
 
       const res = await fetch("/api/lessons", {
@@ -734,6 +737,19 @@ export default function AdvancedPlanningClient({ classes, teachers, subjects, ro
                 </label>
 
                 {!eventFormData.isCancelled && (
+                  <>
+                  <div>
+                    <label className="block text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Matière</label>
+                    <select 
+                      className="w-full text-xs rounded-xl border-slate-200 py-2 focus:ring-blue-500/20"
+                      value={eventFormData.subjectId}
+                      onChange={(e) => setEventFormData({...eventFormData, subjectId: e.target.value})}
+                    >
+                      {subjects.map(s => (
+                        <option key={s.id} value={s.id}>{s.name}</option>
+                      ))}
+                    </select>
+                  </div>
                   <div>
                     <label className="block text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Remplaçant</label>
                     <select 
@@ -747,6 +763,7 @@ export default function AdvancedPlanningClient({ classes, teachers, subjects, ro
                       ))}
                     </select>
                   </div>
+                  </>
                 )}
 
                 <div className="pt-4 flex flex-col gap-2">
