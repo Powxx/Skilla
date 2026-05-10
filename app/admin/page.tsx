@@ -49,6 +49,7 @@ export default async function AdminHomePage() {
                 <Link href="/admin/users" className="p-3 rounded-xl bg-slate-50 border border-slate-100 hover:bg-slate-100 transition text-[10px] font-black text-slate-700 uppercase tracking-tighter text-center">Utilisateurs</Link>
                 <Link href="/admin/rooms" className="p-3 rounded-xl bg-slate-50 border border-slate-100 hover:bg-slate-100 transition text-[10px] font-black text-slate-700 uppercase tracking-tighter text-center">Salles</Link>
                 <Link href="/admin/planning" className="p-3 rounded-xl bg-slate-50 border border-slate-100 hover:bg-slate-100 transition text-[10px] font-black text-slate-700 uppercase tracking-tighter text-center">Emploi du temps</Link>
+                <Link href="/admin/dispenses" className="p-3 rounded-xl bg-red-50 border border-red-100 hover:bg-red-100 transition text-[10px] font-black text-red-900 uppercase tracking-tighter text-center">Gestion des Dispenses</Link>
                 <Link href="/admin/teachers/subjects" className="p-3 rounded-xl bg-amber-50 border border-amber-100 hover:bg-amber-100 transition text-[10px] font-black text-amber-900 uppercase tracking-tighter text-center">Habilitations Profs</Link>
              </div>
            </section>
