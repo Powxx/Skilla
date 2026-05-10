@@ -29,7 +29,7 @@ export default function PlanningClient({ classId, teacherId }: { classId?: strin
         setEvents(data);
       }
     } catch (error) {
-      console.error("Erreur planning:", error);
+      console.error("Erreur emploi du temps:", error);
     } finally {
       setLoading(false);
     }

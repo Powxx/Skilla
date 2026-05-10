@@ -191,7 +191,7 @@ export default function CoreSettingsClient({
           onClick={() => setActiveTab('planning')}
           className={`px-5 py-3 text-[10px] font-black uppercase tracking-widest transition whitespace-nowrap ${activeTab === 'planning' ? 'text-blue-600 border-b-2 border-blue-600 bg-white' : 'text-slate-400 hover:text-slate-600'}`}
         >
-          Planning
+          Emploi du temps
         </button>
         <Link 
           href="/admin/settings/competencies"

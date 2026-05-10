@@ -27,7 +27,7 @@ export default function TeacherPlanningClient({ teacherId, teachers }: { teacher
         setEvents(data);
       }
     } catch (error) {
-      console.error("Erreur planning:", error);
+      console.error("Erreur emploi du temps:", error);
     } finally {
       setLoading(false);
     }
