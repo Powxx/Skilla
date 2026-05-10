@@ -733,6 +733,11 @@ export default function AdvancedPlanningClient({ classes, teachers, subjects, ro
                   <button type="submit" disabled={loading} className="w-full py-3 bg-blue-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] shadow-lg shadow-blue-500/20 hover:bg-blue-700 transition disabled:opacity-50">
                     Mettre à jour
                   </button>
+                  {selectedEvent.extendedProps.groupId && (
+                    <button type="button" onClick={handleUngroupEvent} className="w-full py-2 bg-amber-100 text-amber-800 rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-amber-200 transition">
+                      Dégrouper cette classe
+                    </button>
+                  )}
                   <button type="button" onClick={handleDeleteSelectedEvent} className="w-full py-2 text-red-600 hover:bg-red-50 rounded-xl text-[9px] font-black uppercase tracking-widest transition">
                     Supprimer
                   </button>
