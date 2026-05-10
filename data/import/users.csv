@@ -1,0 +1,7 @@
+role,email,firstName,lastName,password,className,subjects
+ADMIN,admin@skilla.edu,Admin,Skilla,admin,,
+TEACHER,jean@skilla.edu,Jean,Dupont,teacher,,"Mathématiques, Anglais"
+TEACHER,marie@skilla.edu,Marie,Curie,teacher,,"Développement Web, Gestion de projet"
+STUDENT,lucas@skilla.edu,Lucas,Durand,student,Bachelor 2,
+STUDENT,emma@skilla.edu,Emma,Petit,student,Bachelor 2,
+STUDENT,hugo@skilla.edu,Hugo,Blanc,student,Master 1,
