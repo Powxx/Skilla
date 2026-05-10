@@ -54,7 +54,12 @@ export async function GET(request: Request) {
   };
 
   if (classId) whereClause.classId = classId;
-  if (teacherId) whereClause.teacherId = teacherId;
+  if (teacherId) {
+      whereClause.OR = [
+        { teacherId: teacherId },
+        { substituteId: teacherId }
+      ];
+  }
 
   const lessons = await prisma.lesson.findMany({
     where: whereClause,
