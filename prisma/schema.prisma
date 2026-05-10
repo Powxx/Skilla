@@ -43,6 +43,18 @@ enum RhythmType {
 }
 
 // --- UTILISATEURS ---
+model Dispensation {
+  id        String   @id @default(cuid())
+  studentId String
+  student   User     @relation("StudentDispensation", fields: [studentId], references: [id], onDelete: Cascade)
+  subjectId String
+  subject   Subject  @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  reason    String?
+  createdAt DateTime @default(now())
+
+  @@unique([studentId, subjectId])
+}
+
 model User {
   id            String    @id @default(cuid())
   email         String?   @unique
@@ -64,6 +76,7 @@ model User {
   studentProfile StudentProfile?
   classId        String?
   class          Class?          @relation(fields: [classId], references: [id])
+  dispensations  Dispensation[]  @relation("StudentDispensation")
 
   // Relations Responsables (Self-relation pour les parents/tuteurs)
   students      User[]    @relation("UserToResponsible")
@@ -143,6 +156,7 @@ model Subject {
   lessons     Lesson[]
   grades      Grade[]
   skillMatrix SkillMatrix[]
+  dispensations Dispensation[]
 }
 
 model Semester {

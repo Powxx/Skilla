@@ -138,8 +138,8 @@ export default async function AdminStudentsPage() {
                           {s.class?.name || "Non assigné"}
                         </span>
                       </td>
-                      <td className="hidden px-5 py-4 font-mono text-xs text-slate-400 lg:table-cell">
-                        {s.id}
+                      <td className="px-5 py-4">
+                        <Link href={`/admin/students/${s.id}/dispenses`} className="text-xs text-blue-600 underline">Dispenses</Link>
                       </td>
                     </tr>
                   ))

@@ -35,11 +35,22 @@ export async function GET(request: Request) {
   // we would verify the link between session.user.id and the classId requested.
 
   const date = new Date(dateStr);
+  
+  let dispensations: string[] = [];
+  if (session.user.role === "STUDENT") {
+      const user = await prisma.user.findUnique({
+          where: { id: session.user.id },
+          include: { dispensations: true }
+      });
+      dispensations = user?.dispensations.map(d => d.subjectId) || [];
+  }
+
   const whereClause: any = {
     startTime: {
       gte: startOfWeek(date, { weekStartsOn: 1 }),
       lte: endOfWeek(date, { weekStartsOn: 1 }),
     },
+    subjectId: { notIn: dispensations }
   };
 
   if (classId) whereClause.classId = classId;

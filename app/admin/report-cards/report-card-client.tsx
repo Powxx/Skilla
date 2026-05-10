@@ -88,8 +88,8 @@ export default function ReportCardClient({ students, semesters }: any) {
                 <div key={a.subjectId} className="flex justify-between items-center p-4 bg-slate-50 rounded-2xl border border-slate-100">
                   <span className="font-bold text-slate-700">{a.subjectName}</span>
                   <span className="text-lg font-black text-blue-600">
-                    {a.average !== null ? a.average.toFixed(2) : '—'}
-                    {a.average !== null && <span className="text-[10px] text-slate-400 ml-1">/20</span>}
+                    {a.isDispensed ? <span className="text-slate-400 italic font-medium">Dispensé</span> : (a.average !== null ? a.average.toFixed(2) : '—')}
+                    {!a.isDispensed && a.average !== null && <span className="text-[10px] text-slate-400 ml-1">/20</span>}
                   </span>
                 </div>
               ))}

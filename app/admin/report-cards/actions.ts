@@ -28,19 +28,32 @@ export async function calculateStudentAverages(studentId: string, semesterId: st
 
   // 3. Aggregate student data
   const studentGrades = classGrades.filter(g => g.studentId === studentId);
-  const studentStats: Record<string, { sum: number, count: number, name: string, comments: string[] }> = {};
+  
+  // Get dispensations
+  const dispensations = await prisma.dispensation.findMany({
+    where: { studentId }
+  });
+  const dispensedSubjectIds = dispensations.map(d => d.subjectId);
+
+  const studentStats: Record<string, { sum: number, count: number, name: string, comments: string[], isDispensed: boolean }> = {};
   
   // Initialize with class subjects
   const classSubjects = await prisma.subject.findMany({
     where: { lessons: { some: { classId: student.classId } } }
   });
   classSubjects.forEach(s => {
-    studentStats[s.id] = { sum: 0, count: 0, name: s.name, comments: [] };
+    studentStats[s.id] = { 
+        sum: 0, 
+        count: 0, 
+        name: s.name, 
+        comments: [], 
+        isDispensed: dispensedSubjectIds.includes(s.id) 
+    };
   });
 
   studentGrades.forEach(g => {
     if (!studentStats[g.subjectId]) {
-      studentStats[g.subjectId] = { sum: 0, count: 0, name: g.subject.name, comments: [] };
+      studentStats[g.subjectId] = { sum: 0, count: 0, name: g.subject.name, comments: [], isDispensed: dispensedSubjectIds.includes(g.subjectId) };
     }
     const coef = g.coefficient || 1;
     studentStats[g.subjectId].sum += g.value * coef;
@@ -51,9 +64,10 @@ export async function calculateStudentAverages(studentId: string, semesterId: st
   return Object.entries(studentStats).map(([id, data]) => ({
     subjectId: id,
     subjectName: data.name,
-    average: data.count > 0 ? data.sum / data.count : null,
+    average: data.isDispensed ? null : (data.count > 0 ? data.sum / data.count : null),
     classAverage: classStats[id] && classStats[id].count > 0 ? classStats[id].sum / classStats[id].count : null,
-    comments: data.comments.join(" ; ")
+    comments: data.isDispensed ? "Dispensé(e)" : data.comments.join(" ; "),
+    isDispensed: data.isDispensed
   })).sort((a, b) => a.subjectName.localeCompare(b.subjectName));
 }
 
