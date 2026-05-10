@@ -191,8 +191,10 @@ model Lesson {
   
   roomId            String?
   room              Room?            @relation(fields: [roomId], references: [id])
-  
+  groupId           String?
+
   attendances       Attendance[]
+
   attendanceSheetId String?
   attendanceSheet   AttendanceSheet? @relation(fields: [attendanceSheetId], references: [id])
   substitutionRequests SubstitutionRequest[]

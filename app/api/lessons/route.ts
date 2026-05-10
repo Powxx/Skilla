@@ -146,6 +146,7 @@ export async function POST(request: Request) {
         subjectId: data.subjectId,
         teacherId: data.teacherId,
         roomId: data.roomId || null,
+        groupId: data.groupId || null
       }
     });
     return NextResponse.json(newLesson);

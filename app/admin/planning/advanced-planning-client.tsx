@@ -143,20 +143,70 @@ export default function AdvancedPlanningClient({ classes, teachers, subjects, ro
     return null; // No conflict
   };
 
+  // 1. Détection de conflits (existant) + Détection de cours "groupables"
+  const getGroupableEvent = (start: Date, end: Date, teacherId: string, subjectId: string) => {
+    return events.find(event => {
+      const eStart = parseISO(event.start);
+      const eEnd = parseISO(event.end);
+      const overlaps = (start < eEnd && end > eStart);
+      return overlaps && 
+             event.extendedProps.teacherId === teacherId && 
+             event.extendedProps.subjectId === subjectId;
+    });
+  };
+
   const handleEventReceive = async (info: any) => {
     const { event } = info;
     const start = event.start;
     const end = event.end;
     const props = event.extendedProps;
 
+    // Détection de cours "groupable"
+    const groupableEvent = getGroupableEvent(start, end, props.teacherId, props.subjectId);
+    if (groupableEvent) {
+      if (confirm(`Ce professeur donne déjà cours à une autre classe sur la même matière à ce créneau. Voulez-vous regrouper les classes ?`)) {
+        // Créer un groupe ou ajouter à un groupe existant
+        const groupId = groupableEvent.extendedProps.groupId || crypto.randomUUID();
+        
+        // Mettre à jour l'événement existant avec le groupId s'il n'en avait pas
+        if (!groupableEvent.extendedProps.groupId) {
+             await fetch("/api/lessons", {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ id: groupableEvent.id, groupId: groupId })
+             });
+        }
+        
+        // Créer le nouveau cours lié au même groupe
+        await fetch("/api/lessons", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            startTime: start.toISOString(),
+            endTime: end.toISOString(),
+            subjectId: props.subjectId,
+            teacherId: props.teacherId,
+            classId: props.classId,
+            roomId: props.roomId || null,
+            groupId: groupId
+          })
+        });
+        
+        fetchLessons(currentDate);
+        return;
+      }
+    }
+
+    // Vérification de conflits standard
     const conflictError = checkConflicts(start, end, props.teacherId, props.classId, props.roomId);
-    
+
     if (conflictError) {
       info.revert();
       setErrorMsg(conflictError);
       setTimeout(() => setErrorMsg(""), 5000);
       return;
     }
+    // ... reste de la logique
 
     setLoading(true);
     try {
@@ -288,6 +338,26 @@ export default function AdvancedPlanningClient({ classes, teachers, subjects, ro
       alert("Erreur réseau");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleUngroupEvent = async () => {
+    if (!selectedEvent) return;
+    setLoading(true);
+    try {
+        const res = await fetch("/api/lessons", {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ id: selectedEvent.id, groupId: null })
+        });
+        if (res.ok) {
+            setSelectedEvent(null);
+            fetchLessons(currentDate);
+        }
+    } catch (err) {
+        alert("Erreur lors du dégroupage.");
+    } finally {
+        setLoading(false);
     }
   };
 
