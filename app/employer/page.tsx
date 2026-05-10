@@ -8,7 +8,7 @@ export default async function EmployerHomePage() {
 
   if (
     !session?.user?.id ||
-    (session.user.role !== "COMPANY_TUTOR" && session.user.role !== "ADMIN")
+    (session.user.role !== "COMPANY_TUTOR" && session.user.role !== "ADMIN" && session.user.role !== "SUPER_ADMIN")
   ) {
     redirect("/login");
   }

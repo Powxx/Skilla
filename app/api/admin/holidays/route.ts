@@ -5,14 +5,14 @@ import { authOptions } from "@/lib/auth-options";
 
 export async function GET() {
   const session = await getServerSession(authOptions);
-  if (!session?.user || session.user.role !== "ADMIN") return NextResponse.json({ error: "Non autorisé" }, { status: 403 });
+  if (!session?.user || (session.user.role !== "ADMIN" && session.user.role !== "SUPER_ADMIN")) return NextResponse.json({ error: "Non autorisé" }, { status: 403 });
   const holidays = await prisma.holiday.findMany({ orderBy: { date: 'asc' } });
   return NextResponse.json(holidays);
 }
 
 export async function POST(request: Request) {
   const session = await getServerSession(authOptions);
-  if (!session?.user || session.user.role !== "ADMIN") return NextResponse.json({ error: "Non autorisé" }, { status: 403 });
+  if (!session?.user || (session.user.role !== "ADMIN" && session.user.role !== "SUPER_ADMIN")) return NextResponse.json({ error: "Non autorisé" }, { status: 403 });
   try {
     const { date, name } = await request.json();
     const newHoliday = await prisma.holiday.create({ 
@@ -29,7 +29,7 @@ export async function POST(request: Request) {
 
 export async function DELETE(request: Request) {
   const session = await getServerSession(authOptions);
-  if (!session?.user || session.user.role !== "ADMIN") return NextResponse.json({ error: "Non autorisé" }, { status: 403 });
+  if (!session?.user || (session.user.role !== "ADMIN" && session.user.role !== "SUPER_ADMIN")) return NextResponse.json({ error: "Non autorisé" }, { status: 403 });
   const { searchParams } = new URL(request.url);
   const id = searchParams.get('id');
   if (!id) return NextResponse.json({ error: "ID manquant" }, { status: 400 });
