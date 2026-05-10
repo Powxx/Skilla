@@ -102,6 +102,7 @@ model User {
   canManageSettings Boolean @default(false)
   canManagePlanning Boolean @default(false)
   canManageRH      Boolean @default(false)
+  canImpersonate   Boolean @default(false)
 }
 
 model GlobalSetting {

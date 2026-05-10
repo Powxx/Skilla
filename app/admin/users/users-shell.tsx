@@ -30,6 +30,7 @@ export type ListedUserRow = {
   canManageSettings: boolean;
   canManagePlanning: boolean;
   canManageRH: boolean;
+  canImpersonate: boolean;
 };
 
 type ClassOption = { id: string; name: string };

@@ -85,6 +85,7 @@ export default async function AdminUsersPage({
             canManageSettings: true,
             canManagePlanning: true,
             canManageRH: true,
+            canImpersonate: true,
             // 3. On compte les leçons (lessons) directement depuis l'User
             _count: {
               select: { lessons: true },
@@ -123,6 +124,7 @@ export default async function AdminUsersPage({
           canManageSettings: u.canManageSettings,
           canManagePlanning: u.canManagePlanning,
           canManageRH: u.canManageRH,
+          canImpersonate: u.canImpersonate,
     };
   });
 

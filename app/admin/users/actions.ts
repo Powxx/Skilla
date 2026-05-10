@@ -43,6 +43,7 @@ export async function updateAdminPermissions(input: {
   canManagePlanning?: boolean;
   canManageRH?: boolean;
   canAccessLivrets?: boolean;
+  canImpersonate?: boolean;
 }): Promise<MutationResult> {
   const session = await requireAdmin();
   if (session?.user?.role !== "SUPER_ADMIN") {
