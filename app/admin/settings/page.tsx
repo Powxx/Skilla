@@ -12,7 +12,7 @@ export const dynamic = 'force-dynamic';
 export default async function AdminSettingsPage() {
   const session = await getServerSession(authOptions);
 
-  if (!session?.user?.id || session.user.role !== "ADMIN") {
+  if (!session?.user?.id || (session.user.role !== "ADMIN" && session.user.role !== "SUPER_ADMIN")) {
     redirect("/login");
   }
 
