@@ -11,7 +11,7 @@ import { createNotification, checkEventEnabled } from "@/app/actions/notificatio
 export type SubmitRollPayload = {
   classId: string;
   lessonId: string;
-  markings: Record<string, "present" | "absent" | "late">;
+  markings: Record<string, "present" | "absent" | "late" | "excused">;
   lateDurations?: Record<string, number>; // Durée en minutes pour les retards
 };
 
@@ -81,7 +81,7 @@ export async function submitRollCall(payload: SubmitRollPayload): Promise<Submit
       return {
         studentId: student.id,
         lessonId: lessonId,
-        status: (mark === "late" ? "LATE" : mark === "absent" ? "ABSENT" : "PRESENT") as AttendanceStatus,
+        status: (mark === "late" ? "LATE" : mark === "absent" ? "ABSENT" : mark === "excused" ? "EXCUSED" : "PRESENT") as AttendanceStatus,
         lateDuration: mark === "late" ? (lateDurations[student.id] || 0) : null,
       };
     });

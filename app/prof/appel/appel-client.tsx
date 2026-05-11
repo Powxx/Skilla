@@ -7,7 +7,7 @@ import { getStudentsByClass } from "@/app/prof/notes/actions";
 import type { StudentForGradeEntry } from "@/app/prof/notes/actions";
 import { submitRollCall, updateAttendanceStatus } from "./actions";
 
-export type PresenceState = "present" | "absent" | "late";
+export type PresenceState = "present" | "absent" | "late" | "excused";
 
 function initStates(ids: string[]): Record<string, PresenceState> {
   const o: Record<string, PresenceState> = {};
@@ -50,7 +50,7 @@ export default function AppelClient({ initialLessons }: { initialLessons: any[] 
     });
   };
 
-  const setPresence = (studentId: string, next: Exclude<PresenceState, "present">) => {
+  const setPresence = (studentId: string, next: PresenceState) => {
     setStates((prev) => ({
       ...prev,
       [studentId]: prev[studentId] === next ? "present" : next,
@@ -195,12 +195,32 @@ export default function AppelClient({ initialLessons }: { initialLessons: any[] 
                     </div>
                   </div>
                   <div className="flex gap-2">
+                    {/* Toggle pour les absences existantes */}
                     <button
                       onClick={() => setPresence(s.id, "absent")}
                       className={`px-4 py-1.5 rounded-lg text-xs font-bold transition ${st === "absent" ? "bg-red-600 text-white shadow-md" : "bg-red-50 text-red-700 hover:bg-red-100"}`}
                     >
                       Absent
                     </button>
+export type PresenceState = "present" | "absent" | "late" | "excused";
+
+// ...
+                      {st === "absent" && (
+                        <button
+                          onClick={() => setPresence(s.id, "excused")}
+                          className="px-2 py-1.5 bg-emerald-50 text-emerald-700 rounded-lg text-xs font-bold hover:bg-emerald-100"
+                        >
+                          Justifier
+                        </button>
+                    )}
+                    {st === "excused" && (
+                        <button
+                          onClick={() => setPresence(s.id, "absent")}
+                          className="px-2 py-1.5 bg-amber-50 text-amber-700 rounded-lg text-xs font-bold hover:bg-amber-100"
+                        >
+                          Annuler
+                        </button>
+                    )}
                     <button
                       onClick={() => setPresence(s.id, "late")}
                       className={`px-4 py-1.5 rounded-lg text-xs font-bold transition ${st === "late" ? "bg-orange-500 text-white shadow-md" : "bg-orange-50 text-orange-700 hover:bg-orange-100"}`}

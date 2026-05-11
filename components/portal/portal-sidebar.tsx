@@ -15,7 +15,8 @@ import {
   BarChart, 
   UserCircle,
   Menu,
-  X
+  X,
+  Key
 } from "lucide-react";
 
 type NavItem = {
@@ -48,6 +49,7 @@ export default function PortalSidebar({ variant, resolvedChildId, schoolName = "
         { href: "/admin/recap", label: "Récapitulatif", icon: BarChart },
         { href: "/admin/absences", label: "Absences", icon: Clock },
         { href: "/admin/notifications", label: "Notifications", icon: FileText },
+        { href: "/admin/connexion-docs", label: "Connexion Docs", icon: Key },
         { href: "/admin/settings", label: "Config", icon: Settings }
       );
       break;
