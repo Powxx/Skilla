@@ -58,32 +58,23 @@ export default function AppelClient({ initialLessons }: { initialLessons: any[] 
     setFeedback(null);
   };
 
-  const handleValidate = () => {
-    if (!selectedLesson) return;
-    setFeedback(null);
+import { updateAttendanceStatus } from "./actions";
 
-    runSave(() => {
-      void submitRollCall({ 
-        classId: selectedLesson.classId, 
-        lessonId: selectedLesson.id, 
-        markings: states,
-        lateDurations
-      }).then((res) => {
-        if (res.ok) {
-          setFeedback({
-            type: "success",
-            text: res.created === 0
-                ? "Appel validé — tous présents."
-                : `${res.created} absence(s)/retard(s) enregistré(s).`,
-          });
-          // Scroll to top to see feedback
-          window.scrollTo({ top: 0, behavior: 'smooth' });
-        } else {
-          setFeedback({ type: "error", text: res.error });
-        }
-      });
-    });
+// ... dans le composant AppelClient ...
+
+  const handleToggleJustification = async (attendanceId: string, currentStatus: string) => {
+    const nextStatus = currentStatus === "ABSENT" ? "EXCUSED" : "ABSENT";
+    const res = await updateAttendanceStatus(attendanceId, nextStatus);
+    if (!res.ok) {
+        alert("Erreur: " + res.error);
+    } else {
+        // Rafraîchir les données ou mettre à jour l'état local
+        window.location.reload(); 
+    }
   };
+
+// ... dans le rendu de la liste ...
+// Dans la boucle `students.map`, après avoir vérifié si `selectedLesson` a déjà des `attendances` ...
 
   if (!selectedLesson) {
     return (

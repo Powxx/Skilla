@@ -19,6 +19,30 @@ export type SubmitRollResult =
   | { ok: true; created: number }
   | { ok: false; error: string };
 
+export async function updateAttendanceStatus(
+  attendanceId: string, 
+  status: "ABSENT" | "EXCUSED"
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const session = await getServerSession(authOptions);
+  
+  if (!session?.user || session.user.role !== "TEACHER") {
+    return { ok: false, error: "Accès réservé aux enseignants." };
+  }
+
+  try {
+    await prisma.attendance.update({
+      where: { id: attendanceId },
+      data: { status: status as AttendanceStatus },
+    });
+    
+    revalidatePath("/prof/appel");
+    return { ok: true };
+  } catch (error) {
+    console.error("Erreur mise à jour absence:", error);
+    return { ok: false, error: "Erreur de mise à jour." };
+  }
+}
+
 /**
  * Crée les entrées Attendance pour les élèves.
  */
