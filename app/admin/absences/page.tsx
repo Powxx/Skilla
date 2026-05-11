@@ -2,6 +2,13 @@ import prisma from "@/lib/prisma";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth-options";
 import { redirect } from "next/navigation";
+import { revalidatePath } from "next/cache";
+
+async function deleteAttendance(id: string) {
+  "use server";
+  await prisma.attendance.delete({ where: { id } });
+  revalidatePath("/admin/absences");
+}
 
 export default async function AdminAbsencesPage() {
   const session = await getServerSession(authOptions);
@@ -10,20 +17,12 @@ export default async function AdminAbsencesPage() {
     redirect("/login");
   }
 
-  // Récupérer les élèves avec leurs absences
-  const students = await prisma.user.findMany({
-    where: {
-      role: "STUDENT"
-    },
+  const attendances = await prisma.attendance.findMany({
     include: {
-      absences: {
-        include: {
-          lesson: {
-            include: { subject: true }
-          }
-        }
-      }
-    }
+        student: { select: { firstName: true, lastName: true } },
+        lesson: { include: { subject: true } }
+    },
+    orderBy: { lesson: { startTime: 'desc' } }
   });
 
   return (
@@ -33,19 +32,26 @@ export default async function AdminAbsencesPage() {
         <table className="w-full text-left text-sm">
           <thead>
             <tr className="border-b border-slate-100">
-              <th className="py-3 font-bold text-slate-500">Nom</th>
-              <th className="py-3 font-bold text-slate-500">Nombre absences</th>
-              <th className="py-3 font-bold text-slate-500">Détails</th>
+              <th className="py-3 font-bold text-slate-500">Élève</th>
+              <th className="py-3 font-bold text-slate-500">Cours</th>
+              <th className="py-3 font-bold text-slate-500">Statut</th>
+              <th className="py-3 font-bold text-slate-500">Action</th>
             </tr>
           </thead>
           <tbody>
-            {students.map((s) => (
-              <tr key={s.id} className="border-b border-slate-100 last:border-0">
-                <td className="py-4 font-medium">{s.lastName} {s.firstName}</td>
-                <td className="py-4">{s.absences.length}</td>
+            {attendances.map((a) => (
+              <tr key={a.id} className="border-b border-slate-100 last:border-0">
+                <td className="py-4">{a.student.lastName} {a.student.firstName}</td>
+                <td className="py-4">{a.lesson.subject.name}</td>
                 <td className="py-4">
-                  {/* Lien ou détail ici */}
-                  <span className="text-blue-600">Voir détails</span>
+                    <span className={`px-2 py-1 rounded text-xs font-bold ${a.status === 'ABSENT' ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'}`}>
+                        {a.status}
+                    </span>
+                </td>
+                <td className="py-4">
+                    <form action={deleteAttendance.bind(null, a.id)}>
+                        <button type="submit" className="text-red-600 hover:text-red-800 font-bold">Supprimer</button>
+                    </form>
                 </td>
               </tr>
             ))}

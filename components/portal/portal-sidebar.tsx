@@ -46,6 +46,8 @@ export default function PortalSidebar({ variant, resolvedChildId, schoolName = "
         { href: "/admin/report-cards", label: "Bulletins", icon: FileText },
         { href: "/admin/livret", label: "Livret", icon: BookOpen },
         { href: "/admin/recap", label: "Récapitulatif", icon: BarChart },
+        { href: "/admin/absences", label: "Absences", icon: Clock },
+        { href: "/admin/notifications", label: "Notifications", icon: FileText },
         { href: "/admin/settings", label: "Config", icon: Settings }
       );
       break;
