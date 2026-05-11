@@ -4,6 +4,13 @@ import { authOptions } from "@/lib/auth-options";
 import { redirect } from "next/navigation";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
+import { revalidatePath } from "next/cache";
+
+async function deleteLog(id: string) {
+  "use server";
+  await prisma.classNotificationLog.delete({ where: { id } });
+  revalidatePath("/admin/notifications");
+}
 
 export default async function AdminNotificationsPage() {
   const session = await getServerSession(authOptions);
@@ -31,7 +38,7 @@ export default async function AdminNotificationsPage() {
               <th className="py-3 font-bold text-slate-500">Émetteur</th>
               <th className="py-3 font-bold text-slate-500">Classe</th>
               <th className="py-3 font-bold text-slate-500">Titre</th>
-              <th className="py-3 font-bold text-slate-500">Message</th>
+              <th className="py-3 font-bold text-slate-500">Action</th>
             </tr>
           </thead>
           <tbody>
@@ -41,7 +48,11 @@ export default async function AdminNotificationsPage() {
                 <td className="py-4 font-medium">{log.sender.lastName} {log.sender.firstName}</td>
                 <td className="py-4">{log.class.name}</td>
                 <td className="py-4 font-semibold">{log.title}</td>
-                <td className="py-4 text-slate-600">{log.message}</td>
+                <td className="py-4">
+                    <form action={deleteLog.bind(null, log.id)}>
+                        <button type="submit" className="text-red-600 hover:text-red-800 font-bold underline text-xs">Supprimer</button>
+                    </form>
+                </td>
               </tr>
             ))}
           </tbody>
