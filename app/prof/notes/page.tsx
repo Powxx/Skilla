@@ -36,7 +36,7 @@ export default async function TeacherGradesPage() {
   return (
     <>
       <div className="border-b border-slate-200/90 bg-white/90 backdrop-blur-sm">
-        <div className="mx-auto max-w-5xl px-4 py-3 text-sm text-slate-600 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-5xl py-3 text-sm text-slate-600">
           <span className="text-slate-500">Étape 1 → 2 → 3 :</span>{" "}
           matière depuis la base, puis classe, puis élève — la saisie s’affiche ensuite.
         </div>

@@ -94,22 +94,26 @@ export default function PortalSidebar({ variant, resolvedChildId, schoolName = "
     <>
       <button 
         onClick={() => setIsOpen(!isOpen)}
-        className="lg:hidden fixed top-4 left-4 z-[100] p-2 bg-slate-900 text-white rounded-lg shadow-lg"
+        className="lg:hidden fixed bottom-6 right-6 z-[100] h-14 w-14 bg-slate-900 text-white rounded-full shadow-2xl flex items-center justify-center hover:scale-110 active:scale-95 transition-all duration-200 border border-white/10"
+        aria-label={isOpen ? "Fermer le menu" : "Ouvrir le menu"}
       >
-        {isOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+        {isOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
       </button>
 
-      <aside className={`fixed inset-y-0 left-0 z-[90] w-64 bg-slate-900 text-white flex flex-col h-screen transform transition-transform duration-300 lg:translate-x-0 lg:static ${isOpen ? 'translate-x-0' : '-translate-x-full'}`}>
-        <div className="p-6 border-b border-white/10 mt-12 lg:mt-0">
-          <Link href="/" className="flex items-center gap-3 group">
-            <div className="h-8 w-8 rounded-lg bg-blue-600 flex items-center justify-center text-white font-bold text-xs transition group-hover:scale-110 shadow-lg shadow-blue-500/20">
+      <aside className={`fixed inset-y-0 left-0 z-[90] w-72 bg-slate-900 text-white flex flex-col h-screen transform transition-all duration-300 ease-in-out lg:translate-x-0 lg:static ${isOpen ? 'translate-x-0' : '-translate-x-full shadow-none'}`}>
+        <div className="p-8 border-b border-white/10">
+          <Link href="/" className="flex items-center gap-4 group">
+            <div className="h-10 w-10 rounded-xl bg-blue-600 flex items-center justify-center text-white font-bold text-sm transition group-hover:rotate-6 shadow-lg shadow-blue-500/30">
               {schoolName[0]?.toUpperCase() || 'S'}
             </div>
-            <span className="font-bold text-lg tracking-tight">{schoolName}</span>
+            <div className="flex flex-col">
+              <span className="font-black text-xl tracking-tight leading-none">{schoolName}</span>
+              <span className="text-[10px] text-blue-400 font-bold uppercase tracking-widest mt-1">Plateforme</span>
+            </div>
           </Link>
         </div>
 
-        <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
+        <nav className="flex-1 p-6 space-y-1.5 overflow-y-auto custom-scrollbar">
           {navItems.map((item) => {
             const isActive = pathname === item.href || (item.href !== `/${variant}` && pathname.startsWith(item.href.split('?')[0]));
             return (
@@ -117,32 +121,32 @@ export default function PortalSidebar({ variant, resolvedChildId, schoolName = "
                 key={item.href}
                 href={item.href}
                 onClick={() => setIsOpen(false)}
-                className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all duration-200 group ${
+                className={`flex items-center gap-3.5 px-5 py-3.5 rounded-2xl text-[13px] font-bold transition-all duration-200 group ${
                   isActive 
-                    ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20' 
+                    ? 'bg-blue-600 text-white shadow-xl shadow-blue-600/30 ring-1 ring-white/10' 
                     : 'text-slate-400 hover:text-white hover:bg-white/5'
                 }`}
               >
-                <item.icon className={`h-5 w-5 ${isActive ? 'text-white' : 'text-slate-500 group-hover:text-slate-300'}`} />
+                <item.icon className={`h-5 w-5 transition-colors ${isActive ? 'text-white' : 'text-slate-500 group-hover:text-slate-300'}`} />
                 {item.label}
               </Link>
             );
           })}
         </nav>
 
-        <div className="p-4 border-t border-white/10 bg-black/20">
-          <div className="flex items-center gap-3 px-4 py-2">
-             <div className="h-8 w-8 rounded-full bg-slate-700 flex items-center justify-center border border-white/10">
-                <UserCircle className="h-5 w-5 text-slate-400" />
+        <div className="p-6 border-t border-white/10 bg-black/40 backdrop-blur-xl">
+          <div className="flex items-center gap-4">
+             <div className="h-10 w-10 rounded-2xl bg-slate-800 flex items-center justify-center border border-white/10 shadow-inner">
+                <UserCircle className="h-6 w-6 text-slate-400" />
              </div>
              <div className="overflow-hidden">
-                <p className="text-xs font-bold truncate opacity-90 uppercase tracking-wider">{variant}</p>
-                <p className="text-[10px] text-slate-500 truncate">V. 1.0.0</p>
+                <p className="text-[10px] font-black truncate opacity-50 uppercase tracking-[0.2em]">{variant}</p>
+                <p className="text-xs font-bold text-white truncate">Skilla App</p>
              </div>
           </div>
         </div>
       </aside>
-      {isOpen && <div className="fixed inset-0 bg-black/50 z-[80] lg:hidden" onClick={() => setIsOpen(false)} />}
+      {isOpen && <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-[80] lg:hidden animate-in fade-in duration-300" onClick={() => setIsOpen(false)} />}
     </>
   );
 }

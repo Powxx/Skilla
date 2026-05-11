@@ -129,16 +129,14 @@ export default async function AdminUsersPage({
   });
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900">
-      <UsersShell
-        users={users}
-        total={total}
-        page={page}
-        pageSize={PAGE_SIZE}
-        classes={classes}
-        initialQuery={q}
-        initialRole={roleRaw}
-      />
-    </div>
+    <UsersShell
+      users={users}
+      total={total}
+      page={page}
+      pageSize={PAGE_SIZE}
+      classes={classes}
+      initialQuery={q}
+      initialRole={roleRaw}
+    />
   );
 }

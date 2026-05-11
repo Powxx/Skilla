@@ -96,23 +96,23 @@ export default function PortalHeader({ variant, parentChildren = [] }: Props) {
       )}
       
       <div className="px-4 sm:px-6 lg:px-8">
-        <div className="flex h-14 items-center justify-between gap-4">
+        <div className="flex h-16 items-center justify-between gap-4">
           {/* Breadcrumbs / Mobile Menu Toggle */}
-          <div className="flex items-center gap-4">
-            <Link href="/" className="lg:hidden h-8 w-8 rounded-lg bg-slate-900 flex items-center justify-center text-white font-bold text-xs">S</Link>
+          <div className="flex items-center gap-3 min-w-0">
+            <Link href="/" className="lg:hidden h-9 w-9 shrink-0 rounded-xl bg-slate-900 flex items-center justify-center text-white font-black text-xs shadow-lg">S</Link>
             
-            <nav className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-wider text-slate-400">
-              <span className="text-slate-900">{spaceLabel()}</span>
-              <span className="text-slate-300">/</span>
-              <span className="text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md">{currentCrumb}</span>
+            <nav className="flex items-center gap-2 text-[10px] sm:text-[11px] font-black uppercase tracking-widest text-slate-400 overflow-hidden whitespace-nowrap">
+              <span className="hidden sm:inline text-slate-900">{spaceLabel()}</span>
+              <span className="hidden sm:inline text-slate-300">/</span>
+              <span className="text-blue-600 bg-blue-50 px-2 py-1 rounded-lg truncate">{currentCrumb}</span>
             </nav>
           </div>
 
           {/* Actions */}
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 sm:gap-4 shrink-0">
             {(variant === "parent" || variant === "employer") && parentChildren.length > 0 && (
               <select
-                className="text-xs font-bold bg-slate-50 border-slate-200 rounded-xl px-3 py-1.5 text-slate-700 outline-none focus:ring-2 focus:ring-blue-500/20"
+                className="text-[10px] sm:text-xs font-bold bg-slate-50 border-slate-200 rounded-xl px-2 sm:px-3 py-2 text-slate-700 outline-none focus:ring-2 focus:ring-blue-500/20 max-w-[120px] sm:max-w-none"
                 value={resolvedChildId}
                 onChange={(e) => onChildChange(e.target.value)}
               >
@@ -122,17 +122,20 @@ export default function PortalHeader({ variant, parentChildren = [] }: Props) {
               </select>
             )}
 
-            <div className="flex items-center gap-3 pl-4 border-l border-slate-100">
-              <NotificationBell />
-              <div className="text-right hidden sm:block leading-tight">
-                <p className="text-xs font-bold text-slate-900">{session?.user?.name}</p>
+            <div className="flex items-center gap-2 sm:gap-3 pl-2 sm:pl-4 border-l border-slate-100">
+              <div className="shrink-0">
+                <NotificationBell />
+              </div>
+              <div className="text-right hidden md:block leading-tight">
+                <p className="text-xs font-black text-slate-900">{session?.user?.name}</p>
                 <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">{session?.user?.role}</p>
               </div>
               <button
                 onClick={() => signOut({ callbackUrl: "/" })}
-                className="h-8 px-3 rounded-lg bg-slate-50 text-slate-600 text-[10px] font-bold hover:bg-slate-100 transition border border-slate-200 uppercase tracking-widest"
+                className="h-9 px-3 sm:px-4 rounded-xl bg-slate-50 text-slate-600 text-[10px] font-black hover:bg-slate-100 transition border border-slate-200 uppercase tracking-widest shadow-sm active:scale-95"
               >
-                Quitter
+                <span className="hidden sm:inline">Quitter</span>
+                <span className="sm:hidden">×</span>
               </button>
             </div>
           </div>

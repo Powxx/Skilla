@@ -30,7 +30,7 @@ export default async function AdminStudentsPage() {
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900">
-      <div className="mx-auto max-w-5xl px-4 py-8 sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-5xl">
         <nav className="mb-8 text-sm text-slate-500">
           <Link href="/" className="font-medium hover:text-slate-700">
             Accueil

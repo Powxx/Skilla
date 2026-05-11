@@ -129,7 +129,7 @@ export default function GradeEntryClient({ classes, subjects }: Props) {
   };
 
   return (
-    <div className="mx-auto max-w-5xl px-4 py-8 sm:px-6 lg:px-8">
+    <div className="mx-auto max-w-5xl">
       <header className="mb-8">
         <h1 className="text-2xl font-semibold tracking-tight text-slate-900 sm:text-3xl">
           Saisie des notes

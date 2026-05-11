@@ -91,7 +91,7 @@ export default function GradesBody({
     .sort((a, b) => a.displayName.localeCompare(b.displayName, "fr"));
 
   return (
-    <div className="mx-auto max-w-5xl px-4 py-8 text-slate-900 sm:px-6 lg:px-8">
+    <div className="mx-auto max-w-5xl text-slate-900">
       {contextNote ? (
         <div className="mb-6 rounded-xl border border-sky-200/90 bg-sky-50 px-4 py-3 text-sm text-sky-950">
           {contextNote}

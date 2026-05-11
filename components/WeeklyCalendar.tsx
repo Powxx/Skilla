@@ -3,7 +3,7 @@ import FullCalendar from "@fullcalendar/react";
 import timeGridPlugin from "@fullcalendar/timegrid";
 import interactionPlugin from "@fullcalendar/interaction";
 import frLocale from '@fullcalendar/core/locales/fr';
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import { getCalendarToken } from "@/app/actions/settings";
 import { Calendar, Download, Link2, Check, Copy, FileText } from "lucide-react";
@@ -25,6 +25,16 @@ export default function WeeklyCalendar({ events, onDateChange, onEventClick, onD
   const [syncUrl, setSyncUrl] = useState("");
   const [copied, setCopied] = useState(false);
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   const handleExportClick = async () => {
     setShowExportModal(true);
@@ -84,10 +94,10 @@ export default function WeeklyCalendar({ events, onDateChange, onEventClick, onD
   };
 
   return (
-    <div ref={calendarRef} className="calendar-container h-full min-h-[700px] relative bg-white p-4 rounded-2xl">
+    <div ref={calendarRef} className="calendar-container h-full min-h-[500px] lg:min-h-[700px] relative bg-white p-2 sm:p-4 rounded-2xl shadow-sm border border-slate-100">
       <FullCalendar
         plugins={[timeGridPlugin, interactionPlugin]}
-        initialView="timeGridWeek"
+        initialView={isMobile ? "timeGridDay" : "timeGridWeek"}
         locales={[frLocale]}
         locale="fr"
         customButtons={{
@@ -97,9 +107,9 @@ export default function WeeklyCalendar({ events, onDateChange, onEventClick, onD
           }
         }}
         headerToolbar={{
-          left: "prev,next today export",
+          left: isMobile ? "prev,next" : "prev,next today export",
           center: "title",
-          right: "timeGridWeek,timeGridDay",
+          right: isMobile ? "export" : "timeGridWeek,timeGridDay",
         }}
         datesSet={(arg) => {
           if (onDateChange) {
@@ -113,11 +123,18 @@ export default function WeeklyCalendar({ events, onDateChange, onEventClick, onD
         allDaySlot={false}
         weekends={false}
         events={events}
-        height={850}
+        height={isMobile ? 600 : 850}
         expandRows={true}
         selectable={editable}
         select={onDateSelect}
         eventMinHeight={40}
+        windowResize={(arg) => {
+          if (arg.view.type === 'timeGridWeek' && window.innerWidth < 768) {
+            arg.view.calendar.changeView('timeGridDay');
+          } else if (arg.view.type === 'timeGridDay' && window.innerWidth >= 768) {
+            arg.view.calendar.changeView('timeGridWeek');
+          }
+        }}
         eventClassNames="cursor-pointer hover:opacity-80 transition-opacity rounded-lg overflow-hidden border-none shadow-sm"
         eventClick={(info) => {
           if (info.event.extendedProps.type === 'holiday' || info.event.extendedProps.type === 'break' || info.event.extendedProps.type === 'holiday-label') return;

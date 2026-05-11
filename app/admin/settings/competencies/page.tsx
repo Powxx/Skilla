@@ -18,7 +18,7 @@ export default async function AdminCompetenciesPage() {
   ]);
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 px-4 py-12 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-slate-50 text-slate-900">
       <div className="mx-auto max-w-5xl">
         <header className="mb-12">
           <h1 className="text-3xl font-black tracking-tight">Configuration des Compétences</h1>
