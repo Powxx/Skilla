@@ -50,7 +50,8 @@ export default function PortalSidebar({ variant, resolvedChildId, schoolName = "
         { href: "/admin/absences", label: "Absences", icon: Clock },
         { href: "/admin/notifications", label: "Notifications", icon: FileText },
         { href: "/admin/connexion-docs", label: "Connexion Docs", icon: Key },
-        { href: "/admin/settings", label: "Config", icon: Settings }
+        { href: "/admin/settings", label: "Config", icon: Settings },
+        { href: "/settings/password", label: "Mot de passe", icon: Key }
       );
       break;
     case "prof":
@@ -60,7 +61,8 @@ export default function PortalSidebar({ variant, resolvedChildId, schoolName = "
         { href: "/prof/appel", label: "Appel", icon: Clock },
         { href: "/prof/notes", label: "Notes", icon: GraduationCap },
         { href: "/prof/livret", label: "Livret", icon: BookOpen },
-        { href: "/prof/notifications", label: "Notifications", icon: FileText }
+        { href: "/prof/notifications", label: "Notifications", icon: FileText },
+        { href: "/settings/password", label: "Mot de passe", icon: Key }
       );
       break;
     case "student":
@@ -69,7 +71,8 @@ export default function PortalSidebar({ variant, resolvedChildId, schoolName = "
         { href: "/student/planning", label: "Emploi du temps", icon: Calendar },
         { href: "/student/grades", label: "Notes", icon: GraduationCap },
         { href: "/student/livret", label: "Livret", icon: BookOpen },
-        { href: "/student/absences", label: "Absences", icon: Clock }
+        { href: "/student/absences", label: "Absences", icon: Clock },
+        { href: "/settings/password", label: "Mot de passe", icon: Key }
       );
       break;
     case "parent":
@@ -81,7 +84,8 @@ export default function PortalSidebar({ variant, resolvedChildId, schoolName = "
         { href: `${prefix}/planning${suffix}`, label: "Emploi du temps", icon: Calendar },
         { href: `${prefix}/grades${suffix}`, label: "Notes", icon: GraduationCap },
         { href: `${prefix}/livret${suffix}`, label: "Livret", icon: BookOpen },
-        { href: `${prefix}/absences${suffix}`, label: "Absences", icon: Clock }
+        { href: `${prefix}/absences${suffix}`, label: "Absences", icon: Clock },
+        { href: "/settings/password", label: "Mot de passe", icon: Key }
       );
       break;
   }
