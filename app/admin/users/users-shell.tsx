@@ -10,6 +10,7 @@ import Papa from "papaparse";
 import { useRef } from "react";
 import { useSession } from "next-auth/react";
 import { Shield, ShieldAlert, ShieldCheck, Key, FileText } from "lucide-react";
+import { jsPDF } from "jspdf";
 
 const inputClass =
   "w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-sky-600 focus:ring-2 focus:ring-sky-600/20";
