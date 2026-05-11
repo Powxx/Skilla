@@ -28,7 +28,8 @@ const stats = [
 export default async function Home() {
   const session = await getServerSession(authOptions);
   const settings = await getGlobalSettings();
-  const schoolName = settings.SCHOOL_SHORT_NAME || settings.SCHOOL_NAME || "Skilla";
+  const getSetting = (key: string) => settings.find(s => s.key === key)?.value;
+  const schoolName = getSetting("SCHOOL_SHORT_NAME") || getSetting("SCHOOL_NAME") || "Skilla";
 
   if (session?.user) {
     const role = session.user.role;

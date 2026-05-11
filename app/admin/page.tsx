@@ -20,7 +20,7 @@ export default async function AdminHomePage() {
     getGlobalSettings()
   ]);
 
-  const schoolName = globalSettings.SCHOOL_NAME || "ECM Academie";
+  const schoolName = globalSettings.find(s => s.key === "SCHOOL_NAME")?.value || "ECM Academie";
 
   return (
     <div className="h-full flex flex-col gap-6 font-sans text-slate-900">
