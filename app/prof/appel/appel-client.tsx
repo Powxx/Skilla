@@ -195,17 +195,14 @@ export default function AppelClient({ initialLessons }: { initialLessons: any[] 
                     </div>
                   </div>
                   <div className="flex gap-2">
-                    {/* Toggle pour les absences existantes */}
                     <button
-                      onClick={() => setPresence(s.id, "absent")}
+                      onClick={() => setPresence(s.id, st === "absent" ? "present" : "absent")}
                       className={`px-4 py-1.5 rounded-lg text-xs font-bold transition ${st === "absent" ? "bg-red-600 text-white shadow-md" : "bg-red-50 text-red-700 hover:bg-red-100"}`}
                     >
-                      Absent
+                      {st === "absent" ? "Absent" : "Absent ?"}
                     </button>
-export type PresenceState = "present" | "absent" | "late" | "excused";
-
-// ...
-                      {st === "absent" && (
+                    
+                    {st === "absent" && (
                         <button
                           onClick={() => setPresence(s.id, "excused")}
                           className="px-2 py-1.5 bg-emerald-50 text-emerald-700 rounded-lg text-xs font-bold hover:bg-emerald-100"
@@ -221,12 +218,14 @@ export type PresenceState = "present" | "absent" | "late" | "excused";
                           Annuler
                         </button>
                     )}
+                    
                     <button
-                      onClick={() => setPresence(s.id, "late")}
+                      onClick={() => setPresence(s.id, st === "late" ? "present" : "late")}
                       className={`px-4 py-1.5 rounded-lg text-xs font-bold transition ${st === "late" ? "bg-orange-500 text-white shadow-md" : "bg-orange-50 text-orange-700 hover:bg-orange-100"}`}
                     >
                       Retard
                     </button>
+                    
                     {st === "late" && (
                       <div className="flex items-center gap-1">
                         <input 
