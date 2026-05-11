@@ -11,17 +11,14 @@ const stats = [
   {
     label: "Élèves suivis",
     value: "100",
-    hint: "Profils élèves & notes",
   },
   {
     label: "Professeurs",
     value: "12",
-    hint: "Équipe pédagogique",
   },
   {
     label: "Classes",
     value: "5",
-    hint: "Groupes & cours",
   },
 ];
 
@@ -135,7 +132,6 @@ export default async function Home() {
                   <p className="mt-3 text-4xl font-semibold tabular-nums tracking-tight text-slate-900">
                     {item.value}
                   </p>
-                  <p className="mt-3 text-xs text-slate-500">{item.hint}</p>
                 </article>
               </li>
             ))}

@@ -225,8 +225,17 @@ export default function AppelClient({ initialLessons }: { initialLessons: any[] 
                     >
                       Retard
                     </button>
-                    
+
                     {st === "late" && (
+                      <button
+                        onClick={() => setPresence(s.id, "excused")}
+                        className="px-2 py-1.5 bg-emerald-50 text-emerald-700 rounded-lg text-xs font-bold hover:bg-emerald-100"
+                      >
+                        Justifier
+                      </button>
+                    )}
+                    
+                    {st === "late" && !lateDurations[s.id] && (
                       <div className="flex items-center gap-1">
                         <input 
                           type="number" 
