@@ -5,7 +5,7 @@ import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { getStudentsByClass } from "@/app/prof/notes/actions";
 import type { StudentForGradeEntry } from "@/app/prof/notes/actions";
-import { submitRollCall } from "./actions";
+import { submitRollCall, updateAttendanceStatus } from "./actions";
 
 export type PresenceState = "present" | "absent" | "late";
 
@@ -58,9 +58,34 @@ export default function AppelClient({ initialLessons }: { initialLessons: any[] 
     setFeedback(null);
   };
 
-import { updateAttendanceStatus } from "./actions";
-
 // ... dans le composant AppelClient ...
+
+  const handleValidate = () => {
+    if (!selectedLesson) return;
+    setFeedback(null);
+
+    runSave(() => {
+      void submitRollCall({ 
+        classId: selectedLesson.classId, 
+        lessonId: selectedLesson.id, 
+        markings: states,
+        lateDurations
+      }).then((res) => {
+        if (res.ok) {
+          setFeedback({
+            type: "success",
+            text: res.created === 0
+                ? "Appel validé — tous présents."
+                : `${res.created} absence(s)/retard(s) enregistré(s).`,
+          });
+          // Scroll to top to see feedback
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        } else {
+          setFeedback({ type: "error", text: res.error });
+        }
+      });
+    });
+  };
 
   const handleToggleJustification = async (attendanceId: string, currentStatus: string) => {
     const nextStatus = currentStatus === "ABSENT" ? "EXCUSED" : "ABSENT";

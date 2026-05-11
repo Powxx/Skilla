@@ -9,7 +9,7 @@ import { createUser, deleteUserSafe, updateUser, importUsersAction, updateAdminP
 import Papa from "papaparse";
 import { useRef } from "react";
 import { useSession } from "next-auth/react";
-import { Shield, ShieldAlert, ShieldCheck, Key } from "lucide-react";
+import { Shield, ShieldAlert, ShieldCheck, Key, FileText } from "lucide-react";
 
 const inputClass =
   "w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-sky-600 focus:ring-2 focus:ring-sky-600/20";
@@ -96,6 +96,7 @@ export default function UsersShell(props: Props) {
   const [editingUser, setEditingUser] = useState<ListedUserRow | null>(null);
   const [deletingUser, setDeletingUser] = useState<ListedUserRow | null>(null);
   const [managingPermissions, setManagingPermissions] = useState<ListedUserRow | null>(null);
+  const [accessDocumentUser, setAccessDocumentUser] = useState<ListedUserRow | null>(null);
 
   const handleExportCSV = () => {
     const data = users.map(u => ({
@@ -259,6 +260,13 @@ export default function UsersShell(props: Props) {
                                 <Key className="h-3 w-3" />
                             </button>
                         )}
+                        <button
+                          onClick={() => setAccessDocumentUser(u)}
+                          className="px-2 py-1 bg-white border border-slate-200 rounded-lg text-[9px] font-black text-slate-600 uppercase tracking-widest hover:bg-slate-100"
+                          title="Accès"
+                        >
+                            <FileText className="h-3 w-3" />
+                        </button>
                         <button
                           onClick={() => setEditingUser(u)}
                           className="px-2 py-1 bg-white border border-slate-200 rounded-lg text-[9px] font-black text-slate-600 uppercase tracking-widest hover:bg-slate-100"
