@@ -1,5 +1,7 @@
 "use server";
 
+import { getServerSession } from "next-auth/next";
+import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 
@@ -31,6 +33,46 @@ export async function markAllAsRead(userId: string) {
     data: { isRead: true },
   });
   revalidatePath("/");
+}
+
+export async function sendClassNotification(data: {
+  classId: string;
+  title: string;
+  message: string;
+  type?: "INFO" | "WARNING" | "SUCCESS" | "ERROR";
+}) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.id) throw new Error("Non autorisé");
+
+  const students = await prisma.user.findMany({
+    where: {
+      classId: data.classId,
+      role: "STUDENT"
+    },
+    select: { id: true }
+  });
+
+  const [notifications, log] = await prisma.$transaction([
+    prisma.notification.createMany({
+      data: students.map(s => ({
+        userId: s.id,
+        title: data.title,
+        message: data.message,
+        type: data.type || "INFO",
+      }))
+    }),
+    prisma.classNotificationLog.create({
+      data: {
+        senderId: session.user.id,
+        classId: data.classId,
+        title: data.title,
+        message: data.message,
+      }
+    })
+  ]);
+  
+  revalidatePath("/");
+  return { notifications, log };
 }
 
 export async function createNotification(data: {

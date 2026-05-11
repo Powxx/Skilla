@@ -108,6 +108,7 @@ model User {
   surveys       SatisfactionSurvey[]
   meetingRequestsSent MeetingRequest[]  @relation("MeetingSender")
   notifications  Notification[]
+  sentNotifications ClassNotificationLog[] @relation("NotificationSender")
 
   // Habilitations spécifiques
   canAccessLivrets Boolean @default(false)
@@ -140,6 +141,7 @@ model Class {
   lessons          Lesson[]
   attendanceSheets AttendanceSheet[]
   competencies     ClassCompetency[]
+  notifications    ClassNotificationLog[]
 }
 
 model Room {
@@ -357,6 +359,17 @@ model Notification {
   type      String   @default("INFO") // INFO, WARNING, SUCCESS, ERROR
   isRead    Boolean  @default(false)
   link      String?  // Optional link to navigate to
+  createdAt DateTime @default(now())
+}
+
+model ClassNotificationLog {
+  id        String   @id @default(cuid())
+  senderId  String
+  sender    User     @relation("NotificationSender", fields: [senderId], references: [id])
+  classId   String
+  class     Class    @relation(fields: [classId], references: [id])
+  title     String
+  message   String
   createdAt DateTime @default(now())
 }
 
