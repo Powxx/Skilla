@@ -359,6 +359,7 @@ model Notification {
   type      String   @default("INFO") // INFO, WARNING, SUCCESS, ERROR
   isRead    Boolean  @default(false)
   link      String?  // Optional link to navigate to
+  senderName String  @default("Système")
   createdAt DateTime @default(now())
 }
 

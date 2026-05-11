@@ -43,6 +43,8 @@ export async function sendClassNotification(data: {
 }) {
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) throw new Error("Non autorisé");
+  
+  const senderName = `${session.user.name || 'Enseignant'}`;
 
   const students = await prisma.user.findMany({
     where: {
@@ -59,6 +61,7 @@ export async function sendClassNotification(data: {
         title: data.title,
         message: data.message,
         type: data.type || "INFO",
+        senderName: senderName
       }))
     }),
     prisma.classNotificationLog.create({

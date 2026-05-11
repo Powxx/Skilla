@@ -17,11 +17,11 @@ export default function SendNotificationClient({ classes }: { classes: { id: str
     };
 
     transition(async () => {
-      try {
-          await sendClassNotification(data);
+      const res = await sendClassNotification(data);
+      if (res) {
           setStatus("Notification envoyée avec succès !");
           e.currentTarget.reset();
-      } catch (err) {
+      } else {
           setStatus("Erreur lors de l'envoi.");
       }
     });
