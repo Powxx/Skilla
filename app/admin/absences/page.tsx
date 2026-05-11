@@ -4,6 +4,13 @@ import { authOptions } from "@/lib/auth-options";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 
+async function updateAttendanceStatus(id: string, formData: FormData) {
+  "use server";
+  const status = formData.get("status") as string;
+  await prisma.attendance.update({ where: { id }, data: { status: status as any } });
+  revalidatePath("/admin/absences");
+}
+
 async function deleteAttendance(id: string) {
   "use server";
   await prisma.attendance.delete({ where: { id } });
@@ -47,9 +54,15 @@ export default async function AdminAbsencesPage() {
                 <td className="py-4">{a.student.lastName} {a.student.firstName}</td>
                 <td className="py-4">{a.lesson.subject.name}</td>
                 <td className="py-4">
-                    <span className={`px-2 py-1 rounded text-xs font-bold ${a.status === 'ABSENT' ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'}`}>
-                        {a.status}
-                    </span>
+                    <form action={updateAttendanceStatus.bind(null, a.id)} className="flex items-center gap-2">
+                        <select name="status" defaultValue={a.status} className="border rounded p-1 text-xs">
+                            <option value="PRESENT">Présent</option>
+                            <option value="ABSENT">Absent</option>
+                            <option value="EXCUSED">Justifié</option>
+                            <option value="LATE">Retard</option>
+                        </select>
+                        <button type="submit" className="text-blue-600 text-[10px] font-bold">OK</button>
+                    </form>
                 </td>
                 <td className="py-4">
                     <form action={deleteAttendance.bind(null, a.id)}>
