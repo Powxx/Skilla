@@ -9,7 +9,7 @@ import { createUser, deleteUserSafe, updateUser, importUsersAction, updateAdminP
 import Papa from "papaparse";
 import { useRef } from "react";
 import { useSession } from "next-auth/react";
-import { Shield, ShieldAlert, ShieldCheck, Key, FileText } from "lucide-react";
+import { Shield, ShieldAlert, ShieldCheck, Key, FileText, X } from "lucide-react";
 import { jsPDF } from "jspdf";
 
 const inputClass =
