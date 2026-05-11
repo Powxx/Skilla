@@ -29,6 +29,7 @@ export default function GradeEntryClient({ classes, subjects }: Props) {
   const [studentId, setStudentId] = useState("");
   const [students, setStudents] = useState<StudentForGradeEntry[]>([]);
   const [note, setNote] = useState("");
+  const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
   const [coefficient, setCoefficient] = useState("1");
   const [comment, setComment] = useState("");
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -111,6 +112,7 @@ export default function GradeEntryClient({ classes, subjects }: Props) {
           note: parsed,
           matiereId: subjectId,
           coefficient: coefNum,
+          date: new Date(date),
           comment: comment.trim() === "" ? null : comment.trim(),
         },
       ]).then((res) => {
@@ -298,6 +300,17 @@ export default function GradeEntryClient({ classes, subjects }: Props) {
                   value={note}
                   onChange={(e) => setNote(e.target.value)}
                   placeholder="ex. 14,5"
+                  className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 font-mono text-sm tabular-nums outline-none transition focus:border-sky-600 focus:ring-2 focus:ring-sky-600/25"
+                />
+              </label>
+              <label className="block sm:col-span-1">
+                <span className="mb-1.5 block text-xs font-medium text-slate-600">
+                  Date de la note
+                </span>
+                <input
+                  type="date"
+                  value={date}
+                  onChange={(e) => setDate(e.target.value)}
                   className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 font-mono text-sm tabular-nums outline-none transition focus:border-sky-600 focus:ring-2 focus:ring-sky-600/25"
                 />
               </label>
