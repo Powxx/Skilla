@@ -5,12 +5,11 @@ import { createNotification, checkEventEnabled } from "./notifications";
 
 export type GradeBatchEntry = {
   studentId: string;
-  /** Valeur numérique de la note (ex. /20 selon vos règles métier). */
   note: number;
-  /** Identifiant Prisma `Subject` (matière). */
   matiereId: string;
   coefficient?: number;
   comment?: string | null;
+  date?: string | Date;
 };
 
 export type SaveGradeBatchSuccess = { ok: true; count: number };
@@ -89,22 +88,30 @@ export async function saveGradesBatch(
       }
     }
 
-    // 3. Resolve Semester
-    const now = new Date();
-    const activeSemester = await prisma.semester.findFirst({
-      where: {
-        startDate: { lte: now },
-        endDate: { gte: now }
-      },
-      select: { id: true }
-    }) || await prisma.semester.findFirst({ orderBy: { startDate: 'desc' } });
+    // Resolve Semesters
+    const semCache = new Map<string, string>(); // date(iso) -> semesterId
 
-    if (!activeSemester) {
-      return { ok: false, error: "Aucun semestre défini en base." };
-    }
+    const resolvedEntries = await Promise.all(entries.map(async (e) => {
+        const noteDate = e.date ? new Date(e.date) : new Date();
+        const dateKey = noteDate.toISOString().split('T')[0];
+        
+        if (!semCache.has(dateKey)) {
+            const sem = await prisma.semester.findFirst({
+                where: {
+                  startDate: { lte: noteDate },
+                  endDate: { gte: noteDate }
+                },
+                select: { id: true }
+            }) || await prisma.semester.findFirst({ orderBy: { startDate: 'desc' } });
+            
+            if (!sem) throw new Error("Aucun semestre défini en base.");
+            semCache.set(dateKey, sem.id);
+        }
+        return { ...e, semesterId: semCache.get(dateKey)!, noteDate };
+    }));
 
     await prisma.$transaction(
-      entries.map((e) => {
+      resolvedEntries.map((e) => {
         const commentTrimmed =
           e.comment != null && String(e.comment).trim() !== ""
             ? String(e.comment).trim()
@@ -117,7 +124,8 @@ export async function saveGradesBatch(
             subjectName: subjectNameById.get(e.matiereId) ?? "",
             comment: commentTrimmed,
             subjectId: e.matiereId,
-            semesterId: activeSemester.id,
+            semesterId: e.semesterId,
+            createdAt: e.noteDate
           },
         });
       }),

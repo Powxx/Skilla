@@ -57,7 +57,8 @@ export default function PortalSidebar({ variant, resolvedChildId, schoolName = "
         { href: "/prof/planning", label: "Emploi du temps", icon: Calendar },
         { href: "/prof/appel", label: "Appel", icon: Clock },
         { href: "/prof/notes", label: "Notes", icon: GraduationCap },
-        { href: "/prof/livret", label: "Livret", icon: BookOpen }
+        { href: "/prof/livret", label: "Livret", icon: BookOpen },
+        { href: "/prof/notifications", label: "Notifications", icon: FileText }
       );
       break;
     case "student":
