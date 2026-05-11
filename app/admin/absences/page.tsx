@@ -42,6 +42,7 @@ export default async function AdminAbsencesPage() {
         <table className="w-full text-left text-sm">
           <thead>
             <tr className="border-b border-slate-100">
+              <th className="py-3 font-bold text-slate-500">Date</th>
               <th className="py-3 font-bold text-slate-500">Élève</th>
               <th className="py-3 font-bold text-slate-500">Cours</th>
               <th className="py-3 font-bold text-slate-500">Statut</th>
@@ -51,6 +52,7 @@ export default async function AdminAbsencesPage() {
           <tbody>
             {attendances.map((a) => (
               <tr key={a.id} className="border-b border-slate-100 last:border-0">
+                <td className="py-4">{a.lesson.startTime.toLocaleDateString()}</td>
                 <td className="py-4">{a.student.lastName} {a.student.firstName}</td>
                 <td className="py-4">{a.lesson.subject.name}</td>
                 <td className="py-4">

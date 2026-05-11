@@ -94,11 +94,12 @@ export default function AbsencesBody({ student, contextNote }: Props) {
                   <li key={a.id} className="flex items-center gap-4 px-5 py-4 hover:bg-slate-50 transition group">
                     <div className={`h-2 w-2 shrink-0 rounded-full ${justified ? 'bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.5)]' : 'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.5)] animate-pulse'}`} />
                     
-                    <div className="min-w-[80px] text-[10px] font-black text-slate-400 uppercase tabular-nums">
+                    <div className="min-w-[120px] text-[10px] font-black text-slate-400 uppercase tabular-nums">
                       {new Date(a.lesson.startTime).toLocaleDateString("fr-FR", {
-                        weekday: "short",
                         day: "numeric",
-                        month: "short"
+                        month: "short",
+                        hour: "2-digit",
+                        minute: "2-digit"
                       })}
                     </div>
 
