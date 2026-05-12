@@ -104,7 +104,7 @@ export default function PortalSidebar({ variant, resolvedChildId, schoolName = "
         <div className="p-8 border-b border-white/10">
           <Link href="/" className="flex items-center gap-4 group">
             <div className="h-10 w-10 rounded-xl bg-blue-600 flex items-center justify-center text-white font-bold text-sm transition group-hover:rotate-6 shadow-lg shadow-blue-500/30">
-              <img src="/SKILLA-logo.png" alt="SKILLA" className="h-full w-full object-contain" />
+              <img src="/SKILLA-Logo.png" alt="SKILLA" className="h-full w-full object-contain" />
             </div>
             <div className="flex flex-col">
               <span className="font-black text-xl tracking-tight leading-none">{schoolName}</span>

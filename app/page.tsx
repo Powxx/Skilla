@@ -53,12 +53,12 @@ export default async function Home() {
       <header className="relative z-10 border-b border-slate-200/80 bg-white/80 backdrop-blur-md">
         <div className="mx-auto flex max-w-5xl items-center justify-between gap-6 px-6 py-4 sm:px-8">
           <div className="flex items-center gap-3">
-            <span
-              className="flex h-10 w-10 items-center justify-center rounded-lg bg-slate-900 text-sm font-semibold tracking-tight text-white shadow-sm ring-1 ring-slate-900/10"
+            <div
+              className="flex h-10 w-10 items-center justify-center rounded-lg bg-slate-900 overflow-hidden shadow-sm ring-1 ring-slate-900/10"
               aria-hidden
             >
-              {schoolName[0]?.toUpperCase()}
-            </span>
+              <img src="/SKILLA-Logo.png" alt="Logo" className="h-full w-full object-contain" />
+            </div>
             <div>
               <p className="text-sm font-semibold tracking-tight text-slate-900">
                 {schoolName}

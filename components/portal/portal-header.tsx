@@ -99,7 +99,9 @@ export default function PortalHeader({ variant, parentChildren = [] }: Props) {
         <div className="flex h-16 items-center justify-between gap-4">
           {/* Breadcrumbs / Mobile Menu Toggle */}
           <div className="flex items-center gap-3 min-w-0">
-            <Link href="/SKILLA-logo.png" className="lg:hidden h-9 w-9 shrink-0 rounded-xl bg-slate-900 flex items-center justify-center text-white font-black text-xs shadow-lg">SKILLA</Link>
+            <Link href="/" className="lg:hidden h-9 w-9 shrink-0 rounded-xl bg-slate-900 flex items-center justify-center overflow-hidden shadow-lg">
+              <img src="/SKILLA-Logo.png" alt="SKILLA" className="h-full w-full object-contain" />
+            </Link>
             
             <nav className="flex items-center gap-2 text-[10px] sm:text-[11px] font-black uppercase tracking-widest text-slate-400 overflow-hidden whitespace-nowrap">
               <span className="hidden sm:inline text-slate-900">{spaceLabel()}</span>
