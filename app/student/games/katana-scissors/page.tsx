@@ -104,6 +104,7 @@ export default function KatanaScissorsRunner() {
                 y: Math.random() * 80 + 5
             }]);
         }, 1000);
+
         return () => { cancelAnimationFrame(gameLoop.current!); clearInterval(spawner); };
     }
   }, [gameStarted, gameOver, update]);
