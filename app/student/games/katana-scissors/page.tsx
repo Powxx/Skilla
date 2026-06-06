@@ -8,7 +8,7 @@ import { X } from "lucide-react";
 
 // Configuration
 const GAME_KEY = 'katana-scissors-runner';
-const SCISSORS_X = 10; // Position fixe des ciseaux du joueur
+const SCISSORS_X = 10; // Position fixe (gauche)
 
 export default function KatanaScissorsRunner() {
   const { data: session } = useSession();
@@ -19,12 +19,12 @@ export default function KatanaScissorsRunner() {
   const [maxLives, setMaxLives] = useState(3);
   const [gameOver, setGameOver] = useState(false);
   const [gameStarted, setGameStarted] = useState(false);
-  const [scissorsY, setScissorsY] = useState(50);
+  const [scissorsY, setScissorsY] = useState(50); // Vertical
   const [obstacles, setObstacles] = useState<any[]>([]);
   const [velocity, setVelocity] = useState(0);
   
   // Stats & UI State
-  const [studentStats, setStudentStats] = useState<{ average: number, streak: number, classId: string | null }>({ average: 0, streak: 0, classId: null });
+  const [studentStats, setStudentStats] = useState({ average: 0, streak: 0, classId: '' });
   const [personalBest, setPersonalBest] = useState(0);
   const [showLeaderboard, setShowLeaderboard] = useState(false);
   const [showAdvantages, setShowAdvantages] = useState(false);
@@ -53,26 +53,25 @@ export default function KatanaScissorsRunner() {
     }
   }, [session]);
 
-  // Jump logic
   const jump = () => {
     if (!gameStarted || gameOver) return;
-    setVelocity(-2);
+    setVelocity(-2.5);
   };
 
-  // Game Loop
   const update = useCallback(() => {
     if (!gameStarted || gameOver) return;
 
-    // Apply gravity
-    setVelocity(v => v + 0.1);
+    // Gravity
+    setVelocity(v => v + 0.15);
     setScissorsY(y => Math.max(0, Math.min(90, y + velocity)));
 
-    // Move obstacles
-    setObstacles(prev => prev.map(o => ({...o, x: o.x - 1}))
-        .filter(o => o.x > -10));
+    // Move obstacles Right to Left
+    setObstacles(prev => prev.map(o => ({...o, x: o.x - 0.8}))
+        .filter(o => o.x > -5));
 
     // Collision
     obstacles.forEach(o => {
+        // Distance check in 2D
         if (Math.abs(o.x - SCISSORS_X) < 5 && Math.abs(o.y - scissorsY) < 10) {
             if (o.type === 'SCISSOR') {
                 setLives(l => {
@@ -101,15 +100,14 @@ export default function KatanaScissorsRunner() {
             setObstacles(prev => [...prev, {
                 id: Date.now(),
                 type: Math.random() > 0.3 ? 'HAIR' : 'SCISSOR',
-                x: 100,
-                y: Math.random() * 80 + 10
+                x: 100, // Commence à droite
+                y: Math.random() * 80 + 5
             }]);
-        }, 800);
+        }, 1000);
         return () => { cancelAnimationFrame(gameLoop.current!); clearInterval(spawner); };
     }
   }, [gameStarted, gameOver, update]);
 
-  // Leaderboard
   const fetchLeaderboard = useCallback(async () => {
     setLoadingLeaderboard(true);
     const scopeClassId = lbScope === 'class' ? (studentStats.classId ?? undefined) : undefined;
@@ -133,10 +131,7 @@ export default function KatanaScissorsRunner() {
         <button onClick={() => setShowAdvantages(true)} className="h-10 w-10 flex items-center justify-center bg-slate-800 rounded-xl border border-slate-700 text-blue-400">⚡</button>
         <button onClick={() => setShowLeaderboard(true)} className="h-10 w-10 flex items-center justify-center bg-slate-800 rounded-xl border border-slate-700 text-amber-400">🏆</button>
       </div>
-
-      {/* Track */}
-      <div className="absolute bottom-0 w-full h-20 bg-slate-800 border-t-4 border-slate-700" />
-
+      
       {/* Scissors (Player) */}
       <div className="absolute text-5xl transition-all" style={{ left: `${SCISSORS_X}%`, top: `${scissorsY}%` }}>✂️</div>
 
