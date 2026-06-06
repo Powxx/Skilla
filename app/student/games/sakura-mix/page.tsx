@@ -8,10 +8,6 @@ import { X } from "lucide-react";
 
 const GRID_SIZE = 8;
 const COLORS = ['🌸', '🍶', '🏮', '🍱', '⛩️', '🎐'];
-const SPECIALS = {
-  EXPLOSION: '💥', 
-  COLOR_BOMB: '⭐'  
-};
 
 export default function SakuraMix() {
   const { data: session } = useSession();
@@ -97,59 +93,21 @@ export default function SakuraMix() {
     return { horizontal: horizontalMatches, vertical: verticalMatches };
   }, []);
 
-  const triggerExplosion = (r: number, c: number, workingGrid: string[][]) => {
-    let exploded = 0;
-    for (let i = Math.max(0, r - 1); i <= Math.min(GRID_SIZE - 1, r + 1); i++) {
-      for (let j = Math.max(0, c - 1); j <= Math.min(GRID_SIZE - 1, c + 1); j++) {
-        if (workingGrid[i][j] !== '') {
-          workingGrid[i][j] = '';
-          exploded++;
-        }
-      }
-    }
-    return exploded;
-  };
-
-  const triggerColorBomb = (targetColor: string, workingGrid: string[][]) => {
-    let count = 0;
-    const realTarget = COLORS.includes(targetColor) ? targetColor : COLORS[Math.floor(Math.random() * COLORS.length)];
-    for (let r = 0; r < GRID_SIZE; r++) {
-      for (let c = 0; c < GRID_SIZE; c++) {
-        if (workingGrid[r][c] === realTarget) {
-          workingGrid[r][c] = '';
-          count++;
-        }
-      }
-    }
-    return count;
-  };
-
   const processMatches = useCallback(async (currentGrid: string[][], isInitial = false) => {
     setIsProcessing(true);
     let workingGrid = currentGrid.map(row => [...row]);
-    let firstPass = true;
 
     while (true) {
       const { horizontal, vertical } = checkMatches(workingGrid);
       const allMatchTiles = [...horizontal.flat(), ...vertical.flat()];
       if (allMatchTiles.length === 0) break;
 
-      if (!isInitial && firstPass) {
-        horizontal.forEach(match => {
-          if (match.length === 4) workingGrid[match[1].r][match[1].c] = SPECIALS.EXPLOSION;
-          else if (match.length >= 5) workingGrid[match[2].r][match[2].c] = SPECIALS.COLOR_BOMB;
-        });
-        vertical.forEach(match => {
-          if (match.length === 4) workingGrid[match[1].r][match[1].c] = SPECIALS.EXPLOSION;
-          else if (match.length >= 5) workingGrid[match[2].r][match[2].c] = SPECIALS.COLOR_BOMB;
-        });
-      }
+      // Score Combo : 10 points par tuile + bonus si 4 ou 5
+      let points = allMatchTiles.length * 10;
+      horizontal.forEach(m => { if (m.length >= 4) points += 50; });
+      vertical.forEach(m => { if (m.length >= 4) points += 50; });
 
-      allMatchTiles.forEach(m => {
-        if (!Object.values(SPECIALS).includes(workingGrid[m.r][m.c])) {
-          workingGrid[m.r][m.c] = '';
-        }
-      });
+      allMatchTiles.forEach(m => { workingGrid[m.r][m.c] = ''; });
       
       if (!isInitial) {
         setGrid([...workingGrid.map(row => [...row])]);
@@ -171,12 +129,11 @@ export default function SakuraMix() {
       }
       
       if (!isInitial) {
-        const points = Math.floor(allMatchTiles.length * 10 * powerUps.streakMultiplier * (powerUps.scoreDouble ? 2 : 1));
-        setScore(prev => prev + points);
+        const finalPoints = Math.floor(points * powerUps.streakMultiplier * (powerUps.scoreDouble ? 2 : 1));
+        setScore(prev => prev + finalPoints);
         setGrid([...workingGrid.map(row => [...row])]);
         await new Promise(resolve => setTimeout(resolve, 200));
       }
-      firstPass = false;
     }
     if (isInitial) setGrid(workingGrid);
     setIsProcessing(false);
@@ -205,33 +162,9 @@ export default function SakuraMix() {
         const tileA = newGrid[selectedTile.r][selectedTile.c];
         const tileB = newGrid[r][c];
 
-        let specialTriggered = false;
-
-        // --- NOUVELLE LOGIQUE : SWAP SPÉCIAUX ---
-        if (Object.values(SPECIALS).includes(tileA) || Object.values(SPECIALS).includes(tileB)) {
-          // Si spécial, on déclenche l'effet immédiatement
-          if (tileA === SPECIALS.COLOR_BOMB) triggerColorBomb(tileB, newGrid);
-          else if (tileA === SPECIALS.EXPLOSION) triggerExplosion(selectedTile.r, selectedTile.c, newGrid);
-          
-          if (tileB === SPECIALS.COLOR_BOMB) triggerColorBomb(tileA, newGrid);
-          else if (tileB === SPECIALS.EXPLOSION) triggerExplosion(r, c, newGrid);
-          
-          newGrid[selectedTile.r][selectedTile.c] = '';
-          newGrid[r][c] = '';
-          specialTriggered = true;
-        }
-
-        if (specialTriggered) {
-          setMoves(prev => prev - 1);
-          setSelectedTile(null);
-          await processMatches(newGrid);
-          if (moves <= 1) handleGameOver(score);
-          return;
-        }
-
-        // --- SWAP STANDARD ---
         newGrid[r][c] = tileA;
         newGrid[selectedTile.r][selectedTile.c] = tileB;
+        
         const { horizontal, vertical } = checkMatches(newGrid);
 
         if (horizontal.length > 0 || vertical.length > 0) {
@@ -385,24 +318,24 @@ export default function SakuraMix() {
                     <span className="text-2xl">🔥</span>
                  </div>
 
-                 <div className={`flex items-center justify-between p-4 rounded-2xl border transition-all ${powerUps.scoreDouble ? 'bg-emerald-600/10 border-emerald-500/20' : 'bg-slate-900/50 border-slate-700 opacity-40'}`}>
+                 <div className={`flex items-center justify-between p-4 rounded-2xl border transition-all ${powerUps.scoreDouble ? 'bg-amber-600/10 border-amber-500/20' : 'bg-slate-900/50 border-slate-700 opacity-40'}`}>
                     <div>
-                       <p className="text-[10px] font-black text-emerald-500 uppercase tracking-widest">Moyenne &gt; 16</p>
+                       <p className="text-[10px] font-black text-amber-500 uppercase tracking-widest">Moyenne &gt; 16</p>
                        <p className="text-sm font-bold text-white">Score Double (x2)</p>
                     </div>
                     <span className="text-xl">💎</span>
                  </div>
 
-                 <div className={`flex items-center justify-between p-4 rounded-2xl border transition-all ${powerUps.timeFreeze ? 'bg-amber-600/10 border-amber-500/20' : 'bg-slate-900/50 border-slate-700 opacity-40'}`}>
+                 <div className={`flex items-center justify-between p-4 rounded-2xl border transition-all ${powerUps.timeFreeze ? 'bg-blue-600/10 border-blue-500/20' : 'bg-slate-900/50 border-slate-700 opacity-40'}`}>
                     <div>
-                       <p className="text-[10px] font-black text-amber-500 uppercase tracking-widest">Moyenne &gt; 12</p>
+                       <p className="text-[10px] font-black text-blue-500 uppercase tracking-widest">Moyenne &gt; 12</p>
                        <p className="text-sm font-bold text-white">Figer Temps</p>
                        <p className="text-[9px] text-slate-400">Gain de +5 coups</p>
                     </div>
                     <button 
                       onClick={() => { useTimeFreeze(); setShowAdvantages(false); }} 
                       disabled={!powerUps.timeFreeze || timeFrozen}
-                      className={`px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest ${!timeFrozen && powerUps.timeFreeze ? 'bg-amber-500 text-slate-900' : 'bg-slate-700 text-slate-500 cursor-not-allowed'}`}
+                      className={`px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest ${!timeFrozen && powerUps.timeFreeze ? 'bg-blue-500 text-slate-900' : 'bg-slate-700 text-slate-500 cursor-not-allowed'}`}
                     >
                       {timeFrozen ? 'Utilisé' : 'Activer'}
                     </button>

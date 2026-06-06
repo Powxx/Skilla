@@ -1,159 +1,103 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import Link from 'next/link';
 import { useSession } from 'next-auth/react';
 import { saveGameScore, getPersonalBest, getStudentStats } from '@/app/actions/gamification';
 
-const ITEM_TYPES = { 
-  HAIR: { id: 'HAIR', icon: '💇', points: 10 }, 
-  OBSTACLE: { id: 'OBSTACLE', icon: '🧊', points: 0 } 
-};
+const TRACK_WIDTH = 100;
+const SCISSORS_Y = 80;
 
-export default function KatanaScissors() {
+export default function KatanaScissorsRunner() {
   const { data: session } = useSession();
   const [score, setScore] = useState(0);
-  const [lives, setLives] = useState(3);
-  const [maxLives, setMaxLives] = useState(3);
-  const [speed, setSpeed] = useState(2000);
   const [gameOver, setGameOver] = useState(false);
   const [gameStarted, setGameStarted] = useState(false);
-  const [items, setItems] = useState<any[]>([]);
+  const [speed, setSpeed] = useState(1);
+  const [scissorsPos, setScissorsPos] = useState(50); // 0-100%
+  const [obstacles, setObstacles] = useState<any[]>([]);
   const containerRef = useRef<HTMLDivElement>(null);
-  
-  const [isSlicing, setIsSlicing] = useState(false);
-  const [slashPoints, setSlashPoints] = useState<{x: number, y: number}[]>([]);
 
   const [studentStats, setStudentStats] = useState({ average: 0, streak: 0 });
   const [personalBest, setPersonalBest] = useState(0);
-  
+
   useEffect(() => {
     if (session?.user?.id) {
-        getStudentStats(session.user.id).then(stats => {
-            setStudentStats(stats);
-            setMaxLives(stats.average >= 12 ? 4 : 3);
-            setLives(stats.average >= 12 ? 4 : 3);
-        });
-        getPersonalBest(session.user.id, 'katana-scissors').then(setPersonalBest);
+        getStudentStats(session.user.id).then(setStudentStats);
+        getPersonalBest(session.user.id, 'katana-scissors-runner').then(setPersonalBest);
     }
   }, [session]);
 
-  const scoreMultiplier = (studentStats.average >= 16 ? 2 : 1) * Math.min(2.0, 1 + (studentStats.streak * 0.1));
+  const powerUps = useMemo(() => ({
+    slowMo: studentStats.average >= 12,
+    scoreDouble: studentStats.average >= 16
+  }), [studentStats]);
 
-  useEffect(() => {
+  const gameLoop = useRef<number>();
+  
+  const moveGame = useCallback(() => {
     if (gameOver || !gameStarted) return;
-    const interval = setInterval(() => {
-      const newItem = {
-        id: Date.now(),
-        type: Math.random() > 0.3 ? ITEM_TYPES.HAIR : ITEM_TYPES.OBSTACLE,
-        x: Math.random() * 80 + 10,
-        y: -10,
-      };
-      setItems(prev => [...prev, newItem]);
-      setSpeed(prev => Math.max(500, prev - 20));
-    }, speed);
-    return () => clearInterval(interval);
-  }, [gameOver, gameStarted, speed]);
-
-  const handleMouseMove = (e: React.MouseEvent | React.TouchEvent) => {
-    if (!isSlicing || !gameStarted || gameOver) return;
     
-    const clientX = 'clientX' in e ? e.clientX : e.touches[0].clientX;
-    const clientY = 'clientY' in e ? e.clientY : e.touches[0].clientY;
-    
-    setSlashPoints(prev => [...prev.slice(-10), {x: clientX, y: clientY}]);
+    // Move obstacles
+    setObstacles(prev => prev.map(o => ({...o, y: o.y + (powerUps.slowMo ? 0.75 : 1) * speed}))
+        .filter(o => o.y < 100));
 
-    items.forEach(item => {
-        const itemEl = document.getElementById(`item-${item.id}`);
-        if(itemEl) {
-            const rect = itemEl.getBoundingClientRect();
-            if (clientX >= rect.left && clientX <= rect.right && clientY >= rect.top && clientY <= rect.bottom) {
-                handleSlash(item.id, item.type.id);
+    // Collision detection
+    obstacles.forEach(o => {
+        if (Math.abs(o.y - SCISSORS_Y) < 5 && Math.abs(o.x - scissorsPos) < 10) {
+            if (o.type === 'MOLE') setGameOver(true);
+            else if (o.type === 'HAIR') {
+                setScore(s => s + (powerUps.scoreDouble ? 20 : 10));
+                setObstacles(prev => prev.filter(item => item.id !== o.id));
             }
         }
     });
-  };
 
-  const handleSlash = (id: string, type: string) => {
-    if (gameOver || !gameStarted) return;
-    if (type === ITEM_TYPES.HAIR.id) {
-      setScore(prev => prev + Math.floor(ITEM_TYPES.HAIR.points * scoreMultiplier));
-    } else {
-      setLives(prev => {
-        const newLives = prev - 1;
-        if (newLives <= 0) {
-            setGameOver(true);
-            if(session?.user?.id) saveGameScore(session.user.id, 'katana-scissors', score);
-        }
-        return newLives;
-      });
+    gameLoop.current = requestAnimationFrame(moveGame);
+  }, [gameOver, gameStarted, speed, scissorsPos, powerUps]);
+
+  useEffect(() => {
+    if (gameStarted && !gameOver) {
+        gameLoop.current = requestAnimationFrame(moveGame);
+        const spawner = setInterval(() => {
+            setObstacles(prev => [...prev, {
+                id: Date.now(),
+                type: Math.random() > 0.4 ? 'HAIR' : 'MOLE',
+                x: Math.random() * 80 + 10,
+                y: -10
+            }]);
+            setSpeed(s => s + 0.05);
+        }, 1000);
+        return () => { cancelAnimationFrame(gameLoop.current!); clearInterval(spawner); };
     }
-    setItems(prev => prev.filter(item => item.id !== id));
-  };
+  }, [gameStarted, gameOver, moveGame]);
 
   return (
-    <div 
-        className="relative h-screen bg-slate-950 overflow-hidden touch-none" 
-        ref={containerRef}
-        onMouseDown={() => setIsSlicing(true)}
-        onMouseUp={() => { setIsSlicing(false); setSlashPoints([]); }}
-        onMouseMove={handleMouseMove}
-        onTouchStart={() => setIsSlicing(true)}
-        onTouchEnd={() => { setIsSlicing(false); setSlashPoints([]); }}
-        onTouchMove={handleMouseMove}
-    >
-      {/* UI */}
-      <div className="absolute top-4 left-4 z-10 text-white pointer-events-none">
-        <div className="text-xl font-black">Score: {score}</div>
-        <div className="text-xl font-black text-red-500">Vies: {lives} / {maxLives}</div>
-        <div className="text-xs text-slate-400">Record: {personalBest}</div>
-        <div className="mt-2 text-[10px] font-bold text-emerald-400 uppercase">Moy. &gt; 16 : Score x2</div>
-        <div className="text-[10px] font-bold text-amber-400 uppercase">Moy. &gt; 12 : +1 Vie</div>
-      </div>
+    <div className="relative h-screen bg-slate-950 overflow-hidden touch-none" 
+         onMouseMove={(e) => setScissorsPos((e.clientX / window.innerWidth) * 100)}
+         onTouchMove={(e) => setScissorsPos((e.touches[0].clientX / window.innerWidth) * 100)}>
+      
+      {/* Track */}
+      <div className="absolute inset-0 bg-orange-100/10" />
 
-      {/* Slash Trail */}
-      <svg className="absolute inset-0 z-0 pointer-events-none">
-          <polyline points={slashPoints.map(p => `${p.x},${p.y}`).join(' ')} fill="none" stroke="white" strokeWidth="6" className="opacity-80" strokeLinecap="round" strokeLinejoin="round" />
-      </svg>
+      {/* Scissors (Player) */}
+      <div className="absolute text-5xl transition-all duration-75" style={{ left: `${scissorsPos}%`, top: `${SCISSORS_Y}%` }}>✂️</div>
 
       {/* Items */}
-      {items.map(item => (
-        <div
-          key={item.id}
-          id={`item-${item.id}`}
-          className="absolute text-4xl animate-fall"
-          style={{ left: `${item.x}%`, top: '110%' }}
-        >
-          {item.type.icon}
+      {obstacles.map(o => (
+        <div key={o.id} className="absolute text-3xl" style={{ left: `${o.x}%`, top: `${o.y}%` }}>
+            {o.type === 'HAIR' ? '💇' : '⚫'}
         </div>
       ))}
 
       {(!gameStarted || gameOver) && (
         <div className="absolute inset-0 flex items-center justify-center bg-black/80 z-20">
-          <div className="text-center">
-            {gameOver ? (
-                <h2 className="text-4xl font-black text-white mb-4">Terminé! Score: {score}</h2>
-            ) : (
-                <h2 className="text-4xl font-black text-white mb-4">Katana Scissors</h2>
-            )}
-            <button onClick={() => { setGameStarted(true); setGameOver(false); setScore(0); setItems([]); setLives(maxLives); }} className="px-8 py-4 bg-red-600 text-white rounded-xl font-bold">
-                {gameOver ? "Rejouer" : "Commencer"}
-            </button>
-            <Link href="/student/games" className="ml-4 px-8 py-4 bg-slate-700 text-white rounded-xl font-bold">Quitter</Link>
+          <div className="text-center text-white">
+            <h2 className="text-4xl font-black mb-4">Dino Scissors Rush</h2>
+            <button onClick={() => { setGameStarted(true); setGameOver(false); setScore(0); setObstacles([]); }} className="px-8 py-4 bg-red-600 rounded-xl font-bold">Commencer</button>
           </div>
         </div>
       )}
-
-      {/* Styles */}
-      <style jsx global>{`
-        @keyframes fall {
-          from { top: -10%; }
-          to { top: 110%; }
-        }
-        .animate-fall {
-          animation: fall ${speed / 1000}s linear forwards;
-        }
-      `}</style>
     </div>
   );
 }
