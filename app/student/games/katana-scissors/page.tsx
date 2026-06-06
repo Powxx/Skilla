@@ -32,7 +32,7 @@ export default function KatanaScissorsRunner() {
   const [loadingLeaderboard, setLoadingLeaderboard] = useState(false);
   const [lbScope, setLbScope] = useState<'class' | 'school'>('class');
 
-  const gameLoop = useRef<number>();
+  const gameLoop = useRef<number | null>(null);
 
   const powerUps = useMemo(() => ({
     extraLife: studentStats.average >= 12,
