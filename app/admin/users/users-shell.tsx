@@ -513,6 +513,7 @@ type UpdateUserPayload = {
   firstName: string;
   lastName: string;
   role: Role;
+  isActive: boolean;
   newPassword?: string;
   studentClassId?: string;
 };

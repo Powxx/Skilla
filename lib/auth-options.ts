@@ -3,6 +3,7 @@ import type { Role } from "@prisma/client";
 import CredentialsProvider from "next-auth/providers/credentials";
 import bcrypt from "bcrypt";
 import prisma from "@/lib/prisma";
+import { updateLoginStreak } from "@/app/actions/gamification";
 
 export const authOptions: NextAuthOptions = {
   pages: {
