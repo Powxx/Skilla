@@ -24,7 +24,7 @@ export default function KatanaScissorsRunner() {
   const [velocity, setVelocity] = useState(0);
   
   // Stats & UI State
-  const [studentStats, setStudentStats] = useState({ average: 0, streak: 0, classId: '' });
+  const [studentStats, setStudentStats] = useState<{ average: number, streak: number, classId: string | null }>({ average: 0, streak: 0, classId: null });
   const [personalBest, setPersonalBest] = useState(0);
   const [showLeaderboard, setShowLeaderboard] = useState(false);
   const [showAdvantages, setShowAdvantages] = useState(false);
