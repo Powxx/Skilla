@@ -60,9 +60,9 @@ export default function StudentDashboardClient({
   absencesDetailHref,
 }: DashboardClientProps) {
   return (
-    <div className="h-full flex flex-col gap-4 font-sans text-slate-900">
+    <div className="min-h-screen flex flex-col gap-4 font-sans text-slate-900 pb-10">
       {/* Mini Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-xl font-black tracking-tight text-slate-900">
             Tableau de bord
@@ -71,22 +71,22 @@ export default function StudentDashboardClient({
             {studentDisplayName} • {classLabel}
           </p>
         </div>
-        <div className="flex gap-2">
-           <div className="bg-white px-3 py-1.5 rounded-xl border border-slate-200 shadow-sm flex items-center gap-2">
+        <div className="flex gap-2 w-full sm:w-auto">
+           <div className="flex-1 bg-white px-3 py-1.5 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between sm:justify-start gap-2">
               <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">Moyenne</span>
               <span className="text-sm font-black text-blue-600">{generalAverage != null ? formatAvg(generalAverage) : "—"}</span>
            </div>
-           <div className="bg-white px-3 py-1.5 rounded-xl border border-slate-200 shadow-sm flex items-center gap-2">
+           <div className="flex-1 bg-white px-3 py-1.5 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between sm:justify-start gap-2">
               <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">Assiduité</span>
               <span className="text-sm font-black text-emerald-600">{Math.round(attendanceRate)}%</span>
            </div>
         </div>
       </div>
 
-      <div className="flex-1 grid gap-4 lg:grid-cols-12 min-h-0">
+      <div className="grid gap-4 lg:grid-cols-12">
         {/* Left Col: Main Info (4 cols) */}
-        <div className="lg:col-span-4 flex flex-col gap-4 min-h-0">
-          <div className="bg-slate-900 rounded-2xl p-5 text-white shadow-xl relative overflow-hidden shrink-0">
+        <div className="lg:col-span-4 flex flex-col gap-4">
+          <div className="bg-slate-900 rounded-2xl p-5 text-white shadow-xl relative overflow-hidden">
             <div className="relative z-10">
               <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/40">Prochain Cours</p>
               {nextLesson ? (
