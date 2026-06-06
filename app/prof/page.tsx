@@ -19,14 +19,14 @@ export default async function ProfHomePage() {
   const data = await loadTeacherDashboardPayload(session.user.id);
 
   return (
-    <div className="h-full flex flex-col gap-6 font-sans text-slate-900">
+    <div className="min-h-[80vh] flex flex-col gap-6 font-sans text-slate-900 pb-10">
       {/* Hero Welcome Mini */}
-      <div className="flex items-center justify-between shrink-0">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 shrink-0">
         <div>
           <h1 className="text-xl font-black tracking-tight text-slate-900 uppercase tracking-widest">Espace Professeur</h1>
           <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">Bonjour, {data.teacherName} • {data.lessonsTodayCount} cours aujourd'hui</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 shrink-0">
            <div className="bg-white px-3 py-1.5 rounded-xl border border-slate-200 shadow-sm flex items-center gap-2">
               <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">Appels</span>
               <span className={`text-sm font-black ${data.pendingRollCallsCount > 0 ? 'text-amber-600' : 'text-emerald-600'}`}>
@@ -36,9 +36,9 @@ export default async function ProfHomePage() {
         </div>
       </div>
 
-      <div className="flex-1 grid gap-6 lg:grid-cols-12 min-h-0">
-        {/* Left Col: Quick Stats & Next Lesson (4 cols) */}
-        <div className="lg:col-span-4 flex flex-col gap-6 min-h-0">
+      <div className="flex-grow grid gap-6 lg:grid-cols-12">
+        {/* Left Col: Quick Stats & Next Lesson */}
+        <div className="lg:col-span-4 flex flex-col gap-6">
           <div className="grid grid-cols-2 gap-3 shrink-0">
             <StatCard label="Aujourd'hui" value={data.lessonsTodayCount} color="blue" icon="👨‍🏫" href="/prof/planning" />
             <StatCard label="Appels" value={data.pendingRollCallsCount} color="amber" icon="📋" href="/prof/appel" />
@@ -46,11 +46,10 @@ export default async function ProfHomePage() {
             <StatCard label="Élèves" value={data.studentsCount} color="emerald" icon="👥" />
           </div>
 
-          <section className="flex-1 rounded-2xl border border-blue-100 bg-blue-50/50 p-5 shadow-sm flex flex-col min-h-0">
+          <section className="rounded-2xl border border-blue-100 bg-blue-50/50 p-5 shadow-sm flex flex-col">
             <h2 className="text-[10px] font-black text-blue-600 uppercase tracking-[0.2em] mb-4">Prochain cours</h2>
             {data.nextLesson ? (
-              <div className="flex-1 flex flex-col justify-between">
-                <div>
+              <div className="flex flex-col">
                   <h3 className="text-lg font-black text-slate-900 leading-tight">{data.nextLesson.subject}</h3>
                   <div className="mt-4 space-y-2">
                     <div className="flex items-center gap-3 text-xs text-slate-600 font-bold">
@@ -66,7 +65,6 @@ export default async function ProfHomePage() {
                       {format(new Date(data.nextLesson.start), 'dd/MM à HH:mm')}
                     </div>
                   </div>
-                </div>
                 <Link 
                   href="/prof/planning"
                   className="mt-6 py-2 bg-white border border-blue-200 text-blue-600 rounded-xl text-center text-[10px] font-black uppercase tracking-widest hover:bg-blue-100 transition shadow-sm"
@@ -75,22 +73,22 @@ export default async function ProfHomePage() {
                 </Link>
               </div>
             ) : (
-              <div className="h-full flex items-center justify-center text-[10px] text-slate-400 font-bold uppercase tracking-widest italic">
+              <div className="flex items-center justify-center py-6 text-[10px] text-slate-400 font-bold uppercase tracking-widest italic">
                 Aucun cours.
               </div>
             )}
           </section>
         </div>
 
-        {/* Right Col: Recent Activity (8 cols) */}
-        <div className="lg:col-span-8 flex flex-col min-h-0">
-          <section className="flex-1 bg-white rounded-2xl border border-slate-200 shadow-sm flex flex-col min-h-0 overflow-hidden">
+        {/* Right Col: Recent Activity */}
+        <div className="lg:col-span-8 flex flex-col">
+          <section className="bg-white rounded-2xl border border-slate-200 shadow-sm flex flex-col overflow-hidden">
              <div className="px-5 py-4 border-b border-slate-100 bg-slate-50 shrink-0">
                 <h2 className="text-[10px] font-black text-slate-900 uppercase tracking-[0.2em]">Dernières séances & Appels</h2>
              </div>
-             <div className="flex-1 overflow-auto">
+             <div className="overflow-x-auto">
                <table className="w-full text-left text-xs border-collapse">
-                 <thead className="sticky top-0 bg-white border-b border-slate-100 z-10">
+                 <thead className="bg-white border-b border-slate-100">
                    <tr>
                      <th className="px-5 py-3 font-black text-slate-400 uppercase tracking-widest text-[9px]">Cours</th>
                      <th className="px-5 py-3 font-black text-slate-400 uppercase tracking-widest text-[9px]">Date</th>

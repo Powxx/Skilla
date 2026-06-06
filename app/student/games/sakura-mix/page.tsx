@@ -27,7 +27,6 @@ export default function SakuraMix() {
   
   // Stats & Power-ups
   const [studentStats, setStudentStats] = useState<{ average: number, streak: number, classId: string | null }>({ average: 0, streak: 0, classId: null });
-  const [shieldActive, setShieldActive] = useState(false);
   const [timeFrozen, setTimeFrozen] = useState(false);
 
   // Modals state
@@ -39,7 +38,6 @@ export default function SakuraMix() {
 
   const powerUps = useMemo(() => ({
     timeFreeze: studentStats.average >= 16,
-    shield: studentStats.average >= 13,
     scoreDouble: studentStats.average >= 10,
     streakMultiplier: Math.min(2.0, 1 + (studentStats.streak * 0.1))
   }), [studentStats]);
@@ -50,7 +48,6 @@ export default function SakuraMix() {
       try {
         const stats = await getStudentStats(session.user.id);
         setStudentStats(stats);
-        setShieldActive(stats.average >= 13);
         const pb = await getPersonalBest(session.user.id, 'sakura-mix');
         setPersonalBest(pb);
       } catch (e) {
@@ -361,13 +358,31 @@ export default function SakuraMix() {
 
       {/* Grid */}
       <div className="relative bg-slate-800 p-3 rounded-[2.5rem] border-8 border-slate-700 shadow-2xl">
-        <div className="grid gap-1.5" style={{ gridTemplateColumns: `repeat(${GRID_SIZE}, 1fr)`, width: 'min(90vw, 360px)', height: 'min(90vw, 360px)' }}>
+        <div 
+          className="grid gap-1 sm:gap-1.5"
+          style={{ 
+            gridTemplateColumns: `repeat(${GRID_SIZE}, 1fr)`,
+            width: '100%',
+            maxWidth: '360px',
+            aspectRatio: '1/1'
+          }}
+        >
           {grid.map((row, r) => row.map((tile, c) => (
-            <button key={`${r}-${c}`} onClick={() => handleTileClick(r, c)} className={`flex items-center justify-center text-2xl sm:text-3xl rounded-xl transition-all duration-300 ${selectedTile?.r === r && selectedTile?.c === c ? 'bg-white/20 scale-110 ring-4 ring-white/50 z-10 shadow-lg shadow-white/10' : 'bg-slate-700/30 hover:bg-slate-600/50'} ${tile === '' ? 'opacity-0 scale-50' : 'opacity-100'} ${isProcessing ? 'cursor-default' : 'cursor-pointer active:scale-90'}`}>
+            <button
+              key={`${r}-${c}`}
+              onClick={() => handleTileClick(r, c)}
+              className={`
+                flex items-center justify-center text-xl sm:text-3xl rounded-xl transition-all duration-300
+                ${selectedTile?.r === r && selectedTile?.c === c ? 'bg-white/20 scale-110 ring-4 ring-white/50 z-10 shadow-lg shadow-white/10' : 'bg-slate-700/30 hover:bg-slate-600/50'}
+                ${tile === '' ? 'opacity-0 scale-50' : 'opacity-100'}
+                ${isProcessing ? 'cursor-default' : 'cursor-pointer active:scale-90'}
+              `}
+            >
               {tile}
             </button>
           )))}
         </div>
+
 
         {/* Game Over Modal */}
         {gameOver && (

@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { revalidatePath } from "next/cache";
+import AdminNotificationSender from "@/components/notifications/AdminNotificationSender";
 
 async function deleteLog(id: string) {
   "use server";
@@ -19,18 +20,25 @@ export default async function AdminNotificationsPage() {
     redirect("/login");
   }
 
-  const logs = await prisma.classNotificationLog.findMany({
-    include: {
-        sender: { select: { firstName: true, lastName: true } },
-        class: { select: { name: true } }
-    },
-    orderBy: { createdAt: "desc" }
-  });
+  const [logs, classes] = await Promise.all([
+    prisma.classNotificationLog.findMany({
+      include: {
+          sender: { select: { firstName: true, lastName: true } },
+          class: { select: { name: true } }
+      },
+      orderBy: { createdAt: "desc" }
+    }),
+    prisma.class.findMany({ orderBy: { name: "asc" }, select: { id: true, name: true } })
+  ]);
 
   return (
-    <div className="p-8">
-      <h1 className="text-2xl font-bold mb-6">Notifications envoyées aux classes</h1>
+    <div className="p-8 space-y-8">
+      <h1 className="text-2xl font-bold">Gestion des notifications</h1>
+      
+      <AdminNotificationSender classes={classes} />
+
       <div className="bg-white rounded-xl border shadow-sm p-6 overflow-x-auto">
+        <h2 className="text-lg font-bold mb-4">Historique des notifications</h2>
         <table className="w-full text-left text-sm">
           <thead>
             <tr className="border-b border-slate-100">
