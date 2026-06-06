@@ -44,11 +44,16 @@ export const authOptions: NextAuthOptions = {
               canManageUsers: true,
               canManageSettings: true,
               canManagePlanning: true,
-              canManageRH: true
+              canManageRH: true,
+              isActive: true
             }
           });
 
           if (!user || !user.password) return null;
+          
+          if (user.isActive === false) {
+            throw new Error("Compte désactivé. Veuillez contacter l'administration.");
+          }
 
           const isPasswordValid = await bcrypt.compare(password, user.password);
           
@@ -118,6 +123,14 @@ export const authOptions: NextAuthOptions = {
         (session as any).originalUserId = token.originalUserId as string | undefined;
       }
       return session;
+    },
+  },
+
+  events: {
+    async signIn({ user }) {
+      if (user?.id) {
+        await updateLoginStreak(user.id);
+      }
     },
   },
 

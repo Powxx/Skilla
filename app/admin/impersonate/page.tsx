@@ -15,10 +15,11 @@ export default async function AdminImpersonatePage() {
     redirect("/login");
   }
 
-  // Fetch all non-admin users
+  // Fetch all non-admin users who are active
   const users = await prisma.user.findMany({
     where: {
-      role: { not: "ADMIN" }
+      role: { notIn: ["ADMIN", "SUPER_ADMIN"] },
+      isActive: true
     },
     select: { id: true, firstName: true, lastName: true, email: true, role: true },
     orderBy: { lastName: 'asc' }

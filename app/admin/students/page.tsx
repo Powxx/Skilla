@@ -9,7 +9,8 @@ export const metadata = {
 export default async function AdminStudentsPage() {
   const students = await prisma.user.findMany({
     where: {
-      role: "STUDENT", // Optionnel : pour ne récupérer que les élèves
+      role: "STUDENT",
+      isActive: true, // Seuls les élèves actifs
     },
     include: {
       class: true, // On inclut la relation vers la classe

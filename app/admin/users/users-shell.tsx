@@ -30,6 +30,7 @@ export type ListedUserRow = {
   canManagePlanning: boolean;
   canManageRH: boolean;
   canImpersonate: boolean;
+  isActive: boolean;
 };
 
 type ClassOption = { id: string; name: string };
@@ -532,6 +533,7 @@ function EditUserModal({
   isSuperAdmin: boolean;
 }) {
   const [role, setRole] = useState<Role>(user.role);
+  const [isActive, setIsActive] = useState<boolean>(user.isActive);
   const roleLocked = user.lockedRole;
   const effectiveRole = roleLocked ? user.role : role;
   const showStudentClass = effectiveRole === Role.STUDENT;
@@ -555,12 +557,28 @@ function EditUserModal({
             firstName: String(fd.get("firstName") ?? ""),
             lastName: String(fd.get("lastName") ?? ""),
             role: roleLocked ? user.role : role,
+            isActive,
             newPassword: newPassword === "" ? undefined : newPassword,
             studentClassId:
               role === Role.STUDENT && classRaw !== "" ? classRaw : undefined,
           });
         }}
       >
+        <div className="flex items-center justify-between p-3 rounded-xl border border-slate-100 bg-slate-50/50 mb-4">
+          <div className="flex flex-col">
+            <span className="text-xs font-bold text-slate-900 uppercase tracking-tight">Statut du compte</span>
+            <span className="text-[10px] text-slate-500 font-medium">L'utilisateur peut-il se connecter ?</span>
+          </div>
+          <label className="relative inline-flex items-center cursor-pointer">
+            <input 
+              type="checkbox" 
+              className="sr-only peer" 
+              checked={isActive}
+              onChange={(e) => setIsActive(e.target.checked)}
+            />
+            <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+          </label>
+        </div>
         {user.hasStudentProfile ? (
           <p className="rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-950 ring-1 ring-amber-200/80">
             Le rôle « Élève » est figé tant qu&apos;un profil élève existe. Vous

@@ -78,6 +78,7 @@ export default async function UsersDataFetcher({
         canManagePlanning: true,
         canManageRH: true,
         canImpersonate: true,
+        isActive: true,
         _count: { select: { lessons: true } },
       },
     }),
@@ -110,6 +111,7 @@ export default async function UsersDataFetcher({
       canManagePlanning: u.canManagePlanning,
       canManageRH: u.canManageRH,
       canImpersonate: u.canImpersonate,
+      isActive: u.isActive,
     };
   });
 

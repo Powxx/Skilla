@@ -3,27 +3,36 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth-options";
 import { redirect } from "next/navigation";
 import { getGlobalSettings } from "@/app/actions/settings";
+import { prisma } from "@/lib/prisma";
 
 export const dynamic = 'force-dynamic';
 export const fetchCache = 'force-no-store';
 
-const stats = [
-  {
-    label: "Élèves suivis",
-    value: "100",
-  },
-  {
-    label: "Professeurs",
-    value: "12",
-  },
-  {
-    label: "Classes",
-    value: "5",
-  },
-];
-
 export default async function Home() {
   const session = await getServerSession(authOptions);
+  
+  // Fetch real stats
+  const [studentCount, teacherCount, classCount] = await Promise.all([
+    prisma.user.count({ where: { role: "STUDENT", isActive: true } }),
+    prisma.user.count({ where: { role: "TEACHER", isActive: true } }),
+    prisma.class.count(),
+  ]);
+
+  const stats = [
+    {
+      label: "Élèves suivis",
+      value: String(studentCount),
+    },
+    {
+      label: "Professeurs",
+      value: String(teacherCount),
+    },
+    {
+      label: "Classes",
+      value: String(classCount),
+    },
+  ];
+
   const settings = await getGlobalSettings();
   const getSetting = (key: string) => settings.find(s => s.key === key)?.value;
   const schoolName = getSetting("SCHOOL_SHORT_NAME") || getSetting("SCHOOL_NAME") || "Skilla";
@@ -116,10 +125,10 @@ export default async function Home() {
               id="stats-heading"
               className="text-lg font-semibold tracking-tight text-slate-900"
             >
-              Aperçu de l&apos;établissement (démonstration)
+              Chiffres clés de l&apos;établissement
             </h2>
             <p className="mt-2 text-sm text-slate-600">
-              Indicateurs fictifs pour illustrer le tableau de bord.
+              Statistiques en temps réel du portail {schoolName}.
             </p>
           </div>
           <ul className="grid gap-4 sm:grid-cols-3">
@@ -141,8 +150,7 @@ export default async function Home() {
 
       <footer className="relative z-10 border-t border-slate-200 bg-white/80 py-6 text-center text-xs text-slate-500 backdrop-blur-md">
         <div className="mx-auto max-w-5xl px-6">
-          {schoolName} — Données d&apos;exemple non reliées à une
-          base réelle sur cette page.
+          {schoolName} — Plateforme de gestion pédagogique connectée.
         </div>
       </footer>
     </div>

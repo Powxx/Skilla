@@ -110,6 +110,11 @@ model User {
   notifications  Notification[]
   sentNotifications ClassNotificationLog[] @relation("NotificationSender")
   pushSubscriptions PushSubscription[]
+  gameScores        GameScore[]
+
+  // Gamification & Assiduité
+  loginStreak       Int       @default(0)
+  lastLoginAt       DateTime?
 
   // Habilitations spécifiques
   canAccessLivrets Boolean @default(false)
@@ -118,6 +123,7 @@ model User {
   canManagePlanning Boolean @default(false)
   canManageRH      Boolean @default(false)
   canImpersonate   Boolean @default(false)
+  isActive         Boolean @default(true)
 
   @@index([role])
   @@index([lastName, firstName])
@@ -404,4 +410,16 @@ model PushSubscription {
   p256dh    String
   auth      String
   createdAt DateTime @default(now())
+}
+
+model GameScore {
+  id        String   @id @default(cuid())
+  gameKey   String   // Clé identifiant le jeu (ex: "katana-scissors")
+  score     Int
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@index([gameKey])
+  @@index([userId])
 }

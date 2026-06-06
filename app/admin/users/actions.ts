@@ -44,23 +44,24 @@ export async function updateAdminPermissions(input: {
   canManageRH?: boolean;
   canAccessLivrets?: boolean;
   canImpersonate?: boolean;
+  isActive?: boolean;
 }): Promise<MutationResult> {
   const session = await requireAdmin();
   if (session?.user?.role !== "SUPER_ADMIN") {
     return { ok: false, error: "Action réservée aux Super Administrateurs." };
   }
 
-  const { userId, ...permissions } = input;
+  const { userId, ...data } = input;
 
   try {
     await prisma.user.update({
       where: { id: userId },
-      data: permissions,
+      data,
     });
     revalidatePath("/admin/users");
     return { ok: true };
   } catch (e) {
-    return { ok: false, error: "Erreur lors de la mise à jour des permissions." };
+    return { ok: false, error: "Erreur lors de la mise à jour." };
   }
 }
 
@@ -163,6 +164,7 @@ export async function updateUser(input: {
   firstName: string;
   lastName: string;
   role: Role;
+  isActive: boolean;
   newPassword?: string;
   studentClassId?: string;
 }): Promise<MutationResult> {
@@ -175,6 +177,7 @@ export async function updateUser(input: {
     firstName: fnRaw,
     lastName: lnRaw,
     role: newRole,
+    isActive,
     newPassword,
     studentClassId,
   } = input;
@@ -257,6 +260,7 @@ export async function updateUser(input: {
     lastName,
     name: fullName,
     role: newRole,
+    isActive,
   };
 
   if (newPassword?.trim()) {

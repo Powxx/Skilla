@@ -14,7 +14,10 @@ export default async function AdminReportCardsPage() {
 
   const [students, semesters] = await Promise.all([
     prisma.user.findMany({
-      where: { role: "STUDENT" },
+      where: { 
+        role: "STUDENT",
+        isActive: true
+      },
       select: { id: true, firstName: true, lastName: true, class: { select: { name: true } } },
       orderBy: { lastName: 'asc' }
     }),
