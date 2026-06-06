@@ -17,9 +17,9 @@ const GAMES = [
   { id: 'silk-road', name: 'Silk Road Explorer', subject: 'Histoire-Géo', icon: '🗺️', description: 'Explorez l\'origine des rituels de beauté.' },
   { id: 'zen-connect', name: 'Zen Connect', subject: 'Informatique', icon: '🔌', description: 'Reliez les flux de données du salon.' },
   { id: 'abacus-dosages', name: 'Abacus Dosages', subject: 'Mathématiques', icon: '🧮', description: 'Calculez les mélanges sur un boulier.' },
-  { id: 'katana-scissors', name: 'Katana Scissors', subject: 'Pratique', icon: '⚔️', description: 'Coupez les mèches avec la précision du sabre.' },
+  { id: 'katana-scissors', name: 'Katana Scissors', subject: 'Pratique', icon: '⚔️', description: 'Coupez les mèches avec la précision du sabre.' , primary: true},
   { id: 'safety-shuriken', name: 'Safety Shuriken', subject: 'PSE', icon: '🎯', description: 'Éliminez les risques professionnels.' },
-  { id: 'skin-defense', name: 'Skin Defense', subject: 'Biologie appliquée', icon: '🛡️', description: 'Protégez la barrière cutanée.' },
+  { id: 'skin-defense', name: 'Skin Defense', subject: 'Biologie appliquée', icon: '🛡️', description: 'Protégez la barrière cutanée.', primary: true },
   { id: 'ph-alchemy', name: 'pH Alchemy', subject: 'Sciences', icon: '🧪', description: 'Stabilisez le pH de vos solutions.' },
   { id: 'maintenance-monk', name: 'Maintenance Monk', subject: 'Technologie', icon: '🔧', description: 'Réparez vos appareils de beauté.' },
 ];
