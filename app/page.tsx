@@ -1,158 +1,22 @@
-import Link from "next/link";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth-options";
 import { redirect } from "next/navigation";
-import { getGlobalSettings } from "@/app/actions/settings";
-import { prisma } from "@/lib/prisma";
 
 export const dynamic = 'force-dynamic';
 export const fetchCache = 'force-no-store';
 
 export default async function Home() {
   const session = await getServerSession(authOptions);
-  
-  // Fetch real stats
-  const [studentCount, teacherCount, classCount] = await Promise.all([
-    prisma.user.count({ where: { role: "STUDENT", isActive: true } }),
-    prisma.user.count({ where: { role: "TEACHER", isActive: true } }),
-    prisma.class.count(),
-  ]);
-
-  const stats = [
-    {
-      label: "Élèves suivis",
-      value: String(studentCount),
-    },
-    {
-      label: "Professeurs",
-      value: String(teacherCount),
-    },
-    {
-      label: "Classes",
-      value: String(classCount),
-    },
-  ];
-
-  const settings = await getGlobalSettings();
-  const getSetting = (key: string) => settings.find(s => s.key === key)?.value;
-  const schoolName = getSetting("SCHOOL_SHORT_NAME") || getSetting("SCHOOL_NAME") || "Skilla";
 
   if (session?.user) {
-    const role = session.user.role;
-    switch (role) {
-      case "ADMIN": redirect("/admin");
-      case "TEACHER": redirect("/prof");
-      case "STUDENT": redirect("/student/dashboard");
-      case "RESPONSIBLE": redirect("/parent/dashboard");
-      case "COMPANY_TUTOR": redirect("/employer/dashboard");
-      default: break;
-    }
+    const role = (session.user as any).role;
+    if (role === 'STUDENT') redirect('/student/dashboard');
+    if (role === 'TEACHER') redirect('/prof');
+    if (role === 'ADMIN' || role === 'SUPER_ADMIN') redirect('/admin');
+    if (role === 'COMPANY_TUTOR') redirect('/employer');
+    if (role === 'RESPONSIBLE') redirect('/parent');
+    redirect('/login');
   }
 
-  return (
-    <div className="relative min-h-screen overflow-hidden bg-slate-50 text-slate-900">
-      <div
-        className="pointer-events-none absolute inset-0 opacity-[0.35]"
-        aria-hidden
-      >
-        <div className="absolute -top-40 -right-40 h-96 w-96 rounded-full bg-sky-200/60 blur-3xl" />
-        <div className="absolute -bottom-32 -left-32 h-80 w-80 rounded-full bg-indigo-200/50 blur-3xl" />
-      </div>
-
-      <header className="relative z-10 border-b border-slate-200/80 bg-white/80 backdrop-blur-md">
-        <div className="mx-auto flex max-w-5xl items-center justify-between gap-6 px-6 py-4 sm:px-8">
-          <div className="flex items-center gap-3">
-            <div
-              className="flex h-10 w-10 items-center justify-center rounded-lg bg-slate-900 overflow-hidden shadow-sm ring-1 ring-slate-900/10"
-              aria-hidden
-            >
-              <img src="/SKILLA-Logo.png" alt="Logo" className="h-full w-full object-contain" />
-            </div>
-            <div>
-              <p className="text-sm font-semibold tracking-tight text-slate-900">
-                {schoolName}
-              </p>
-              <p className="text-xs text-slate-500">
-                Vie scolaire & emplois du temps
-              </p>
-            </div>
-          </div>
-          <Link
-            href="/login"
-            className="inline-flex items-center justify-center rounded-lg bg-slate-900 px-4 py-2.5 text-sm font-medium text-white shadow-sm outline-offset-2 transition hover:bg-slate-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-slate-900 active:bg-slate-950"
-          >
-            Connexion
-          </Link>
-        </div>
-      </header>
-
-      <main className="relative z-10 mx-auto flex max-w-5xl flex-1 flex-col gap-16 px-6 py-16 sm:gap-20 sm:px-8 sm:py-24">
-        <section className="mx-auto max-w-2xl text-center">
-          <p className="mb-4 text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
-            Espace numérique de travail
-          </p>
-          <h1 className="text-balance text-3xl font-semibold tracking-tight text-slate-900 sm:text-4xl sm:leading-[1.15]">
-            Pilotez la scolarité : notes, cours, absences — au même endroit.
-          </h1>
-          <p className="mt-6 text-pretty text-base leading-relaxed text-slate-600 sm:text-lg">
-            Interface sobre pour élèves, enseignants et administration : classes,
-            emplois du temps, notes et absences — alignée sur votre modèle de données
-            (élèves, professeurs, cours, matières).
-          </p>
-          <div className="mt-10 flex flex-col items-center gap-4 sm:flex-row sm:justify-center">
-            <Link
-              href="/login"
-              className="inline-flex w-full items-center justify-center rounded-lg bg-sky-700 px-5 py-3 text-sm font-medium text-white shadow-sm transition hover:bg-sky-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-700 sm:w-auto"
-            >
-              Accéder à mon espace
-            </Link>
-            <Link
-              href="#statistiques"
-              className="inline-flex w-full items-center justify-center rounded-lg border border-slate-200 bg-white px-5 py-3 text-sm font-medium text-slate-700 shadow-sm transition hover:border-slate-300 hover:bg-slate-50 sm:w-auto"
-            >
-              Voir un aperçu de l’établissement
-            </Link>
-          </div>
-        </section>
-
-        <section
-          id="statistiques"
-          className="scroll-mt-28"
-          aria-labelledby="stats-heading"
-        >
-          <div className="mb-10 text-center">
-            <h2
-              id="stats-heading"
-              className="text-lg font-semibold tracking-tight text-slate-900"
-            >
-              Chiffres clés de l&apos;établissement
-            </h2>
-            <p className="mt-2 text-sm text-slate-600">
-              Statistiques en temps réel du portail {schoolName}.
-            </p>
-          </div>
-          <ul className="grid gap-4 sm:grid-cols-3">
-            {stats.map((item) => (
-              <li key={item.label}>
-                <article className="h-full rounded-2xl border border-slate-200/80 bg-white p-6 shadow-sm ring-1 ring-slate-900/[0.04] transition hover:border-slate-300 hover:shadow-md">
-                  <p className="text-sm font-medium text-slate-500">
-                    {item.label}
-                  </p>
-                  <p className="mt-3 text-4xl font-semibold tabular-nums tracking-tight text-slate-900">
-                    {item.value}
-                  </p>
-                </article>
-              </li>
-            ))}
-          </ul>
-        </section>
-      </main>
-
-      <footer className="relative z-10 border-t border-slate-200 bg-white/80 py-6 text-center text-xs text-slate-500 backdrop-blur-md">
-        <div className="mx-auto max-w-5xl px-6">
-          {schoolName} — Plateforme de gestion pédagogique connectée.
-        </div>
-      </footer>
-    </div>
-  );
+  redirect('/login');
 }

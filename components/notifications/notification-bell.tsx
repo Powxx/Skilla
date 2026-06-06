@@ -95,7 +95,7 @@ export default function NotificationBell() {
       {/* Notification Modal */}
       {selectedNotification && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl p-6 w-full max-w-sm shadow-xl relative">
+          <div className="bg-white rounded-2xl p-6 w-full max-w-sm shadow-xl relative max-h-[80vh] overflow-y-auto">
             <button onClick={() => setSelectedNotification(null)} className="absolute top-4 right-4 text-slate-400 hover:text-slate-600">
               <X className="h-5 w-5" />
             </button>
