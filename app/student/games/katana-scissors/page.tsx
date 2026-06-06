@@ -112,7 +112,8 @@ export default function KatanaScissorsRunner() {
   // Leaderboard
   const fetchLeaderboard = useCallback(async () => {
     setLoadingLeaderboard(true);
-    const data = await getLeaderboard(GAME_KEY, lbScope === 'class' ? studentStats.classId : undefined);
+    const scopeClassId = lbScope === 'class' ? (studentStats.classId ?? undefined) : undefined;
+    const data = await getLeaderboard(GAME_KEY, scopeClassId);
     setLeaderboard(data);
     setLoadingLeaderboard(false);
   }, [lbScope, studentStats.classId]);
