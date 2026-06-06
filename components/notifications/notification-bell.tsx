@@ -6,6 +6,7 @@ import { getNotifications, getUnreadCount, markAsRead, markAllAsRead } from "@/a
 import Link from "next/link";
 import { formatDistanceToNow } from "date-fns";
 import { fr } from "date-fns/locale";
+import { PushSubscriptionManager } from "./PushSubscriptionManager";
 
 export default function NotificationBell() {
   const { data: session } = useSession();
@@ -142,6 +143,7 @@ export default function NotificationBell() {
               ))
             )}
           </div>
+          <PushSubscriptionManager />
         </div>
       )}
     </div>

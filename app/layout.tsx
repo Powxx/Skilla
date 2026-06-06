@@ -10,6 +10,7 @@ const inter = Inter({ subsets: ["latin"], display: 'swap' });
 export const metadata: Metadata = {
   title: "ECM Academie - Gestion d'Emploi du temps",
   description: "Plateforme de gestion pour alternance",
+  manifest: "/manifest.json",
 };
 
 export default function RootLayout({
@@ -25,6 +26,24 @@ export default function RootLayout({
           <Analytics />
           <SpeedInsights />
         </Providers>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              if ('serviceWorker' in navigator) {
+                window.addEventListener('load', function() {
+                  navigator.serviceWorker.register('/sw.js').then(
+                    function(registration) {
+                      console.log('ServiceWorker registration successful with scope: ', registration.scope);
+                    },
+                    function(err) {
+                      console.log('ServiceWorker registration failed: ', err);
+                    }
+                  );
+                });
+              }
+            `,
+          }}
+        />
       </body>
     </html>
   );

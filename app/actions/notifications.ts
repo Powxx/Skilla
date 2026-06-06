@@ -4,6 +4,7 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
+import { sendPushNotification } from "./push";
 
 export async function getNotifications(userId: string) {
   return await prisma.notification.findMany({
@@ -74,6 +75,15 @@ export async function sendClassNotification(data: {
     })
   ]);
   
+  // Envoi des notifications push
+  for (const student of students) {
+    sendPushNotification(student.id, {
+      title: data.title,
+      body: data.message,
+      url: "/"
+    }).catch(err => console.error("Push failed for student", student.id, err));
+  }
+
   revalidatePath("/");
   return { notifications, log };
 }
@@ -94,6 +104,14 @@ export async function createNotification(data: {
       link: data.link,
     },
   });
+
+  // Envoi push
+  sendPushNotification(data.userId, {
+    title: data.title,
+    body: data.message,
+    url: data.link || "/"
+  }).catch(err => console.error("Push failed for user", data.userId, err));
+
   revalidatePath("/");
   return notification;
 }

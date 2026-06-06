@@ -109,6 +109,7 @@ model User {
   meetingRequestsSent MeetingRequest[]  @relation("MeetingSender")
   notifications  Notification[]
   sentNotifications ClassNotificationLog[] @relation("NotificationSender")
+  pushSubscriptions PushSubscription[]
 
   // Habilitations spécifiques
   canAccessLivrets Boolean @default(false)
@@ -393,4 +394,14 @@ model Holiday {
   id   String   @id @default(cuid())
   date DateTime @unique
   name String
+}
+
+model PushSubscription {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  createdAt DateTime @default(now())
 }
