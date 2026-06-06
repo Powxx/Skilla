@@ -27,7 +27,7 @@ export default function SkinDefense() {
   const [showLeaderboard, setShowLeaderboard] = useState(false);
   const [showAdvantages, setShowAdvantages] = useState(false);
   const [leaderboard, setLeaderboard] = useState<any[]>([]);
-  const [studentStats, setStudentStats] = useState({ average: 0, streak: 0, classId: '' });
+  const [studentStats, setStudentStats] = useState<{ average: number, streak: number, classId: string | null }>({ average: 0, streak: 0, classId: null });
 
   const powerUps = useMemo(() => ({
     damageBoost: studentStats.average >= 16,
