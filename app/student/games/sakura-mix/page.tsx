@@ -37,8 +37,8 @@ export default function SakuraMix() {
   const [loadingLeaderboard, setLoadingLeaderboard] = useState(false);
 
   const powerUps = useMemo(() => ({
-    timeFreeze: studentStats.average >= 16,
-    scoreDouble: studentStats.average >= 10,
+    timeFreeze: studentStats.average >= 10,
+    scoreDouble: studentStats.average >= 16,
     streakMultiplier: Math.min(2.0, 1 + (studentStats.streak * 0.1))
   }), [studentStats]);
 
@@ -68,7 +68,6 @@ export default function SakuraMix() {
       let currentMatch: {r: number, c: number}[] = [];
       for (let c = 0; c < GRID_SIZE; c++) {
         const tile = currentGrid[r][c];
-        // On ne matche que les couleurs standard entre elles
         if (tile && COLORS.includes(tile)) {
           if (currentMatch.length > 0 && currentGrid[r][c] === currentGrid[currentMatch[0].r][currentMatch[0].c]) {
             currentMatch.push({r, c});
@@ -109,22 +108,20 @@ export default function SakuraMix() {
 
   // --- SPECIAL EFFECTS ---
   const triggerExplosion = (r: number, c: number, workingGrid: string[][]) => {
-    const tilesExploded = [];
+    let exploded = 0;
     for (let i = Math.max(0, r - 1); i <= Math.min(GRID_SIZE - 1, r + 1); i++) {
       for (let j = Math.max(0, c - 1); j <= Math.min(GRID_SIZE - 1, c + 1); j++) {
         if (workingGrid[i][j] !== '') {
-          tilesExploded.push({r: i, c: j});
           workingGrid[i][j] = '';
+          exploded++;
         }
       }
     }
-    return tilesExploded.length;
+    return exploded;
   };
 
   const triggerColorBomb = (targetColor: string, workingGrid: string[][]) => {
     let count = 0;
-    // Si on swap avec un autre spécial, on nettoie tout ? Pour l'instant on nettoie la couleur target
-    // Si target est un spécial, on choisit une couleur aléatoire
     const realTarget = COLORS.includes(targetColor) ? targetColor : COLORS[Math.floor(Math.random() * COLORS.length)];
     
     for (let r = 0; r < GRID_SIZE; r++) {
@@ -214,7 +211,7 @@ export default function SakuraMix() {
     setGameOver(false);
     setIsNewBest(false);
     setTimeFrozen(false);
-  }, [processMatches, powerUps]);
+  }, [processMatches]);
 
   useEffect(() => { initGame(); }, [initGame]);
 
@@ -231,48 +228,42 @@ export default function SakuraMix() {
         const tileA = newGrid[selectedTile.r][selectedTile.c];
         const tileB = newGrid[r][c];
 
-        let specialTriggered = false;
-
-        // --- NOUVELLE LOGIQUE : SWAP AVEC SPÉCIAUX ---
-        
-        // 1. Color Bomb (swapper avec n'importe quoi active l'effet)
-        if (tileA === SPECIALS.COLOR_BOMB || tileB === SPECIALS.COLOR_BOMB) {
-          const targetColor = tileA === SPECIALS.COLOR_BOMB ? tileB : tileA;
-          const explodedCount = triggerColorBomb(targetColor, newGrid);
-          newGrid[selectedTile.r][selectedTile.c] = '';
-          newGrid[r][c] = '';
-          setScore(prev => prev + explodedCount * 20);
-          specialTriggered = true;
-        } 
-        // 2. Explosion (swapper avec n'importe quoi active l'effet)
-        else if (tileA === SPECIALS.EXPLOSION || tileB === SPECIALS.EXPLOSION) {
-          if (tileA === SPECIALS.EXPLOSION) triggerExplosion(r, c, newGrid);
-          if (tileB === SPECIALS.EXPLOSION) triggerExplosion(selectedTile.r, selectedTile.c, newGrid);
-          specialTriggered = true;
-        }
-
-        if (specialTriggered) {
-          setMoves(prev => prev - 1);
-          setSelectedTile(null);
-          await processMatches(newGrid);
-          if (moves <= 1) handleGameOver(score);
-          return;
-        }
-
-        // --- SWAP STANDARD ---
-        newGrid[r][c] = tileA;
+        // 1. Swap
         newGrid[selectedTile.r][selectedTile.c] = tileB;
-        
-        const { horizontal, vertical } = checkMatches(newGrid);
+        newGrid[r][c] = tileA;
+        setMoves(prev => prev - 1);
+        setSelectedTile(null);
 
-        if (horizontal.length > 0 || vertical.length > 0) {
-          setMoves(prev => prev - 1);
-          setSelectedTile(null);
+        // 2. Vérifier si l'un des deux est un spécial
+        const isASpecial = Object.values(SPECIALS).includes(tileA);
+        const isBSpecial = Object.values(SPECIALS).includes(tileB);
+        let matchFormed = false;
+
+        if (isASpecial || isBSpecial) {
+          // Si spécial, on déclenche l'effet à la position où il a atterri
+          if (tileA === SPECIALS.COLOR_BOMB) triggerColorBomb(tileB, newGrid);
+          else if (tileA === SPECIALS.EXPLOSION) triggerExplosion(r, c, newGrid);
+          
+          if (tileB === SPECIALS.COLOR_BOMB) triggerColorBomb(tileA, newGrid);
+          else if (tileB === SPECIALS.EXPLOSION) triggerExplosion(selectedTile.r, selectedTile.c, newGrid);
+          
+          matchFormed = true;
+        } else {
+            const { horizontal, vertical } = checkMatches(newGrid);
+            if (horizontal.length > 0 || vertical.length > 0) {
+                matchFormed = true;
+            }
+        }
+
+        if (matchFormed) {
           await processMatches(newGrid);
           if (moves <= 1) handleGameOver(score);
         } else {
-          // Pas de match : on annule le swap
-          setSelectedTile({ r, c }); 
+          // Pas de match -> Reverser le swap
+          newGrid[selectedTile.r][selectedTile.c] = tileA;
+          newGrid[r][c] = tileB;
+          setGrid(newGrid);
+          setMoves(prev => prev + 1); // Rendre le coup
         }
       } else {
         setSelectedTile({ r, c });
@@ -411,7 +402,7 @@ export default function SakuraMix() {
 
                  <div className={`flex items-center justify-between p-4 rounded-2xl border transition-all ${powerUps.scoreDouble ? 'bg-emerald-600/10 border-emerald-500/20' : 'bg-slate-900/50 border-slate-700 opacity-40'}`}>
                     <div>
-                       <p className="text-[10px] font-black text-emerald-500 uppercase tracking-widest">Moyenne &gt; 10</p>
+                       <p className="text-[10px] font-black text-emerald-500 uppercase tracking-widest">Moyenne &gt; 16</p>
                        <p className="text-sm font-bold text-white">Score Double (x2)</p>
                     </div>
                     <span className="text-xl">💎</span>
@@ -419,7 +410,7 @@ export default function SakuraMix() {
 
                  <div className={`flex items-center justify-between p-4 rounded-2xl border transition-all ${powerUps.timeFreeze ? 'bg-amber-600/10 border-amber-500/20' : 'bg-slate-900/50 border-slate-700 opacity-40'}`}>
                     <div>
-                       <p className="text-[10px] font-black text-amber-500 uppercase tracking-widest">Moyenne &gt; 16</p>
+                       <p className="text-[10px] font-black text-amber-500 uppercase tracking-widest">Moyenne &gt; 10</p>
                        <p className="text-sm font-bold text-white">Figer Temps</p>
                        <p className="text-[9px] text-slate-400">Gain de +5 coups</p>
                     </div>
