@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useSession } from 'next-auth/react';
 import { saveGameScore, getPersonalBest, getStudentStats } from '@/app/actions/gamification';
@@ -17,14 +17,13 @@ export default function KatanaScissors() {
   const [maxLives, setMaxLives] = useState(3);
   const [speed, setSpeed] = useState(2000);
   const [gameOver, setGameOver] = useState(false);
+  const [gameStarted, setGameStarted] = useState(false);
   const [items, setItems] = useState<any[]>([]);
   const containerRef = useRef<HTMLDivElement>(null);
   
-  // Slash Animation
   const [isSlicing, setIsSlicing] = useState(false);
   const [slashPoints, setSlashPoints] = useState<{x: number, y: number}[]>([]);
 
-  // Stats pour bonus
   const [studentStats, setStudentStats] = useState({ average: 0, streak: 0 });
   const [personalBest, setPersonalBest] = useState(0);
   
@@ -41,9 +40,8 @@ export default function KatanaScissors() {
 
   const scoreMultiplier = (studentStats.average >= 16 ? 2 : 1) * Math.min(2.0, 1 + (studentStats.streak * 0.1));
 
-  // Spawn items
   useEffect(() => {
-    if (gameOver) return;
+    if (gameOver || !gameStarted) return;
     const interval = setInterval(() => {
       const newItem = {
         id: Date.now(),
@@ -55,11 +53,10 @@ export default function KatanaScissors() {
       setSpeed(prev => Math.max(500, prev - 20));
     }, speed);
     return () => clearInterval(interval);
-  }, [gameOver, speed]);
+  }, [gameOver, gameStarted, speed]);
 
-  // Handle Slash
   const handleMouseMove = (e: React.MouseEvent | React.TouchEvent) => {
-    if (!isSlicing) return;
+    if (!isSlicing || !gameStarted || gameOver) return;
     
     const clientX = 'clientX' in e ? e.clientX : e.touches[0].clientX;
     const clientY = 'clientY' in e ? e.clientY : e.touches[0].clientY;
@@ -78,7 +75,7 @@ export default function KatanaScissors() {
   };
 
   const handleSlash = (id: string, type: string) => {
-    if (gameOver) return;
+    if (gameOver || !gameStarted) return;
     if (type === ITEM_TYPES.HAIR.id) {
       setScore(prev => prev + Math.floor(ITEM_TYPES.HAIR.points * scoreMultiplier));
     } else {
@@ -131,11 +128,17 @@ export default function KatanaScissors() {
         </div>
       ))}
 
-      {gameOver && (
+      {(!gameStarted || gameOver) && (
         <div className="absolute inset-0 flex items-center justify-center bg-black/80 z-20">
           <div className="text-center">
-            <h2 className="text-4xl font-black text-white mb-4">Terminé! Score: {score}</h2>
-            <button onClick={() => window.location.reload()} className="px-8 py-4 bg-red-600 text-white rounded-xl font-bold">Rejouer</button>
+            {gameOver ? (
+                <h2 className="text-4xl font-black text-white mb-4">Terminé! Score: {score}</h2>
+            ) : (
+                <h2 className="text-4xl font-black text-white mb-4">Katana Scissors</h2>
+            )}
+            <button onClick={() => { setGameStarted(true); setGameOver(false); setScore(0); setItems([]); setLives(maxLives); }} className="px-8 py-4 bg-red-600 text-white rounded-xl font-bold">
+                {gameOver ? "Rejouer" : "Commencer"}
+            </button>
             <Link href="/student/games" className="ml-4 px-8 py-4 bg-slate-700 text-white rounded-xl font-bold">Quitter</Link>
           </div>
         </div>

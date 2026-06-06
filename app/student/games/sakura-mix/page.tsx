@@ -281,14 +281,15 @@ export default function SakuraMix() {
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-slate-900 text-white p-4 font-sans overflow-hidden">
       {/* ... (HUD, Header, Stats, Grid, Modals, Footer restent inchangés dans la structure globale, mais je mets à jour les avantages modal) */}
+      {/* HUD - Power-Ups */}
       <div className="w-full max-w-md flex gap-2 mb-4 overflow-x-auto pb-2 no-scrollbar">
+        <span className="shrink-0 bg-orange-600/20 text-orange-400 border border-orange-500/30 px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest">Série x{powerUps.streakMultiplier.toFixed(1)}</span>
         {powerUps.scoreDouble && <span className="shrink-0 bg-amber-600/20 text-amber-400 border border-amber-500/30 px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest">x2 Score</span>}
         {powerUps.timeFreeze && (
           <button onClick={useTimeFreeze} disabled={timeFrozen} className={`shrink-0 border px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest transition-colors ${!timeFrozen ? 'bg-blue-600/20 text-blue-400 border-blue-500/30 hover:bg-blue-600/40' : 'bg-slate-800 text-slate-500 border-slate-700'}`}>
             {timeFrozen ? 'Utilisé' : 'Figer Temps'}
           </button>
         )}
-        <span className="shrink-0 bg-orange-600/20 text-orange-400 border border-orange-500/30 px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest">Série x{powerUps.streakMultiplier.toFixed(1)}</span>
       </div>
 
       {/* Header, Stats, Grid, Modals... */}
