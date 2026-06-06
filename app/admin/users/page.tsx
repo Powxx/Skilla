@@ -18,7 +18,7 @@ function getParam(raw: string | string[] | undefined): string | undefined {
 function parseRole(raw: string | undefined): Role | undefined {
   if (!raw?.trim()) return undefined;
   const cleaned = raw.trim().toUpperCase();
-  const allowed = ["ADMIN", "TEACHER", "STUDENT", "PARENT", "EMPLOYER"] as const;
+  const allowed = ["SUPER_ADMIN", "ADMIN", "TEACHER", "STUDENT", "RESPONSIBLE", "COMPANY_TUTOR"] as const;
   if (!allowed.includes(cleaned as (typeof allowed)[number])) return undefined;
   return cleaned as Role;
 }

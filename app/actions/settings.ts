@@ -5,13 +5,20 @@ import { authOptions } from "@/lib/auth-options";
 import prisma from "@/lib/prisma";
 import bcrypt from "bcrypt";
 
+import { unstable_cache, revalidateTag } from "next/cache";
+
 // Fonctions existantes qui ont été écrasées par erreur
-export async function getGlobalSettings() {
-  return await prisma.globalSetting.findMany();
-}
+export const getGlobalSettings = unstable_cache(
+  async () => {
+    return await prisma.globalSetting.findMany();
+  },
+  ["global-settings"],
+  { tags: ["global-settings"], revalidate: 3600 }
+);
 
 export async function updateGlobalSetting(key: string, value: string) {
   await prisma.globalSetting.update({ where: { key }, data: { value } });
+  revalidateTag("global-settings", { expire: 0 });
 }
 
 export async function updateTeacherLivretAccess(teacherId: string, canAccess: boolean) {
