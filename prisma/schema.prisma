@@ -117,6 +117,9 @@ model User {
   canManagePlanning Boolean @default(false)
   canManageRH      Boolean @default(false)
   canImpersonate   Boolean @default(false)
+
+  @@index([role])
+  @@index([lastName, firstName])
 }
 
 model GlobalSetting {
@@ -203,6 +206,8 @@ model Lesson {
   
   summary           String?          @db.Text
   homework          String?          @db.Text
+
+  @@index([startTime, endTime])
 }
 
 model AttendanceSheet {

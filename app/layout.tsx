@@ -3,6 +3,9 @@ import type { Metadata } from "next";
 import { Providers } from "@/components/Providers";
 import { Analytics } from '@vercel/analytics/react';
 import { SpeedInsights } from '@vercel/speed-insights/next';
+import { Inter } from "next/font/google";
+
+const inter = Inter({ subsets: ["latin"], display: 'swap' });
 
 export const metadata: Metadata = {
   title: "ECM Academie - Gestion d'Emploi du temps",
@@ -15,7 +18,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="fr">
+    <html lang="fr" className={inter.className}>
       <body>
         <Providers>
           {children}

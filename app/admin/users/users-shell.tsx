@@ -6,11 +6,9 @@ import type { ReactNode } from "react";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { createUser, deleteUserSafe, updateUser, importUsersAction, updateAdminPermissions } from "./actions";
-import Papa from "papaparse";
 import { useRef } from "react";
 import { useSession } from "next-auth/react";
 import { Shield, ShieldAlert, ShieldCheck, Key, FileText, X } from "lucide-react";
-import { jsPDF } from "jspdf";
 
 const inputClass =
   "w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-sky-600 focus:ring-2 focus:ring-sky-600/20";
@@ -99,7 +97,8 @@ export default function UsersShell(props: Props) {
   const [managingPermissions, setManagingPermissions] = useState<ListedUserRow | null>(null);
   const [accessDocumentUser, setAccessDocumentUser] = useState<ListedUserRow | null>(null);
 
-  const handleExportCSV = () => {
+  const handleExportCSV = async () => {
+    const { default: Papa } = await import("papaparse");
     const data = users.map(u => ({
       Prénom: u.firstName,
       Nom: u.lastName,
@@ -119,9 +118,11 @@ export default function UsersShell(props: Props) {
     document.body.removeChild(link);
   };
 
-  const handleImportCSV = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImportCSV = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+
+    const { default: Papa } = await import("papaparse");
 
     Papa.parse(file, {
       header: true,

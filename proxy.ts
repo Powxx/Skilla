@@ -8,9 +8,6 @@ export async function proxy(req: NextRequest) {
   // Debug des cookies bruts
   const sessionCookie = req.cookies.get("__Secure-next-auth.session-token") || req.cookies.get("next-auth.session-token");
   
-  console.log("--- DEBUG SESSION ---");
-  console.log("Cookie présent ?", !!sessionCookie);
-  console.log("Nom du cookie détecté :", sessionCookie?.name);
 
   const token = await getToken({ 
     req, 
@@ -19,8 +16,6 @@ export async function proxy(req: NextRequest) {
     secureCookie: process.env.NODE_ENV === "production" 
   });
 
-  console.log("Token décodé ?", !!token);
-  console.log("Rôle trouvé :", token?.role);
 
   if (!token) {
     // Si on a le cookie mais pas de token, le SECRET est en cause
