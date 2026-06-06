@@ -111,6 +111,7 @@ model User {
   sentNotifications ClassNotificationLog[] @relation("NotificationSender")
   pushSubscriptions PushSubscription[]
   gameScores        GameScore[]
+  assignedGrades    Grade[]           @relation("TeacherGrades")
 
   // Gamification & Assiduité
   loginStreak       Int       @default(0)
@@ -247,6 +248,9 @@ model Grade {
 
   studentId    String
   student      User     @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  
+  teacherId    String?
+  teacher      User?    @relation("TeacherGrades", fields: [teacherId], references: [id])
   
   subjectId    String
   subject      Subject  @relation(fields: [subjectId], references: [id], onDelete: Cascade)

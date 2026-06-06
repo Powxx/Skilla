@@ -3,6 +3,7 @@ import { authOptions } from "@/lib/auth-options";
 import { redirect } from "next/navigation";
 import prisma from "@/lib/prisma";
 import GradeEntryClient from "./grade-entry-client";
+import { getTeacherGrades } from "@/app/actions/notes";
 
 export const dynamic = 'force-dynamic';
 
@@ -16,7 +17,7 @@ export default async function TeacherGradesPage() {
 
   const teacherId = session.user.id;
 
-  const [classes, subjects] = await Promise.all([
+  const [classes, subjects, teacherGrades] = await Promise.all([
     prisma.class.findMany({
       where: {
         lessons: { some: { teacherId } }
@@ -31,17 +32,28 @@ export default async function TeacherGradesPage() {
       orderBy: { name: "asc" },
       select: { id: true, name: true },
     }),
+    getTeacherGrades(teacherId)
   ]);
 
   return (
     <>
-      <div className="border-b border-slate-200/90 bg-white/90 backdrop-blur-sm">
-        <div className="mx-auto max-w-5xl py-3 text-sm text-slate-600">
-          <span className="text-slate-500">Étape 1 → 2 → 3 :</span>{" "}
-          matière depuis la base, puis classe, puis élève — la saisie s’affiche ensuite.
+      <div className="border-b border-slate-200/90 bg-white/90 backdrop-blur-sm mb-8">
+        <div className="mx-auto max-w-5xl py-3 px-4 text-sm text-slate-600 flex justify-between items-center">
+          <div>
+            <span className="text-slate-500 font-medium">Parcours :</span>{" "}
+            Saisie rapide → Consultation → Modification
+          </div>
+          <div className="text-[10px] font-bold text-sky-600 uppercase tracking-widest">
+            {teacherGrades.length} notes enregistrées récemment
+          </div>
         </div>
       </div>
-      <GradeEntryClient classes={classes} subjects={subjects} />
+      
+      <GradeEntryClient 
+        classes={classes} 
+        subjects={subjects} 
+        initialGrades={JSON.parse(JSON.stringify(teacherGrades))} 
+      />
     </>
   );
 }

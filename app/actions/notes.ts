@@ -2,6 +2,9 @@
 
 import prisma from "@/lib/prisma";
 import { createNotification, checkEventEnabled } from "./notifications";
+import { getServerSession } from "next-auth/next";
+import { authOptions } from "@/lib/auth-options";
+import { revalidatePath } from "next/cache";
 
 export type GradeBatchEntry = {
   studentId: string;
@@ -29,6 +32,9 @@ export type SaveGradeBatchResult =
 export async function saveGradesBatch(
   entries: GradeBatchEntry[],
 ): Promise<SaveGradeBatchResult> {
+  const session = await getServerSession(authOptions);
+  const teacherId = session?.user?.role === "TEACHER" ? (session.user as any).id : null;
+
   try {
     if (!entries.length) {
       return {
@@ -125,6 +131,7 @@ export async function saveGradesBatch(
             comment: commentTrimmed,
             subjectId: e.matiereId,
             semesterId: e.semesterId,
+            teacherId: teacherId,
             createdAt: e.noteDate
           },
         });
@@ -145,6 +152,7 @@ export async function saveGradesBatch(
       }
     }
 
+    revalidatePath("/prof/notes");
     return { ok: true, count: entries.length };
   } catch (err) {
     console.error("[saveGradesBatch]", err);
@@ -154,4 +162,52 @@ export async function saveGradesBatch(
         "La sauvegarde des notes a échoué. Réessayez plus tard ou contactez un administrateur.",
     };
   }
+}
+
+export async function updateGrade(id: string, value: number, coefficient: number, comment?: string | null) {
+  const session = await getServerSession(authOptions);
+  if (session?.user?.role !== "TEACHER") throw new Error("Non autorisé");
+
+  try {
+    await prisma.grade.update({
+      where: { id, teacherId: (session.user as any).id }, // Sécurité: seulement si c'est son propre grade
+      data: {
+        value,
+        coefficient,
+        comment
+      }
+    });
+    revalidatePath("/prof/notes");
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: "Erreur lors de la mise à jour." };
+  }
+}
+
+export async function deleteGrade(id: string) {
+  const session = await getServerSession(authOptions);
+  if (session?.user?.role !== "TEACHER") throw new Error("Non autorisé");
+
+  try {
+    await prisma.grade.delete({
+      where: { id, teacherId: (session.user as any).id }
+    });
+    revalidatePath("/prof/notes");
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: "Erreur lors de la suppression." };
+  }
+}
+
+export async function getTeacherGrades(teacherId: string) {
+  return await prisma.grade.findMany({
+    where: { teacherId },
+    include: {
+      student: {
+        select: { firstName: true, lastName: true, class: { select: { name: true } } }
+      }
+    },
+    orderBy: { createdAt: "desc" },
+    take: 50
+  });
 }
