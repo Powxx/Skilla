@@ -21,19 +21,70 @@ export async function getUnreadCount(userId: string) {
 }
 
 export async function markAsRead(notificationId: string) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.id) throw new Error("Non autorisé");
+  
   await prisma.notification.update({
     where: { id: notificationId },
     data: { isRead: true },
   });
-  revalidatePath("/");
+  revalidatePath("/", "layout");
 }
 
 export async function markAllAsRead(userId: string) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.id || session.user.id !== userId) throw new Error("Non autorisé");
+
   await prisma.notification.updateMany({
     where: { userId, isRead: false },
     data: { isRead: true },
   });
-  revalidatePath("/");
+  revalidatePath("/", "layout");
+}
+
+export async function sendAdminNotification(data: {
+  target: 'CLASS' | 'SCHOOL';
+  classId?: string;
+  title: string;
+  message: string;
+  type?: "INFO" | "WARNING" | "SUCCESS" | "ERROR";
+}) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.id || (session.user.role !== "ADMIN" && session.user.role !== "SUPER_ADMIN")) 
+    throw new Error("Non autorisé");
+  
+  const senderName = "Administration";
+
+  const whereClause: any = { role: "STUDENT" };
+  if (data.target === 'CLASS' && data.classId) {
+    whereClause.classId = data.classId;
+  }
+
+  const students = await prisma.user.findMany({
+    where: whereClause,
+    select: { id: true }
+  });
+
+  await prisma.notification.createMany({
+    data: students.map(s => ({
+      userId: s.id,
+      title: data.title,
+      message: data.message,
+      type: data.type || "INFO",
+      senderName: senderName
+    }))
+  });
+  
+  for (const student of students) {
+    sendPushNotification(student.id, {
+      title: data.title,
+      body: data.message,
+      url: "/"
+    }).catch(err => console.error("Push failed", student.id, err));
+  }
+
+  revalidatePath("/", "layout");
+  return { ok: true, count: students.length };
 }
 
 export async function sendClassNotification(data: {
