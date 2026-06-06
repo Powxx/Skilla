@@ -16,7 +16,8 @@ import {
   UserCircle,
   Menu,
   X,
-  Key
+  Key,
+  Gamepad2
 } from "lucide-react";
 
 type NavItem = {
@@ -70,6 +71,7 @@ export default function PortalSidebar({ variant, resolvedChildId, schoolName = "
         { href: "/student/dashboard", label: "Synthèse", icon: LayoutDashboard },
         { href: "/student/planning", label: "Emploi du temps", icon: Calendar },
         { href: "/student/grades", label: "Notes", icon: GraduationCap },
+        { href: "/student/games", label: "Arcade", icon: Gamepad2 },
         { href: "/student/livret", label: "Livret", icon: BookOpen },
         { href: "/student/absences", label: "Absences", icon: Clock },
         { href: "/settings/password", label: "Mot de passe", icon: Key }
