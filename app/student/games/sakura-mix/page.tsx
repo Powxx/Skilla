@@ -214,7 +214,6 @@ export default function SakuraMix() {
     setGameOver(false);
     setIsNewBest(false);
     setTimeFrozen(false);
-    setShieldActive(powerUps.shield);
   }, [processMatches, powerUps]);
 
   useEffect(() => { initGame(); }, [initGame]);
@@ -272,15 +271,8 @@ export default function SakuraMix() {
           await processMatches(newGrid);
           if (moves <= 1) handleGameOver(score);
         } else {
-          if (shieldActive) {
-            setShieldActive(false);
-            setSelectedTile(null);
-            // On laisse le swap mais pas de match : le bouclier a servi à ne pas perdre de tour
-          } else {
-            // Pas de match et pas de bouclier : on annule ou on laisse? 
-            // Généralement on annule le swap dans un match-3
-            setSelectedTile({ r, c }); 
-          }
+          // Pas de match : on annule le swap
+          setSelectedTile({ r, c }); 
         }
       } else {
         setSelectedTile({ r, c });
@@ -423,15 +415,6 @@ export default function SakuraMix() {
                        <p className="text-sm font-bold text-white">Score Double (x2)</p>
                     </div>
                     <span className="text-xl">💎</span>
-                 </div>
-
-                 <div className={`flex items-center justify-between p-4 rounded-2xl border transition-all ${powerUps.shield ? 'bg-blue-600/10 border-blue-500/20' : 'bg-slate-900/50 border-slate-700 opacity-40'}`}>
-                    <div>
-                       <p className="text-[10px] font-black text-blue-500 uppercase tracking-widest">Moyenne &gt; 13</p>
-                       <p className="text-sm font-bold text-white">Bouclier d'Or</p>
-                       <p className="text-[9px] text-slate-400">Protège 1 coup manqué</p>
-                    </div>
-                    <span className="text-xl">🛡️</span>
                  </div>
 
                  <div className={`flex items-center justify-between p-4 rounded-2xl border transition-all ${powerUps.timeFreeze ? 'bg-amber-600/10 border-amber-500/20' : 'bg-slate-900/50 border-slate-700 opacity-40'}`}>
