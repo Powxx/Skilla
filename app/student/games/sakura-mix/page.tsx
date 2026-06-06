@@ -4,6 +4,8 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import Link from 'next/link';
 import { useSession } from 'next-auth/react';
 import { saveGameScore, getLeaderboard, getPersonalBest, getStudentStats } from '@/app/actions/gamification';
+import { format } from "date-fns";
+import { fr } from "date-fns/locale";
 
 const GRID_SIZE = 8;
 const COLORS = ['🌸', '🍶', '🏮', '🍱', '⛩️', '🎐'];
@@ -28,10 +30,11 @@ export default function SakuraMix() {
   const [shieldActive, setShieldActive] = useState(false);
   const [timeFrozen, setTimeFrozen] = useState(false);
 
-  // Leaderboard state
+  // Modals state
   const [leaderboard, setLeaderboard] = useState<any[]>([]);
   const [lbScope, setLbScope] = useState<'class' | 'school'>('class');
   const [showLeaderboard, setShowLeaderboard] = useState(false);
+  const [showAdvantages, setShowAdvantages] = useState(false);
   const [loadingLeaderboard, setLoadingLeaderboard] = useState(false);
 
   const powerUps = useMemo(() => ({
@@ -68,7 +71,8 @@ export default function SakuraMix() {
       let currentMatch: {r: number, c: number}[] = [];
       for (let c = 0; c < GRID_SIZE; c++) {
         const tile = currentGrid[r][c];
-        if (tile && !Object.values(SPECIALS).includes(tile)) {
+        // On ne matche que les couleurs standard entre elles
+        if (tile && COLORS.includes(tile)) {
           if (currentMatch.length > 0 && currentGrid[r][c] === currentGrid[currentMatch[0].r][currentMatch[0].c]) {
             currentMatch.push({r, c});
           } else {
@@ -88,7 +92,7 @@ export default function SakuraMix() {
       let currentMatch: {r: number, c: number}[] = [];
       for (let r = 0; r < GRID_SIZE; r++) {
         const tile = currentGrid[r][c];
-        if (tile && !Object.values(SPECIALS).includes(tile)) {
+        if (tile && COLORS.includes(tile)) {
           if (currentMatch.length > 0 && currentGrid[r][c] === currentGrid[currentMatch[0].r][currentMatch[0].c]) {
             currentMatch.push({r, c});
           } else {
@@ -106,21 +110,35 @@ export default function SakuraMix() {
     return { horizontal: horizontalMatches, vertical: verticalMatches };
   }, []);
 
-  // --- EXPLOSION LOGIC ---
+  // --- SPECIAL EFFECTS ---
   const triggerExplosion = (r: number, c: number, workingGrid: string[][]) => {
+    const tilesExploded = [];
     for (let i = Math.max(0, r - 1); i <= Math.min(GRID_SIZE - 1, r + 1); i++) {
       for (let j = Math.max(0, c - 1); j <= Math.min(GRID_SIZE - 1, c + 1); j++) {
-        workingGrid[i][j] = '';
+        if (workingGrid[i][j] !== '') {
+          tilesExploded.push({r: i, c: j});
+          workingGrid[i][j] = '';
+        }
       }
     }
+    return tilesExploded.length;
   };
 
-  const triggerColorBomb = (color: string, workingGrid: string[][]) => {
+  const triggerColorBomb = (targetColor: string, workingGrid: string[][]) => {
+    let count = 0;
+    // Si on swap avec un autre spécial, on nettoie tout ? Pour l'instant on nettoie la couleur target
+    // Si target est un spécial, on choisit une couleur aléatoire
+    const realTarget = COLORS.includes(targetColor) ? targetColor : COLORS[Math.floor(Math.random() * COLORS.length)];
+    
     for (let r = 0; r < GRID_SIZE; r++) {
       for (let c = 0; c < GRID_SIZE; c++) {
-        if (workingGrid[r][c] === color) workingGrid[r][c] = '';
+        if (workingGrid[r][c] === realTarget) {
+          workingGrid[r][c] = '';
+          count++;
+        }
       }
     }
+    return count;
   };
 
   // --- PROCESSUS DE CASCADE ---
@@ -135,7 +153,7 @@ export default function SakuraMix() {
       
       if (allMatchTiles.length === 0) break;
 
-      // Création des spéciaux (uniquement sur action joueur, pas en cascade initiale ou auto)
+      // Création des spéciaux
       if (!isInitial && firstPass) {
         horizontal.forEach(match => {
           if (match.length === 4) workingGrid[match[1].r][match[1].c] = SPECIALS.EXPLOSION;
@@ -147,7 +165,7 @@ export default function SakuraMix() {
         });
       }
 
-      // Supprimer les matches normaux (en gardant les nouveaux spéciaux)
+      // Supprimer les matches normaux
       allMatchTiles.forEach(m => {
         if (!Object.values(SPECIALS).includes(workingGrid[m.r][m.c])) {
           workingGrid[m.r][m.c] = '';
@@ -209,8 +227,6 @@ export default function SakuraMix() {
     if (isProcessing || gameOver) return;
 
     if (!selectedTile) {
-      // Si on clique sur une Color Bomb directement (ou autre spécial)? 
-      // Pour l'instant on attend un swap
       setSelectedTile({ r, c });
     } else {
       const distance = Math.abs(selectedTile.r - r) + Math.abs(selectedTile.c - c);
@@ -219,43 +235,54 @@ export default function SakuraMix() {
         const tileA = newGrid[selectedTile.r][selectedTile.c];
         const tileB = newGrid[r][c];
 
-        // Effet Color Bomb
+        let specialTriggered = false;
+
+        // --- NOUVELLE LOGIQUE : SWAP AVEC SPÉCIAUX ---
+        
+        // 1. Color Bomb (swapper avec n'importe quoi active l'effet)
         if (tileA === SPECIALS.COLOR_BOMB || tileB === SPECIALS.COLOR_BOMB) {
-          setMoves(prev => prev - 1);
           const targetColor = tileA === SPECIALS.COLOR_BOMB ? tileB : tileA;
-          triggerColorBomb(targetColor, newGrid);
+          const explodedCount = triggerColorBomb(targetColor, newGrid);
           newGrid[selectedTile.r][selectedTile.c] = '';
           newGrid[r][c] = '';
+          setScore(prev => prev + explodedCount * 20);
+          specialTriggered = true;
+        } 
+        // 2. Explosion (swapper avec n'importe quoi active l'effet)
+        else if (tileA === SPECIALS.EXPLOSION || tileB === SPECIALS.EXPLOSION) {
+          if (tileA === SPECIALS.EXPLOSION) triggerExplosion(r, c, newGrid);
+          if (tileB === SPECIALS.EXPLOSION) triggerExplosion(selectedTile.r, selectedTile.c, newGrid);
+          specialTriggered = true;
+        }
+
+        if (specialTriggered) {
+          setMoves(prev => prev - 1);
           setSelectedTile(null);
           await processMatches(newGrid);
+          if (moves <= 1) handleGameOver(score);
           return;
         }
 
-        // Swap standard
+        // --- SWAP STANDARD ---
         newGrid[r][c] = tileA;
         newGrid[selectedTile.r][selectedTile.c] = tileB;
         
         const { horizontal, vertical } = checkMatches(newGrid);
-        const hasSpecialMatch = tileA === SPECIALS.EXPLOSION || tileB === SPECIALS.EXPLOSION;
 
-        if (horizontal.length > 0 || vertical.length > 0 || hasSpecialMatch) {
+        if (horizontal.length > 0 || vertical.length > 0) {
           setMoves(prev => prev - 1);
-          if (tileA === SPECIALS.EXPLOSION) triggerExplosion(r, c, newGrid);
-          if (tileB === SPECIALS.EXPLOSION) triggerExplosion(selectedTile.r, selectedTile.c, newGrid);
-          
           setSelectedTile(null);
           await processMatches(newGrid);
           if (moves <= 1) handleGameOver(score);
         } else {
-          // Si le bouclier est actif, on peut autoriser un coup "dans le vide" une fois ?
-          // L'utilisateur demande un bouclier, on va dire qu'il empêche de perdre un coup si pas de match
           if (shieldActive) {
             setShieldActive(false);
-            // On laisse le swap mais on ne baisse pas les moves? 
-            // Ou on annule le swap sans perdre de coup.
             setSelectedTile(null);
+            // On laisse le swap mais pas de match : le bouclier a servi à ne pas perdre de tour
           } else {
-            setSelectedTile({ r, c });
+            // Pas de match et pas de bouclier : on annule ou on laisse? 
+            // Généralement on annule le swap dans un match-3
+            setSelectedTile({ r, c }); 
           }
         }
       } else {
@@ -294,28 +321,12 @@ export default function SakuraMix() {
   const useTimeFreeze = () => {
     if (powerUps.timeFreeze && !timeFrozen) {
       setTimeFrozen(true);
-      setMoves(prev => prev + 5); // Bonus de coups au lieu de figer le temps réel
+      setMoves(prev => prev + 5);
     }
   };
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-slate-900 text-white p-4 font-sans overflow-hidden">
-      {/* HUD - Power-Ups */}
-      <div className="w-full max-w-md flex gap-2 mb-4 overflow-x-auto pb-2 no-scrollbar">
-        {powerUps.scoreDouble && <span className="shrink-0 bg-emerald-600/20 text-emerald-400 border border-emerald-500/30 px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest">x2 Score</span>}
-        {powerUps.shield && <span className={`shrink-0 border px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest transition-colors ${shieldActive ? 'bg-blue-600/20 text-blue-400 border-blue-500/30' : 'bg-slate-800 text-slate-500 border-slate-700'}`}>Bouclier {shieldActive ? 'OK' : 'Off'}</span>}
-        {powerUps.timeFreeze && (
-          <button 
-            onClick={useTimeFreeze}
-            disabled={timeFrozen}
-            className={`shrink-0 border px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest transition-colors ${!timeFrozen ? 'bg-amber-600/20 text-amber-400 border-amber-500/30 hover:bg-amber-600/40' : 'bg-slate-800 text-slate-500 border-slate-700'}`}
-          >
-            {timeFrozen ? 'Temps Utilisé' : 'Figer Temps'}
-          </button>
-        )}
-        <span className="shrink-0 bg-orange-600/20 text-orange-400 border border-orange-500/30 px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest">Série x{powerUps.streakMultiplier.toFixed(1)}</span>
-      </div>
-
       {/* Header */}
       <div className="w-full max-w-md flex justify-between items-center mb-6">
         <Link href="/student/games" className="h-10 w-10 flex items-center justify-center bg-slate-800 rounded-xl hover:bg-slate-700 transition border border-slate-700 text-slate-400">
@@ -325,20 +336,26 @@ export default function SakuraMix() {
           <div className="text-[10px] font-black text-red-500 uppercase tracking-[0.2em] mb-0.5">Cosmétologie</div>
           <h1 className="text-2xl font-black uppercase tracking-tight">Sakura Mix</h1>
         </div>
-        <button onClick={() => setShowLeaderboard(true)} className="h-10 w-10 flex items-center justify-center bg-slate-800 rounded-xl hover:bg-slate-700 transition border border-slate-700 text-amber-400">
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M16.5 18.75h-9m9 0a3 3 0 013 3h-15a3 3 0 013-3m9 0v-3.375c0-.621-.503-1.125-1.125-1.125h-6.75c-.622 0-1.125.504-1.125 1.125v3.375m9 0h-9M9 10.125h6M9 6h6m-7.5.375a3.375 3.375 0 116.75 0 3.375 3.375 0 01-6.75 0z" /></svg>
-        </button>
+        <div className="flex gap-2">
+          <button onClick={() => setShowAdvantages(true)} className="h-10 w-10 flex items-center justify-center bg-slate-800 rounded-xl hover:bg-slate-700 transition border border-slate-700 text-blue-400">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" /></svg>
+          </button>
+          <button onClick={() => setShowLeaderboard(true)} className="h-10 w-10 flex items-center justify-center bg-slate-800 rounded-xl hover:bg-slate-700 transition border border-slate-700 text-amber-400">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M16.5 18.75h-9m9 0a3 3 0 013 3h-15a3 3 0 013-3m9 0v-3.375c0-.621-.503-1.125-1.125-1.125h-6.75c-.622 0-1.125.504-1.125 1.125v3.375m9 0h-9M9 10.125h6M9 6h6m-7.5.375a3.375 3.375 0 116.75 0 3.375 3.375 0 01-6.75 0z" /></svg>
+          </button>
+        </div>
       </div>
 
       {/* Stats */}
       <div className="grid grid-cols-2 gap-4 mb-6 w-full max-w-md">
-        <div className="bg-slate-800/80 backdrop-blur-md rounded-2xl p-4 border border-slate-700/50 shadow-xl">
-          <div className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">Score</div>
-          <div className="text-3xl font-black tabular-nums">{score}</div>
+        <div className="bg-slate-800/80 backdrop-blur-md rounded-2xl p-4 border border-slate-700/50 shadow-xl overflow-hidden relative">
+           {powerUps.scoreDouble && <div className="absolute top-0 right-0 bg-emerald-500 text-[8px] font-black px-2 py-0.5 rounded-bl-lg uppercase">x2</div>}
+          <div className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1 text-center">Score</div>
+          <div className="text-3xl font-black tabular-nums text-center">{score}</div>
         </div>
-        <div className="bg-slate-800/80 backdrop-blur-md rounded-2xl p-4 border border-slate-700/50 shadow-xl">
-          <div className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">Coups</div>
-          <div className={`text-3xl font-black tabular-nums ${moves <= 5 ? 'text-red-500 animate-pulse' : 'text-white'}`}>{moves}</div>
+        <div className="bg-slate-800/80 backdrop-blur-md rounded-2xl p-4 border border-slate-700/50 shadow-xl overflow-hidden relative">
+          <div className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1 text-center">Coups</div>
+          <div className={`text-3xl font-black tabular-nums text-center ${moves <= 5 ? 'text-red-500 animate-pulse' : 'text-white'}`}>{moves}</div>
         </div>
       </div>
 
@@ -355,28 +372,71 @@ export default function SakuraMix() {
         {/* Game Over Modal */}
         {gameOver && (
           <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-slate-900/95 rounded-[1.8rem] backdrop-blur-md p-6 text-center animate-in fade-in zoom-in">
-            {isNewBest && <div className="mb-2 bg-amber-500 text-slate-900 text-[10px] font-black px-4 py-1 rounded-full uppercase tracking-widest animate-bounce">Nouveau Record Personnel !</div>}
+            {isNewBest && <div className="mb-2 bg-amber-500 text-slate-900 text-[10px] font-black px-4 py-1 rounded-full uppercase tracking-widest animate-bounce">Nouveau Record !</div>}
             <h2 className="text-4xl font-black uppercase tracking-tighter mb-4 text-white">Terminé</h2>
             <div className="grid grid-cols-2 gap-4 w-full mb-8">
               <div className="bg-slate-800 p-3 rounded-2xl border border-slate-700"><div className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Score</div><div className="text-2xl font-black">{score}</div></div>
               <div className="bg-slate-800 p-3 rounded-2xl border border-slate-700"><div className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Record</div><div className="text-2xl font-black text-amber-400">{personalBest}</div></div>
             </div>
-
-            {/* Mini LB */}
-            <div className="w-full mb-6 space-y-1">
-               {leaderboard.slice(0, 3).map((s, i) => (
-                 <div key={i} className="flex items-center justify-between text-[11px] p-2 bg-white/5 rounded-lg border border-white/5">
-                    <span className="font-bold text-slate-400">#{i+1} {s.userName}</span>
-                    <span className="font-black text-white">{s.score}</span>
-                 </div>
-               ))}
-            </div>
-
             <button onClick={initGame} className="w-full py-4 bg-red-600 text-white font-black uppercase tracking-widest rounded-2xl hover:bg-red-700 transition-all shadow-lg active:scale-95 mb-3">Rejouer</button>
             <Link href="/student/games" className="w-full py-4 bg-slate-800 text-white text-center font-black uppercase tracking-widest rounded-2xl hover:bg-slate-700 transition border border-slate-700">Quitter</Link>
           </div>
         )}
       </div>
+
+      {/* Advantages Modal */}
+      {showAdvantages && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 animate-in fade-in duration-300">
+           <div className="absolute inset-0 bg-slate-950/80 backdrop-blur-sm" onClick={() => setShowAdvantages(false)}></div>
+           <div className="relative bg-slate-800 w-full max-w-sm rounded-[2rem] border border-slate-700 shadow-2xl overflow-hidden animate-in zoom-in">
+              <div className="p-6 border-b border-slate-700 bg-slate-800/50 flex items-center justify-between">
+                 <h3 className="text-xl font-black uppercase tracking-tight text-blue-400">Avantages Actifs</h3>
+                 <button onClick={() => setShowAdvantages(false)} className="text-slate-400 hover:text-white transition"><X className="h-6 w-6" /></button>
+              </div>
+              <div className="p-6 space-y-4">
+                 <div className="flex items-center justify-between p-4 bg-orange-600/10 rounded-2xl border border-orange-500/20">
+                    <div>
+                       <p className="text-[10px] font-black text-orange-500 uppercase tracking-widest">Assiduité</p>
+                       <p className="text-lg font-black text-white">Multiplicateur x{powerUps.streakMultiplier.toFixed(1)}</p>
+                    </div>
+                    <span className="text-2xl">🔥</span>
+                 </div>
+
+                 <div className={`flex items-center justify-between p-4 rounded-2xl border transition-all ${powerUps.scoreDouble ? 'bg-emerald-600/10 border-emerald-500/20' : 'bg-slate-900/50 border-slate-700 opacity-40'}`}>
+                    <div>
+                       <p className="text-[10px] font-black text-emerald-500 uppercase tracking-widest">Moyenne &gt; 10</p>
+                       <p className="text-sm font-bold text-white">Score Double (x2)</p>
+                    </div>
+                    <span className="text-xl">💎</span>
+                 </div>
+
+                 <div className={`flex items-center justify-between p-4 rounded-2xl border transition-all ${powerUps.shield ? 'bg-blue-600/10 border-blue-500/20' : 'bg-slate-900/50 border-slate-700 opacity-40'}`}>
+                    <div>
+                       <p className="text-[10px] font-black text-blue-500 uppercase tracking-widest">Moyenne &gt; 13</p>
+                       <p className="text-sm font-bold text-white">Bouclier d'Or</p>
+                       <p className="text-[9px] text-slate-400">Protège 1 coup manqué</p>
+                    </div>
+                    <span className="text-xl">🛡️</span>
+                 </div>
+
+                 <div className={`flex items-center justify-between p-4 rounded-2xl border transition-all ${powerUps.timeFreeze ? 'bg-amber-600/10 border-amber-500/20' : 'bg-slate-900/50 border-slate-700 opacity-40'}`}>
+                    <div>
+                       <p className="text-[10px] font-black text-amber-500 uppercase tracking-widest">Moyenne &gt; 16</p>
+                       <p className="text-sm font-bold text-white">Figer Temps</p>
+                       <p className="text-[9px] text-slate-400">Gain de +5 coups</p>
+                    </div>
+                    <button 
+                      onClick={() => { useTimeFreeze(); setShowAdvantages(false); }} 
+                      disabled={!powerUps.timeFreeze || timeFrozen}
+                      className={`px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest ${!timeFrozen && powerUps.timeFreeze ? 'bg-amber-500 text-slate-900' : 'bg-slate-700 text-slate-500 cursor-not-allowed'}`}
+                    >
+                      {timeFrozen ? 'Utilisé' : 'Activer'}
+                    </button>
+                 </div>
+              </div>
+           </div>
+        </div>
+      )}
 
       {/* Leaderboard Modal */}
       {showLeaderboard && (
