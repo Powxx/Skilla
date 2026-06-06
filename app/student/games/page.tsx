@@ -3,11 +3,12 @@
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useSession } from 'next-auth/react';
+import { getAllPersonalBests } from '@/app/actions/game-center';
 
 const GAMES = [
   { id: 'vocabulary-sensei', name: 'Vocabulary Sensei', subject: 'Anglais', icon: '🏮', description: 'Traduisez les termes beauté avant le gong.' },
   { id: 'edo-design', name: 'Edo Design', subject: 'Art Appliqué', icon: '🎨', description: 'Reconstituez des motifs traditionnels.' },
-  { id: 'skin-defense', name: 'Skin Defense', subject: 'Biologie appliquée', icon: '🛡️', description: 'Protégez l\'épiderme contre les bactéries.' },
+  { id: 'skin-defense', name: 'Skin Defense', subject: 'Biologie appliquée', icon: '🛡️', description: 'Protégez l\'epiderme contre les bactéries.' },
   { id: 'sakura-mix', name: 'Sakura Mix', subject: 'Cosmétologie', icon: '🌸', description: 'Alignez les pigments pour créer la nuance parfaite.', primary: true },
   { id: 'ninja-intuition', name: 'Ninja Intuition', subject: 'Diagnostic', icon: '👁️', description: 'Identifiez les anomalies en un temps record.' },
   { id: 'dojo-rhythm', name: 'Dojo Rhythm', subject: 'EPS', icon: '🧘', description: 'Tapez en rythme pour vos postures.' },
@@ -25,10 +26,13 @@ const GAMES = [
 export default function GameCenter() {
   const { data: session } = useSession();
   const [streak, setStreak] = useState(0);
+  const [bestScores, setBestScores] = useState<Record<string, number>>({});
 
   useEffect(() => {
-    // Dans une vraie app, on fetcherait ici le streak et la moyenne
-    setStreak((session?.user as any)?.loginStreak || 0);
+    if (session?.user?.id) {
+      setStreak((session.user as any).loginStreak || 0);
+      getAllPersonalBests(session.user.id).then(setBestScores);
+    }
   }, [session]);
 
   return (
@@ -41,7 +45,7 @@ export default function GameCenter() {
             </span>
             <div className="flex items-center gap-2 bg-orange-100 px-3 py-1 rounded-full border border-orange-200">
               <span className="text-sm">🔥</span>
-              <span className="text-xs font-bold text-orange-700">{streak} JOURS DE SÉRIE</span>
+              <span className="text-xs font-bold text-orange-700 uppercase">{streak} JOURS DE SÉRIE</span>
             </div>
           </div>
           <h1 className="text-4xl font-black text-slate-900 uppercase tracking-tight">Le Chemin du Maître</h1>
@@ -54,7 +58,7 @@ export default function GameCenter() {
               key={game.id} 
               href={`/student/games/${game.id}`}
               className={`group relative overflow-hidden rounded-3xl border bg-white p-6 transition-all hover:shadow-xl hover:-translate-y-1 ${
-                game.primary ? 'border-red-200 ring-2 ring-red-500/10' : 'border-slate-200'
+                game.primary ? 'border-red-200 ring-2 ring-red-500/10' : 'border-slate-200 shadow-sm'
               }`}
             >
               {game.primary && (
@@ -79,10 +83,13 @@ export default function GameCenter() {
                 </div>
               </div>
               <div className="mt-6 flex items-center justify-between">
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-                  Meilleur score: ---
-                </span>
-                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-900 text-white opacity-0 group-hover:opacity-100 transition-opacity">
+                <div className="flex flex-col">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Meilleur score</span>
+                  <span className="text-sm font-black text-slate-900 tabular-nums">
+                    {bestScores[game.id] ? bestScores[game.id].toLocaleString() : '---'}
+                  </span>
+                </div>
+                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-900 text-white opacity-0 group-hover:opacity-100 transition-all group-hover:translate-x-1">
                   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-4 h-4">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
                   </svg>

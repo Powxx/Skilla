@@ -202,7 +202,7 @@ export default function SakuraMix() {
     setShieldActive(powerUps.shield);
   }, [processMatches, powerUps]);
 
-  useEffect(() => { if (studentStats.average > 0) initGame(); }, [initGame, studentStats.average]);
+  useEffect(() => { initGame(); }, [initGame]);
 
   // --- ACTIONS ---
   const handleTileClick = async (r: number, c: number) => {
