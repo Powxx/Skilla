@@ -1,14 +1,13 @@
 "use client";
 
-import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import Link from 'next/link';
 import { useSession } from 'next-auth/react';
 import { saveGameScore, getPersonalBest, getStudentStats } from '@/app/actions/gamification';
 
-// Pour préparer les images, on utilisera des objets avec un champ `src` ou `icon`
 const ITEM_TYPES = { 
-  HAIR: { id: 'HAIR', icon: '💇' }, 
-  OBSTACLE: { id: 'OBSTACLE', icon: '🧊' } 
+  HAIR: { id: 'HAIR', icon: '💇', points: 10 }, 
+  OBSTACLE: { id: 'OBSTACLE', icon: '🧊', points: 0 } 
 };
 
 export default function KatanaScissors() {
@@ -50,7 +49,7 @@ export default function KatanaScissors() {
         id: Date.now(),
         type: Math.random() > 0.3 ? ITEM_TYPES.HAIR : ITEM_TYPES.OBSTACLE,
         x: Math.random() * 80 + 10,
-        y: -10, // Position initiale
+        y: -10,
       };
       setItems(prev => [...prev, newItem]);
       setSpeed(prev => Math.max(500, prev - 20));
@@ -58,7 +57,7 @@ export default function KatanaScissors() {
     return () => clearInterval(interval);
   }, [gameOver, speed]);
 
-  // Collision logic (Slash path vs Item)
+  // Handle Slash
   const handleMouseMove = (e: React.MouseEvent | React.TouchEvent) => {
     if (!isSlicing) return;
     
@@ -67,7 +66,6 @@ export default function KatanaScissors() {
     
     setSlashPoints(prev => [...prev.slice(-10), {x: clientX, y: clientY}]);
 
-    // Check collision avec chaque item
     items.forEach(item => {
         const itemEl = document.getElementById(`item-${item.id}`);
         if(itemEl) {
@@ -82,7 +80,7 @@ export default function KatanaScissors() {
   const handleSlash = (id: string, type: string) => {
     if (gameOver) return;
     if (type === ITEM_TYPES.HAIR.id) {
-      setScore(prev => prev + Math.floor(10 * scoreMultiplier));
+      setScore(prev => prev + Math.floor(ITEM_TYPES.HAIR.points * scoreMultiplier));
     } else {
       setLives(prev => {
         const newLives = prev - 1;
@@ -118,7 +116,7 @@ export default function KatanaScissors() {
 
       {/* Slash Trail */}
       <svg className="absolute inset-0 z-0 pointer-events-none">
-          <polyline points={slashPoints.map(p => `${p.x},${p.y}`).join(' ')} fill="none" stroke="white" strokeWidth="4" className="opacity-50" />
+          <polyline points={slashPoints.map(p => `${p.x},${p.y}`).join(' ')} fill="none" stroke="white" strokeWidth="6" className="opacity-80" strokeLinecap="round" strokeLinejoin="round" />
       </svg>
 
       {/* Items */}
@@ -127,7 +125,7 @@ export default function KatanaScissors() {
           key={item.id}
           id={`item-${item.id}`}
           className="absolute text-4xl animate-fall"
-          style={{ left: `${item.x}%`, top: '110%' }} // Fall animation gérée par CSS
+          style={{ left: `${item.x}%`, top: '110%' }}
         >
           {item.type.icon}
         </div>
