@@ -19,6 +19,7 @@ const GAMES = [
   { id: 'abacus-dosages', name: 'Abacus Dosages', subject: 'Mathématiques', icon: '🧮', description: 'Calculez les mélanges sur un boulier.' },
   { id: 'katana-scissors', name: 'Katana Scissors', subject: 'Pratique', icon: '⚔️', description: 'Coupez les mèches avec la précision du sabre.' },
   { id: 'safety-shuriken', name: 'Safety Shuriken', subject: 'PSE', icon: '🎯', description: 'Éliminez les risques professionnels.' },
+  { id: 'skin-defense', name: 'Skin Defense', subject: 'Biologie appliquée', icon: '🛡️', description: 'Protégez la barrière cutanée.' },
   { id: 'ph-alchemy', name: 'pH Alchemy', subject: 'Sciences', icon: '🧪', description: 'Stabilisez le pH de vos solutions.' },
   { id: 'maintenance-monk', name: 'Maintenance Monk', subject: 'Technologie', icon: '🔧', description: 'Réparez vos appareils de beauté.' },
 ];
