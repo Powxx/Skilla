@@ -8,14 +8,16 @@ import { FormEvent, useEffect, useState } from "react";
 function pathAfterLogin(role: string): string {
   switch (role) {
     case "ADMIN":
+    case "SUPER_ADMIN":
       return "/admin";
     case "TEACHER":
-      return "/prof"; // Vérifie que ton dossier s'appelle bien 'prof' et pas 'teacher'
+      return "/prof";
     case "STUDENT":
-      return "/student";
-    case "PARENT":
-    case "EMPLOYER":
-      return "/parent";
+      return "/student/dashboard";
+    case "COMPANY_TUTOR":
+      return "/employer/dashboard";
+    case "RESPONSIBLE":
+      return "/parent/dashboard";
     default:
       return "/";
   }
