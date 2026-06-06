@@ -155,11 +155,15 @@ export default function UsersShell(props: Props) {
 
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
 
-  function buildPageHref(pg: number) {
+  function buildPageHref(pg: number, cursor?: string, dir?: 'prev' | 'next') {
     const p = new URLSearchParams();
     if (initialQuery.trim()) p.set("q", initialQuery.trim());
     if (initialRole) p.set("role", initialRole);
     if (pg > 1) p.set("page", String(pg));
+    if (cursor) {
+      p.set("cursor", cursor);
+      if (dir) p.set("dir", dir);
+    }
     const qs = p.toString();
     return qs ? `/admin/users?${qs}` : `/admin/users`;
   }
@@ -293,19 +297,32 @@ export default function UsersShell(props: Props) {
       </div>
 
       {totalPages > 1 && (
-        <div className="flex justify-center gap-1 shrink-0">
-          {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
-            <Link
-              key={p}
-              href={buildPageHref(p)}
-              className={`h-7 min-w-[1.75rem] flex items-center justify-center rounded-lg text-[10px] font-black transition ${p === page
-                  ? "bg-slate-900 text-white shadow-lg shadow-slate-900/20"
-                  : "bg-white border border-slate-200 text-slate-400 hover:text-slate-900"
-                }`}
-            >
-              {p}
-            </Link>
-          ))}
+        <div className="flex justify-center items-center gap-4 shrink-0 mt-2">
+          <Link
+            href={buildPageHref(page - 1, users[0]?.id, 'prev')}
+            className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition ${
+              page <= 1
+                ? "pointer-events-none opacity-50 bg-slate-50 text-slate-400 border border-slate-100"
+                : "bg-white border border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-50 shadow-sm"
+            }`}
+          >
+            Précédent
+          </Link>
+          
+          <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+            Page {page} / {totalPages}
+          </span>
+          
+          <Link
+            href={buildPageHref(page + 1, users[users.length - 1]?.id, 'next')}
+            className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition ${
+              page >= totalPages
+                ? "pointer-events-none opacity-50 bg-slate-50 text-slate-400 border border-slate-100"
+                : "bg-white border border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-50 shadow-sm"
+            }`}
+          >
+            Suivant
+          </Link>
         </div>
       )}
 
