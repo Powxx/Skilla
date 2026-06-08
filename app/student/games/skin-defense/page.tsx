@@ -8,18 +8,18 @@ import { X, Trophy, Zap, ArrowUpCircle } from "lucide-react";
 
 // Configuration
 const GAME_KEY = 'skin-defense';
-const GRID_ROWS = 8; 
+const GRID_ROWS = 8;
 const GRID_COLS = 3;
-const TOWER_COST = 60; 
-const UPGRADE_COST = 100; 
+const TOWER_COST = 80; // Augmenté de 60
+const UPGRADE_COST = 150; // Augmenté de 100
 
-// Définition des vagues
+// Définition des vagues : nettement plus difficiles
 const WAVE_CONFIGS = [
-  { count: 8, healthMult: 1.2, speedMult: 1.1 },
-  { count: 12, healthMult: 1.8, speedMult: 1.2 },
-  { count: 18, healthMult: 2.5, speedMult: 1.3 },
-  { count: 25, healthMult: 3.5, speedMult: 1.4 },
-  { count: 35, healthMult: 5.0, speedMult: 1.6 },
+  { count: 10, healthMult: 1.5, speedMult: 1.2 },
+  { count: 15, healthMult: 2.5, speedMult: 1.4 },
+  { count: 20, healthMult: 4.0, speedMult: 1.6 },
+  { count: 25, healthMult: 7.0, speedMult: 1.8 },
+  { count: 30, healthMult: 12.0, speedMult: 2.0 },
 ];
 
 export default function SkinDefense() {
