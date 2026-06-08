@@ -8,7 +8,6 @@ import { getAllPersonalBests } from '@/app/actions/game-center';
 const GAMES = [
   { id: 'vocabulary-sensei', name: 'Vocabulary Sensei', subject: 'Anglais', icon: '🏮', description: 'Traduisez les termes beauté avant le gong.' },
   { id: 'edo-design', name: 'Edo Design', subject: 'Art Appliqué', icon: '🎨', description: 'Reconstituez des motifs traditionnels.' },
-  { id: 'skin-defense', name: 'Skin Defense', subject: 'Biologie appliquée', icon: '🛡️', description: 'Protégez l\'epiderme contre les bactéries.' },
   { id: 'sakura-mix', name: 'Sakura Mix', subject: 'Cosmétologie', icon: '🌸', description: 'Alignez les pigments pour créer la nuance parfaite.', primary: true },
   { id: 'ninja-intuition', name: 'Ninja Intuition', subject: 'Diagnostic', icon: '👁️', description: 'Identifiez les anomalies en un temps record.' },
   { id: 'dojo-rhythm', name: 'Dojo Rhythm', subject: 'EPS', icon: '🧘', description: 'Tapez en rythme pour vos postures.' },

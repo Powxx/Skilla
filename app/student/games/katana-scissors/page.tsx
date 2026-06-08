@@ -8,7 +8,8 @@ import { X } from "lucide-react";
 
 // Configuration
 const GAME_KEY = 'katana-scissors-runner';
-const SCISSORS_X = 10; // Position fixe (gauche)
+const SCISSORS_X = 15; // Un peu plus à droite pour mieux voir venir
+const ENEMY_ICONS = ['🥷', '👹', '👺', '💣'];
 
 export default function KatanaScissorsRunner() {
   const { data: session } = useSession();
@@ -55,25 +56,28 @@ export default function KatanaScissorsRunner() {
 
   const jump = () => {
     if (!gameStarted || gameOver) return;
-    setVelocity(-2.5);
+    setVelocity(-2.8);
   };
 
   const update = useCallback(() => {
     if (!gameStarted || gameOver) return;
 
     // Gravity
-    setVelocity(v => v + 0.15);
+    setVelocity(v => v + 0.18);
     setScissorsY(y => Math.max(0, Math.min(90, y + velocity)));
 
-    // Move obstacles Right to Left
-    setObstacles(prev => prev.map(o => ({...o, x: o.x - 0.8}))
-        .filter(o => o.x > -5));
+    // Move obstacles Right to Left (Enemies and Coins)
+    setObstacles(prev => prev.map(o => ({...o, x: o.x - 1.2})) // Un peu plus rapide
+        .filter(o => o.x > -10));
 
     // Collision
     obstacles.forEach(o => {
-        // Distance check in 2D
-        if (Math.abs(o.x - SCISSORS_X) < 5 && Math.abs(o.y - scissorsY) < 10) {
-            if (o.type === 'SCISSOR') {
+        // Collision box
+        const playerBox = { x: SCISSORS_X, y: scissorsY, w: 5, h: 8 };
+        const objectBox = { x: o.x, y: o.y, w: 6, h: 6 };
+
+        if (Math.abs(o.x - SCISSORS_X) < 6 && Math.abs(o.y - scissorsY) < 8) {
+            if (o.type === 'ENEMY') {
                 setLives(l => {
                     const next = l - 1;
                     if (next <= 0) {
@@ -83,8 +87,8 @@ export default function KatanaScissorsRunner() {
                     return next;
                 });
                 setObstacles(prev => prev.filter(item => item.id !== o.id));
-            } else if (o.type === 'HAIR') {
-                setScore(s => s + Math.floor(10 * powerUps.streakMultiplier * (powerUps.scoreDouble ? 2 : 1)));
+            } else if (o.type === 'COIN') {
+                setScore(s => s + Math.floor(20 * powerUps.streakMultiplier * (powerUps.scoreDouble ? 2 : 1)));
                 setObstacles(prev => prev.filter(item => item.id !== o.id));
             }
         }
@@ -97,13 +101,15 @@ export default function KatanaScissorsRunner() {
     if (gameStarted && !gameOver) {
         gameLoop.current = requestAnimationFrame(update);
         const spawner = setInterval(() => {
+            const isEnemy = Math.random() > 0.4;
             setObstacles(prev => [...prev, {
                 id: Date.now(),
-                type: Math.random() > 0.3 ? 'HAIR' : 'SCISSOR',
-                x: 100, // Commence à droite
+                type: isEnemy ? 'ENEMY' : 'COIN',
+                icon: isEnemy ? ENEMY_ICONS[Math.floor(Math.random() * ENEMY_ICONS.length)] : '⭐',
+                x: 110, 
                 y: Math.random() * 80 + 5
             }]);
-        }, 1000);
+        }, 800);
 
         return () => { cancelAnimationFrame(gameLoop.current!); clearInterval(spawner); };
     }
@@ -120,37 +126,52 @@ export default function KatanaScissorsRunner() {
   useEffect(() => { if (showLeaderboard) fetchLeaderboard(); }, [showLeaderboard, fetchLeaderboard]);
 
   return (
-    <div className="relative h-screen bg-slate-900 overflow-hidden touch-none" onClick={jump}>
+    <div className="relative h-screen bg-slate-950 overflow-hidden touch-none" onClick={jump}>
       
+      {/* Background Decor (Scrolling lines for speed feel) */}
+      <div className="absolute inset-0 opacity-10">
+          <div className="absolute h-px w-full bg-slate-500 top-1/4 animate-pulse"></div>
+          <div className="absolute h-px w-full bg-slate-500 top-2/4 animate-pulse" style={{ animationDelay: '1s' }}></div>
+          <div className="absolute h-px w-full bg-slate-500 top-3/4 animate-pulse" style={{ animationDelay: '0.5s' }}></div>
+      </div>
+
       {/* HUD & Header */}
       <div className="absolute top-4 left-4 z-10 flex gap-2">
-        <div className="bg-slate-800/80 p-3 rounded-2xl text-white font-black">Score: {score}</div>
-        <div className="bg-slate-800/80 p-3 rounded-2xl text-red-500 font-black">Vies: {lives}</div>
+        <div className="bg-slate-800/90 backdrop-blur-md p-3 rounded-2xl border border-slate-700 text-white font-black shadow-lg">Score: {score}</div>
+        <div className="bg-slate-800/90 backdrop-blur-md p-3 rounded-2xl border border-slate-700 text-red-500 font-black shadow-lg">HP: {lives}</div>
       </div>
       
       <div className="absolute top-4 right-4 z-10 flex gap-2">
-        <button onClick={() => setShowAdvantages(true)} className="h-10 w-10 flex items-center justify-center bg-slate-800 rounded-xl border border-slate-700 text-blue-400">⚡</button>
-        <button onClick={() => setShowLeaderboard(true)} className="h-10 w-10 flex items-center justify-center bg-slate-800 rounded-xl border border-slate-700 text-amber-400">🏆</button>
+        <button onClick={(e) => { e.stopPropagation(); setShowAdvantages(true); }} className="h-12 w-12 flex items-center justify-center bg-slate-800/90 rounded-2xl border border-slate-700 text-blue-400 shadow-lg">⚡</button>
+        <button onClick={(e) => { e.stopPropagation(); setShowLeaderboard(true); }} className="h-12 w-12 flex items-center justify-center bg-slate-800/90 rounded-2xl border border-slate-700 text-amber-400 shadow-lg">🏆</button>
       </div>
       
-      {/* Scissors (Player) */}
-      <div className="absolute text-5xl transition-all" style={{ left: `${SCISSORS_X}%`, top: `${scissorsY}%` }}>✂️</div>
+      {/* Katana (Player) */}
+      <div className="absolute text-6xl transition-transform" style={{ left: `${SCISSORS_X}%`, top: `${scissorsY}%`, transform: `rotate(${velocity * 10}deg)` }}>⚔️</div>
 
-      {/* Items */}
+      {/* Items (Enemies and Stars) */}
       {obstacles.map(o => (
-        <div key={o.id} className="absolute text-4xl" style={{ left: `${o.x}%`, top: `${o.y}%` }}>
-            {o.type === 'HAIR' ? '💇' : '✂️'}
+        <div key={o.id} className="absolute text-5xl drop-shadow-[0_0_10px_rgba(255,0,0,0.5)]" style={{ left: `${o.x}%`, top: `${o.y}%` }}>
+            {o.icon}
         </div>
       ))}
 
       {(!gameStarted || gameOver) && (
-        <div className="absolute inset-0 flex items-center justify-center bg-black/80 z-20">
-          <div className="text-center text-white p-6">
-            <h2 className="text-4xl font-black mb-2">{gameOver ? `Terminé! Score: ${score}` : "Katana Rush"}</h2>
-            <button onClick={() => { setGameStarted(true); setGameOver(false); setScore(0); setObstacles([]); setLives(maxLives); }} className="px-8 py-4 bg-red-600 rounded-xl font-bold uppercase tracking-widest mt-4">
-                {gameOver ? "Rejouer" : "Commencer"}
-            </button>
-            <Link href="/student/games" className="ml-4 px-8 py-4 bg-slate-700 rounded-xl font-bold uppercase tracking-widest">Quitter</Link>
+        <div className="absolute inset-0 flex items-center justify-center bg-black/80 z-20 backdrop-blur-md">
+          <div className="text-center text-white p-8 bg-slate-900 border border-slate-700 rounded-[3rem] shadow-2xl max-w-sm w-full mx-4">
+            <h2 className="text-5xl font-black mb-2 italic tracking-tighter text-red-600">KATANA</h2>
+            <p className="text-slate-400 uppercase text-xs font-black tracking-[0.3em] mb-8">Rush & Slay</p>
+            
+            {gameOver && <div className="mb-8 text-3xl font-black">SCORE: {score}</div>}
+            
+            <div className="space-y-4">
+                <button onClick={(e) => { e.stopPropagation(); setGameStarted(true); setGameOver(false); setScore(0); setObstacles([]); setLives(maxLives); }} className="w-full py-5 bg-red-600 hover:bg-red-500 rounded-2xl font-black uppercase tracking-widest transition-all transform hover:scale-105 active:scale-95 shadow-[0_0_20px_rgba(220,38,38,0.4)]">
+                    {gameOver ? "Ressusciter" : "Entrer dans l'Arène"}
+                </button>
+                <Link href="/student/games" className="block w-full py-5 bg-slate-800 hover:bg-slate-700 rounded-2xl font-black uppercase tracking-widest transition-all">
+                    Battre en Retraite
+                </Link>
+            </div>
           </div>
         </div>
       )}
