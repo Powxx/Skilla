@@ -81,9 +81,9 @@ export default function KatanaScissorsRunner() {
     if (!visualState.gameStarted || visualState.gameOver) return;
 
     // Delta time could be used for frame-independent movement, but for simplicity we use constant steps
-    // Update Speed Multiplier every 5 seconds
+    // Update Speed Multiplier every 3 seconds (Accelerated from 5s)
     const elapsed = (Date.now() - startTimeRef.current) / 1000;
-    const newMultiplier = 1 + Math.floor(elapsed / 5) * 0.1;
+    const newMultiplier = 1 + Math.floor(elapsed / 3) * 0.1;
     if (newMultiplier !== speedMultiplier) setSpeedMultiplier(newMultiplier);
 
     // Apply Physics

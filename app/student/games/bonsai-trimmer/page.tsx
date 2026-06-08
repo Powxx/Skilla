@@ -88,10 +88,10 @@ export default function BonsaiTrimmer() {
         const spawner = setInterval(() => {
             const newBranch: Branch = {
                 id: Date.now(),
-                x: 30 + Math.random() * 40, // Centre
-                y: 40 + Math.random() * 40,
-                angle: Math.random() * 360,
-                length: 40 + Math.random() * 60,
+                x: 50, // Toujours au centre (tronc)
+                y: 30 + Math.random() * 50, // Différentes hauteurs sur le tronc
+                angle: Math.random() > 0.5 ? 160 + Math.random() * 40 : -20 - Math.random() * 40, // Gauche ou Droite
+                length: 60 + Math.random() * 80,
                 isWild: true
             };
             setBranches(prev => [...prev, newBranch]);
@@ -154,10 +154,9 @@ export default function BonsaiTrimmer() {
 
         {/* Wild Branches to Trim */}
         {branches.map(b => (
-            <button 
+            <div 
                 key={b.id}
-                onClick={() => trimBranch(b.id)}
-                className="absolute group transition-transform hover:scale-105 active:scale-95"
+                className="absolute pointer-events-none"
                 style={{ 
                     left: `${b.x}%`, 
                     top: `${b.y}%`,
@@ -168,15 +167,21 @@ export default function BonsaiTrimmer() {
                     className="w-1 bg-red-900 rounded-full origin-left relative shadow-lg"
                     style={{ width: `${b.length}px`, height: '6px' }}
                 >
-                    <div className="absolute -right-2 -top-2 text-2xl group-hover:scale-125 transition-transform">🍃</div>
-                    <div className="absolute inset-0 bg-red-500 opacity-0 group-hover:opacity-100 blur-sm rounded-full transition-opacity"></div>
+                    {/* Only the tip (leaf) is clickable */}
+                    <button 
+                        onClick={(e) => { e.stopPropagation(); trimBranch(b.id); }}
+                        className="absolute -right-4 -top-4 w-10 h-10 flex items-center justify-center pointer-events-auto group transition-transform hover:scale-125 active:scale-90"
+                    >
+                        <span className="text-2xl drop-shadow-md">🍃</span>
+                        <div className="absolute inset-0 bg-red-500/20 opacity-0 group-hover:opacity-100 blur-md rounded-full transition-opacity"></div>
+                    </button>
                     
                     {/* Master Scissors Visual Aid */}
                     {powerUps.masterScissors && (
                         <div className="absolute -inset-4 border-2 border-dashed border-blue-400/30 rounded-full animate-spin-slow"></div>
                     )}
                 </div>
-            </button>
+            </div>
         ))}
 
         {/* Overlays */}
