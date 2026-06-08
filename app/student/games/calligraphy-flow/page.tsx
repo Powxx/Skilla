@@ -134,8 +134,10 @@ export default function CalligraphyFlow() {
           return next.length > 5 ? next.slice(1) : next;
         });
 
-        // Time Bonus: +0.5s
-        setTimeLeft(t => t + 0.5);
+        // Time Bonus: +0.2s ONLY if the student has an academic bonus (average >= 12)
+        if (powerUps.timeBoost) {
+            setTimeLeft(t => t + 0.2);
+        }
 
         // Increase score
         setScore(s => s + Math.round(10 * powerUps.streakMultiplier * (powerUps.scoreDouble ? 2 : 1)));

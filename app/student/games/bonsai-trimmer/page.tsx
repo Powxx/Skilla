@@ -11,6 +11,9 @@ const GAME_KEY = 'bonsai-trimmer';
 const INITIAL_TIME = 45;
 const BRANCH_SPAWN_RATE = 1500; // ms
 
+// Shared game info (avoiding build error)
+const GAME_INFO = { id: 'bonsai-trimmer', name: 'Bonsai Trimmer', subject: 'Coupe' };
+
 interface Branch {
   id: number;
   x: number;
@@ -211,7 +214,7 @@ export default function BonsaiTrimmer() {
 
       <div className="mt-8 flex flex-col items-center gap-2">
         <p className="text-stone-400 text-[10px] font-black uppercase tracking-[0.3em]">
-          Subject : {GAMES.find(g => g.id === GAME_KEY)?.subject}
+          Subject : {GAME_INFO.subject}
         </p>
         <p className="text-stone-300 text-[8px] font-bold uppercase tracking-[0.5em]">
           Skilla Precision Training
@@ -259,11 +262,11 @@ export default function BonsaiTrimmer() {
            <div className="bg-white w-full max-w-sm rounded-[2.5rem] overflow-hidden shadow-2xl" onClick={e => e.stopPropagation()}>
               <div className="p-8 border-b border-stone-50 bg-stone-50/50 flex justify-between items-center">
                  <h3 className="text-xl font-black text-stone-900 uppercase tracking-tighter">Maîtres du Bonsai</h3>
-                 <button onClick={() => setShowLeaderboard(false)} className="text-stone-300 hover:text-stone-500 transition-colors"><X size={24}/></button>
+                 <button onClick={() => setShowLeaderboard(false)} className="text-stone-300 hover:text-slate-500 transition-colors"><X size={24}/></button>
               </div>
               <div className="p-6">
                  <div className="flex bg-stone-100 p-1 rounded-2xl mb-6">
-                    <button onClick={() => setLbScope('class')} className={`flex-1 py-3 text-[10px] font-black uppercase rounded-xl transition-all ${lbScope === 'class' ? 'bg-white text-stone-900 shadow-sm' : 'text-stone-400 hover:text-stone-600'}`}>Mon Dojo</button>
+                    <button onClick={() => setLbScope('class')} className={`flex-1 py-3 text-[10px] font-black uppercase rounded-xl transition-all ${lbScope === 'class' ? 'bg-white text-stone-900 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}>Mon Dojo</button>
                     <button onClick={() => setLbScope('school')} className={`flex-1 py-3 text-[10px] font-black uppercase rounded-xl transition-all ${lbScope === 'school' ? 'bg-white text-stone-900 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}>L'Empire</button>
                  </div>
                  <div className="max-h-[300px] overflow-y-auto pr-2 space-y-3 custom-scrollbar">
