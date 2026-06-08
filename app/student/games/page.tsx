@@ -11,16 +11,11 @@ const GAMES = [
   { id: 'calligraphy-flow', name: 'Edo Design', subject: 'Art Appliqué', icon: '🎨', description: 'Reconstituez des motifs traditionnels.', primary: true },
   { id: 'sakura-mix', name: 'Sakura Mix', subject: 'Cosmétologie', icon: '🌸', description: 'Alignez les pigments pour créer la nuance parfaite.', primary: true },
   { id: 'ninja-intuition', name: 'Ninja Intuition', subject: 'Diagnostic', icon: '👁️', description: 'Identifiez les anomalies en un temps record.' },
-  { id: 'haiku-scrabble', name: 'Haiku Scrabble', subject: 'Français', icon: '📜', description: 'Formez des mots pour compléter les haïkus.' },
-  { id: 'koban-salon', name: 'Koban Salon', subject: 'Gestion', icon: '💰', description: 'Gérez les finances de votre salon Edo.' },
   { id: 'silk-road', name: 'Silk Road Memory', subject: 'Histoire-Géo', icon: '🗺️', description: 'Mémorisez les cités impériales du Japon.', primary: true },
-  { id: 'zen-connect', name: 'Zen Connect', subject: 'Informatique', icon: '🔌', description: 'Reliez les flux de données du salon.' },
   { id: 'abacus-dosages', name: 'Abacus Dosages', subject: 'Mathématiques', icon: '🧮', description: 'Calculez les mélanges sur un boulier.' },
   { id: 'katana-scissors', name: 'Katana Scissors', subject: 'EPS', icon: '⚔️', description: 'Sauter pour échapper aux méchants avec la précision du sabre.' , primary: true},
-  { id: 'safety-shuriken', name: 'Safety Shuriken', subject: 'PSE', icon: '🎯', description: 'Éliminez les risques professionnels.' },
   { id: 'skin-defense', name: 'Skin Defense', subject: 'Biologie appliquée', icon: '🛡️', description: 'Protégez la barrière cutanée.', primary: true },
   { id: 'ph-alchemy', name: 'pH Alchemy', subject: 'Sciences', icon: '🧪', description: 'Stabilisez le pH de vos solutions.' },
-  { id: 'maintenance-monk', name: 'Maintenance Monk', subject: 'Technologie', icon: '🔧', description: 'Réparez vos appareils de beauté.' },
 ];
 
 export default function GameCenter() {

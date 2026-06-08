@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import Link from 'next/link';
 import { useSession } from 'next-auth/react';
 import { saveGameScore, getLeaderboard, getPersonalBest, getStudentStats } from '@/app/actions/gamification';
@@ -9,9 +9,11 @@ import { X, Trophy, Zap, Scissors } from "lucide-react";
 // Configuration
 const GAME_KEY = 'bonsai-trimmer';
 const INITIAL_TIME = 45;
-const BRANCH_SPAWN_RATE = 1500; // ms
+const BRANCH_SPAWN_RATE = 2000; // ms
+const MAX_GROWTH = 100; // pixels
+const GROWTH_SPEED = 0.5; // pixels per frame
 
-// Shared game info (avoiding build error)
+// Shared game info
 const GAME_INFO = { id: 'bonsai-trimmer', name: 'Bonsai Trimmer', subject: 'Coupe' };
 
 interface Branch {
@@ -19,8 +21,10 @@ interface Branch {
   x: number;
   y: number;
   angle: number;
-  length: number;
+  targetLength: number;
+  currentLength: number;
   isWild: boolean;
+  isFullyGrown: boolean;
 }
 
 export default function BonsaiTrimmer() {
@@ -33,6 +37,9 @@ export default function BonsaiTrimmer() {
   const [gameStarted, setGameStarted] = useState(false);
   const [branches, setBranches] = useState<Branch[]>([]);
   
+  const branchesRef = useRef<Branch[]>([]);
+  const frameIdRef = useRef<number | null>(null);
+
   // UI State
   const [studentStats, setStudentStats] = useState<{ average: number, streak: number, classId: string | null }>({ average: 0, streak: 0, classId: null });
   const [personalBest, setPersonalBest] = useState(0);
@@ -56,20 +63,61 @@ export default function BonsaiTrimmer() {
     }
   }, [session]);
 
+  const updateGrowth = useCallback(() => {
+    if (!gameStarted || gameOver) return;
+
+    let changed = false;
+    const nextBranches = branchesRef.current.map(b => {
+      if (b.currentLength < b.targetLength) {
+        changed = true;
+        const growth = powerUps.slowGrowth ? GROWTH_SPEED * 0.6 : GROWTH_SPEED;
+        const newLength = b.currentLength + growth;
+        return { 
+          ...b, 
+          currentLength: newLength, 
+          isFullyGrown: newLength >= b.targetLength 
+        };
+      }
+      return b;
+    });
+
+    if (changed) {
+      branchesRef.current = nextBranches;
+      setBranches([...nextBranches]);
+    }
+
+    frameIdRef.current = requestAnimationFrame(updateGrowth);
+  }, [gameStarted, gameOver, powerUps.slowGrowth]);
+
+  useEffect(() => {
+    if (gameStarted && !gameOver) {
+      frameIdRef.current = requestAnimationFrame(updateGrowth);
+    }
+    return () => {
+      if (frameIdRef.current) cancelAnimationFrame(frameIdRef.current);
+    };
+  }, [gameStarted, gameOver, updateGrowth]);
+
   const startGame = () => {
     setScore(0);
     setTimeLeft(INITIAL_TIME);
     setGameOver(false);
     setGameStarted(true);
     setBranches([]);
+    branchesRef.current = [];
   };
 
   const endGame = useCallback(() => {
     setGameOver(true);
     if (session?.user?.id) {
+        saveGameScore(session.user.id, GAME_KEY, scoreRef.current); // Using a ref for score would be safer but let's stick to state for now or use a local var
         saveGameScore(session.user.id, GAME_KEY, score);
     }
+    if (frameIdRef.current) cancelAnimationFrame(frameIdRef.current);
   }, [session, score]);
+
+  const scoreRef = useRef(0);
+  useEffect(() => { scoreRef.current = score; }, [score]);
 
   // Timer
   useEffect(() => {
@@ -81,20 +129,29 @@ export default function BonsaiTrimmer() {
     }
   }, [gameStarted, gameOver, timeLeft, endGame]);
 
-  // Branch Spawner
+  // Branch Spawner (Multiple at once)
   useEffect(() => {
     if (gameStarted && !gameOver) {
         const spawnRate = powerUps.slowGrowth ? BRANCH_SPAWN_RATE * 1.5 : BRANCH_SPAWN_RATE;
         const spawner = setInterval(() => {
-            const newBranch: Branch = {
-                id: Date.now(),
-                x: 50, // Toujours au centre (tronc)
-                y: 30 + Math.random() * 50, // Différentes hauteurs sur le tronc
-                angle: Math.random() > 0.5 ? 160 + Math.random() * 40 : -20 - Math.random() * 40, // Gauche ou Droite
-                length: 60 + Math.random() * 80,
-                isWild: true
-            };
-            setBranches(prev => [...prev, newBranch]);
+            const count = 1 + Math.floor(Math.random() * 3); // Spawn 1 to 3 branches
+            const newBranches: Branch[] = [];
+            
+            for(let i=0; i<count; i++) {
+                newBranches.push({
+                    id: Date.now() + i,
+                    x: 50,
+                    y: 25 + Math.random() * 55,
+                    angle: Math.random() > 0.5 ? 150 + Math.random() * 60 : -30 - Math.random() * 60,
+                    targetLength: 60 + Math.random() * 90,
+                    currentLength: 5,
+                    isWild: true,
+                    isFullyGrown: false
+                });
+            }
+            
+            branchesRef.current = [...branchesRef.current, ...newBranches];
+            setBranches([...branchesRef.current]);
         }, spawnRate);
         return () => clearInterval(spawner);
     }
@@ -103,13 +160,15 @@ export default function BonsaiTrimmer() {
   const trimBranch = (id: number) => {
     if (!gameStarted || gameOver) return;
     
-    setBranches(prev => prev.filter(b => b.id !== id));
+    const next = branchesRef.current.filter(b => b.id !== id);
+    branchesRef.current = next;
+    setBranches(next);
+
     const basePoints = 50;
     const finalPoints = Math.round(basePoints * powerUps.streakMultiplier * (powerUps.masterScissors ? 1.5 : 1));
     setScore(s => s + finalPoints);
     
-    // Small time bonus for clean cut
-    setTimeLeft(t => Math.min(INITIAL_TIME, t + 0.3));
+    setTimeLeft(t => Math.min(INITIAL_TIME, t + 0.5));
   };
 
   const fetchLeaderboard = useCallback(async () => {
@@ -144,15 +203,15 @@ export default function BonsaiTrimmer() {
         {/* Background / Dojo Decor */}
         <div className="absolute inset-0 opacity-5 pointer-events-none bg-[url('https://www.transparenttextures.com/patterns/natural-paper.png')]"></div>
         <div className="absolute bottom-0 left-0 right-0 h-1/4 bg-stone-200/50 backdrop-blur-sm border-t border-stone-300 flex items-center justify-center">
-            <div className="w-48 h-12 bg-stone-800 rounded-full shadow-inner"></div> {/* Pot de Bonsai */}
+            <div className="w-48 h-12 bg-stone-800 rounded-full shadow-inner"></div>
         </div>
 
-        {/* The Bonsai Core (Static) */}
+        {/* The Bonsai Core */}
         <div className="absolute left-1/2 bottom-[15%] -translate-x-1/2 w-4 h-64 bg-stone-800 rounded-full origin-bottom">
             <div className="absolute top-10 left-1/2 -translate-x-1/2 w-32 h-32 bg-emerald-800/20 rounded-full blur-3xl"></div>
         </div>
 
-        {/* Wild Branches to Trim */}
+        {/* Organic Growing Branches */}
         {branches.map(b => (
             <div 
                 key={b.id}
@@ -164,21 +223,23 @@ export default function BonsaiTrimmer() {
                 }}
             >
                 <div 
-                    className="w-1 bg-red-900 rounded-full origin-left relative shadow-lg"
-                    style={{ width: `${b.length}px`, height: '6px' }}
+                    className="bg-stone-800 rounded-full origin-left relative shadow-sm"
+                    style={{ 
+                        width: `${b.currentLength}px`, 
+                        height: `${Math.max(2, 6 - (b.currentLength/30))}px`,
+                        backgroundColor: b.isFullyGrown ? '#7f1d1d' : '#292524', // Devient rouge quand fini
+                        transition: 'background-color 1s'
+                    }}
                 >
-                    {/* Only the tip (leaf) is clickable */}
-                    <button 
-                        onClick={(e) => { e.stopPropagation(); trimBranch(b.id); }}
-                        className="absolute -right-4 -top-4 w-10 h-10 flex items-center justify-center pointer-events-auto group transition-transform hover:scale-125 active:scale-90"
-                    >
-                        <span className="text-2xl drop-shadow-md">🍃</span>
-                        <div className="absolute inset-0 bg-red-500/20 opacity-0 group-hover:opacity-100 blur-md rounded-full transition-opacity"></div>
-                    </button>
-                    
-                    {/* Master Scissors Visual Aid */}
-                    {powerUps.masterScissors && (
-                        <div className="absolute -inset-4 border-2 border-dashed border-blue-400/30 rounded-full animate-spin-slow"></div>
+                    {/* The Leaf sprout at the end of growth */}
+                    {b.isFullyGrown && (
+                        <button 
+                            onClick={(e) => { e.stopPropagation(); trimBranch(b.id); }}
+                            className="absolute -right-5 -top-5 w-12 h-12 flex items-center justify-center pointer-events-auto group animate-in zoom-in duration-300"
+                        >
+                            <span className="text-3xl drop-shadow-md group-hover:scale-125 transition-transform">🍃</span>
+                            <div className="absolute inset-0 bg-red-500/20 opacity-0 group-hover:opacity-100 blur-md rounded-full transition-opacity"></div>
+                        </button>
                     )}
                 </div>
             </div>
@@ -206,24 +267,13 @@ export default function BonsaiTrimmer() {
                         {gameOver ? "Resculpter" : "Commencer la Taille"}
                         <Scissors size={20} />
                     </button>
-                    
-                    {!gameStarted && (
-                        <p className="mt-6 text-stone-400 text-[10px] font-bold uppercase tracking-[0.2em] animate-pulse">
-                            Supprimez les branches rouges avant la fin du temps
-                        </p>
-                    )}
                 </div>
             </div>
         )}
       </div>
 
       <div className="mt-8 flex flex-col items-center gap-2">
-        <p className="text-stone-400 text-[10px] font-black uppercase tracking-[0.3em]">
-          Subject : {GAME_INFO.subject}
-        </p>
-        <p className="text-stone-300 text-[8px] font-bold uppercase tracking-[0.5em]">
-          Skilla Precision Training
-        </p>
+        <p className="text-stone-400 text-[10px] font-black uppercase tracking-[0.3em]">Subject : {GAME_INFO.subject}</p>
       </div>
       
       {/* Advantages Modal */}
@@ -252,7 +302,7 @@ export default function BonsaiTrimmer() {
                  <div className={`flex items-center justify-between p-5 rounded-[1.5rem] border transition-all ${powerUps.slowGrowth ? 'bg-emerald-50 border-emerald-100 shadow-sm shadow-emerald-100' : 'bg-stone-50 border-stone-100 opacity-40'}`}>
                     <div>
                         <p className="text-[10px] font-black text-emerald-500 uppercase tracking-widest mb-1">Moyenne &gt; 12</p>
-                        <p className="text-sm font-bold text-emerald-900">Croissance Zen (Vitesse -33%)</p>
+                        <p className="text-sm font-bold text-emerald-900">Croissance Zen (Vitesse -40%)</p>
                     </div>
                     <span className="text-2xl">🌿</span>
                  </div>
@@ -279,7 +329,7 @@ export default function BonsaiTrimmer() {
                         <div className="py-10 text-center text-stone-400 font-bold animate-pulse uppercase tracking-widest text-xs">Recherche des maîtres...</div>
                     ) : leaderboard.length > 0 ? (
                         leaderboard.map((s, i) => (
-                            <div key={i} className={`flex justify-between items-center p-4 rounded-2xl border transition-all ${s.userName === session?.user?.name ? 'bg-stone-900 text-white border-stone-900' : 'bg-stone-50 border-stone-100'}`}>
+                            <div key={i} className={`flex justify-between items-center p-4 rounded-2xl border transition-all ${s.userName === session?.user?.name ? 'bg-stone-900 text-white border-slate-900' : 'bg-stone-50 border-stone-100'}`}>
                                 <div className="flex items-center gap-4">
                                     <span className={`w-8 h-8 flex items-center justify-center rounded-full text-xs font-black ${i === 0 ? 'bg-amber-400 text-black' : i === 1 ? 'bg-stone-300 text-black' : i === 2 ? 'bg-orange-400 text-black' : s.userName === session?.user?.name ? 'bg-white/20 text-white' : 'bg-stone-200 text-stone-500'}`}>
                                         {i + 1}

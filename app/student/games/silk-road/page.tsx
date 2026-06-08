@@ -9,15 +9,15 @@ import { X, Trophy, Zap, MapPin, Eye } from "lucide-react";
 // Configuration
 const GAME_KEY = 'silk-road-memory';
 const CITIES = [
-  { name: 'Tokyo', x: 75, y: 45, icon: '🗼' },
-  { name: 'Kyoto', x: 60, y: 55, icon: '⛩️' },
-  { name: 'Osaka', x: 55, y: 60, icon: '🏯' },
-  { name: 'Sapporo', x: 85, y: 15, icon: '❄️' },
-  { name: 'Fukuoka', x: 30, y: 75, icon: '🍜' },
-  { name: 'Hiroshima', x: 45, y: 65, icon: '🕊️' },
-  { name: 'Nara', x: 58, y: 58, icon: '🦌' },
-  { name: 'Nagoya', x: 68, y: 52, icon: '🏙️' },
-  { name: 'Sendai', x: 80, y: 35, icon: '🌲' },
+  { name: 'Tokyo', x: 78, y: 40, icon: '🗼' },
+  { name: 'Kyoto', x: 62, y: 58, icon: '⛩️' },
+  { name: 'Osaka', x: 50, y: 75, icon: '🏯' },
+  { name: 'Sapporo', x: 88, y: 12, icon: '❄️' },
+  { name: 'Fukuoka', x: 15, y: 82, icon: '🍜' },
+  { name: 'Hiroshima', x: 32, y: 72, icon: '🕊️' },
+  { name: 'Nara', x: 60, y: 75, icon: '🦌' },
+  { name: 'Nagoya', x: 72, y: 62, icon: '🏙️' },
+  { name: 'Sendai', x: 82, y: 28, icon: '🌲' },
 ];
 
 export default function SilkRoadMemory() {
