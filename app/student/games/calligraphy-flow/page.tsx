@@ -11,7 +11,7 @@ const GAME_KEY = 'calligraphy-flow';
 const CANVAS_WIDTH = 600;
 const CANVAS_HEIGHT = 400;
 const POINT_RADIUS = 25;
-const BRUSH_SIZE = 12;
+const BRUSH_SIZE = 14;
 
 export default function CalligraphyFlow() {
   const { data: session } = useSession();
@@ -22,8 +22,8 @@ export default function CalligraphyFlow() {
   const [gameOver, setGameOver] = useState(false);
   const [gameStarted, setGameStarted] = useState(false);
   const [targetPoint, setTargetPoint] = useState({ x: 0, y: 0 });
-  const [progress, setProgress] = useState(0); // Progress of current stroke
   const [timeLeft, setTimeLeft] = useState(60);
+  const [pointHistory, setPointHistory] = useState<{x: number, y: number}[]>([]);
   
   // Stats & UI State
   const [studentStats, setStudentStats] = useState<{ average: number, streak: number, classId: string | null }>({ average: 0, streak: 0, classId: null });
@@ -53,7 +53,6 @@ export default function CalligraphyFlow() {
         x: 50 + Math.random() * (CANVAS_WIDTH - 100),
         y: 50 + Math.random() * (CANVAS_HEIGHT - 100)
     });
-    setProgress(0);
   }, []);
 
   const startGame = () => {
@@ -61,15 +60,12 @@ export default function CalligraphyFlow() {
     setTimeLeft(powerUps.timeBoost ? 75 : 60);
     setGameOver(false);
     setGameStarted(true);
+    setPointHistory([]);
     generateNewTarget();
     
     // Clear canvas
     const ctx = canvasRef.current?.getContext('2d');
-    if (ctx) {
-        ctx.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
-        ctx.lineCap = 'round';
-        ctx.lineJoin = 'round';
-    }
+    if (ctx) ctx.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
   };
 
   const endGame = useCallback(() => {
@@ -79,12 +75,44 @@ export default function CalligraphyFlow() {
     }
   }, [session, score]);
 
+  // Redraw History on Canvas
+  useEffect(() => {
+    const ctx = canvasRef.current?.getContext('2d');
+    if (ctx) {
+      ctx.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+
+      pointHistory.forEach((p, index) => {
+        // Opacity based on age (last points are more opaque)
+        const opacity = (index + 1) / pointHistory.length * 0.4;
+        const size = BRUSH_SIZE * (0.5 + (index + 1) / pointHistory.length * 0.5);
+        
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, size / 2, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(15, 23, 42, ${opacity})`;
+        ctx.fill();
+
+        // Trace line between points for "flow"
+        if (index > 0) {
+          const prev = pointHistory[index - 1];
+          ctx.beginPath();
+          ctx.moveTo(prev.x, prev.y);
+          ctx.lineTo(p.x, p.y);
+          ctx.strokeStyle = `rgba(15, 23, 42, ${opacity * 0.5})`;
+          ctx.lineWidth = size / 2;
+          ctx.stroke();
+        }
+      });
+    }
+  }, [pointHistory]);
+
   // Timer
   useEffect(() => {
     if (gameStarted && !gameOver && timeLeft > 0) {
-        const timer = setInterval(() => setTimeLeft(t => t - 1), 1000);
+        const timer = setInterval(() => setTimeLeft(t => Math.max(0, t - 1)), 1000);
         return () => clearInterval(timer);
-    } else if (timeLeft === 0 && !gameOver) {
+    } else if (timeLeft === 0 && !gameOver && gameStarted) {
         endGame();
     }
   }, [gameStarted, gameOver, timeLeft, endGame]);
@@ -100,19 +128,19 @@ export default function CalligraphyFlow() {
     const dist = Math.sqrt(Math.pow(x - targetPoint.x, 2) + Math.pow(y - targetPoint.y, 2));
 
     if (dist < POINT_RADIUS) {
-        // Draw on canvas
-        const ctx = canvasRef.current.getContext('2d');
-        if (ctx) {
-            ctx.beginPath();
-            ctx.arc(x, y, BRUSH_SIZE / 2, 0, Math.PI * 2);
-            ctx.fillStyle = 'rgba(15, 23, 42, 0.2)';
-            ctx.fill();
-        }
+        // Add to history (max 5 points)
+        setPointHistory(prev => {
+          const next = [...prev, { x: targetPoint.x, y: targetPoint.y }];
+          return next.length > 5 ? next.slice(1) : next;
+        });
 
-        // Increase progress/score
-        setScore(s => s + Math.round(1 * powerUps.streakMultiplier * (powerUps.scoreDouble ? 2 : 1)));
+        // Time Bonus: +0.5s
+        setTimeLeft(t => t + 0.5);
+
+        // Increase score
+        setScore(s => s + Math.round(10 * powerUps.streakMultiplier * (powerUps.scoreDouble ? 2 : 1)));
         
-        // If we "covered" the point enough, move to next
+        // Move to next target
         generateNewTarget();
     }
   };
@@ -134,8 +162,8 @@ export default function CalligraphyFlow() {
       <div className="w-full max-w-2xl flex justify-between items-center mb-6">
         <Link href="/student/games" className="h-10 w-10 flex items-center justify-center bg-white rounded-xl border border-slate-200 text-slate-400 shadow-sm"><X /></Link>
         <div className="flex gap-4">
-            <div className="bg-white px-4 py-2 rounded-2xl border border-slate-200 text-slate-900 font-black shadow-sm">Score: {score}</div>
-            <div className={`bg-white px-4 py-2 rounded-2xl border border-slate-200 font-black shadow-sm ${timeLeft < 10 ? 'text-red-500 animate-pulse' : 'text-slate-600'}`}>Temps: {timeLeft}s</div>
+            <div className="bg-white px-4 py-2 rounded-2xl border border-slate-200 text-slate-900 font-black shadow-sm min-w-[120px] text-center">Score: {score}</div>
+            <div className={`bg-white px-4 py-2 rounded-2xl border border-slate-200 font-black shadow-sm min-w-[120px] text-center ${timeLeft < 10 ? 'text-red-500 animate-pulse' : 'text-slate-600'}`}>Temps: {timeLeft.toFixed(1)}s</div>
         </div>
         <div className="flex gap-2">
             <button onClick={() => setShowAdvantages(true)} className="h-10 w-10 flex items-center justify-center bg-white rounded-xl border border-slate-200 text-blue-500 shadow-sm hover:bg-slate-50"><Zap size={20}/></button>
@@ -168,7 +196,7 @@ export default function CalligraphyFlow() {
                     transform: 'translate(-50%, -50%)'
                 }}
             >
-                <div className="w-3 h-3 bg-slate-900 rounded-full"></div>
+                <div className="w-3 h-3 bg-slate-900 rounded-full shadow-[0_0_10px_rgba(15,23,42,0.4)]"></div>
             </div>
         )}
 

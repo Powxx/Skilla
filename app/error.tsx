@@ -34,12 +34,15 @@ export default function Error({
         >
           Réessayer
         </button>
-        <Link
-          href="/"
+        <button
+          onClick={() => {
+            // Un hard redirect vers /login vide le cache d'état React du client
+            window.location.href = '/login';
+          }}
           className="px-6 py-3 bg-white border border-slate-200 text-slate-600 rounded-xl font-bold uppercase tracking-widest hover:bg-slate-50 transition-all"
         >
-          Retour Accueil
-        </Link>
+          Retour Connexion
+        </button>
       </div>
     </div>
   );
