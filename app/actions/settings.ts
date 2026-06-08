@@ -10,11 +10,18 @@ import { unstable_cache, revalidateTag } from "next/cache";
 
 export const getGlobalSettings = unstable_cache(
   async () => {
+    console.log("[SettingsAction] Fetching global settings...");
     try {
-      return await prisma.globalSetting.findMany();
+      const settings = await prisma.globalSetting.findMany();
+      console.log(`[SettingsAction] Successfully fetched ${settings.length} settings`);
+      return settings;
     } catch (e) {
-      console.error("ERREUR RÉSEAU / DB dans getGlobalSettings:", e);
-      return []; // Retourne un tableau vide au lieu de planter
+      console.error("[SettingsAction] CRITICAL ERROR FETCHING SETTINGS:", e);
+      // On log le détail de l'erreur pour voir si c'est pgbouncer, timeout, ou autre
+      if (e instanceof Error) {
+        console.error(`[SettingsAction] Error Name: ${e.name}, Message: ${e.message}`);
+      }
+      return [];
     }
   },
   ["global-settings"],
