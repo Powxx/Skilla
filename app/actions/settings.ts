@@ -10,7 +10,12 @@ import { unstable_cache, revalidateTag } from "next/cache";
 
 export const getGlobalSettings = unstable_cache(
   async () => {
-    return await prisma.globalSetting.findMany();
+    try {
+      return await prisma.globalSetting.findMany();
+    } catch (e) {
+      console.error("ERREUR RÉSEAU / DB dans getGlobalSettings:", e);
+      return []; // Retourne un tableau vide au lieu de planter
+    }
   },
   ["global-settings"],
   { tags: ["global-settings"], revalidate: 3600 }

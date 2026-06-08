@@ -3,7 +3,7 @@ import PortalSidebar from "@/components/portal/portal-sidebar";
 import { getGlobalSettings } from "@/app/actions/settings";
 
 export default async function StudentLayout({ children }: { children: React.ReactNode }) {
-  const settings = await getGlobalSettings();
+  const settings = await getGlobalSettings() || [];
   const getSetting = (key: string) => settings.find(s => s.key === key)?.value;
   const schoolName = getSetting("SCHOOL_SHORT_NAME") || getSetting("SCHOOL_NAME") || "Skilla";
 

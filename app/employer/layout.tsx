@@ -7,7 +7,7 @@ import { getGlobalSettings } from "@/app/actions/settings";
 
 export default async function EmployerLayout({ children }: { children: React.ReactNode }) {
   const session = await getServerSession(authOptions);
-  const settings = await getGlobalSettings();
+  const settings = await getGlobalSettings() || [];
   const getSetting = (key: string) => settings.find(s => s.key === key)?.value;
   const schoolName = getSetting("SCHOOL_SHORT_NAME") || getSetting("SCHOOL_NAME") || "Skilla";
 
