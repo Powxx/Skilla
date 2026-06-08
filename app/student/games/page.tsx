@@ -7,16 +7,16 @@ import { getAllPersonalBests } from '@/app/actions/game-center';
 
 const GAMES = [
   { id: 'vocabulary-sensei', name: 'Vocabulary Sensei', subject: 'Anglais', icon: '🏮', description: 'Traduisez les termes beauté avant le gong.' },
+  { id: 'bonsai-trimmer', name: 'Bonsai Trimmer', subject: 'Pratique Coiffure', icon: '🌳', description: 'Taillez avec précision pour sculpter la perfection.', primary: true },
   { id: 'calligraphy-flow', name: 'Edo Design', subject: 'Art Appliqué', icon: '🎨', description: 'Reconstituez des motifs traditionnels.', primary: true },
   { id: 'sakura-mix', name: 'Sakura Mix', subject: 'Cosmétologie', icon: '🌸', description: 'Alignez les pigments pour créer la nuance parfaite.', primary: true },
   { id: 'ninja-intuition', name: 'Ninja Intuition', subject: 'Diagnostic', icon: '👁️', description: 'Identifiez les anomalies en un temps record.' },
-  { id: 'dojo-rhythm', name: 'Dojo Rhythm', subject: 'EPS', icon: '🧘', description: 'Tapez en rythme pour vos postures.' },
   { id: 'haiku-scrabble', name: 'Haiku Scrabble', subject: 'Français', icon: '📜', description: 'Formez des mots pour compléter les haïkus.' },
   { id: 'koban-salon', name: 'Koban Salon', subject: 'Gestion', icon: '💰', description: 'Gérez les finances de votre salon Edo.' },
   { id: 'silk-road', name: 'Silk Road Explorer', subject: 'Histoire-Géo', icon: '🗺️', description: 'Explorez l\'origine des rituels de beauté.' },
   { id: 'zen-connect', name: 'Zen Connect', subject: 'Informatique', icon: '🔌', description: 'Reliez les flux de données du salon.' },
   { id: 'abacus-dosages', name: 'Abacus Dosages', subject: 'Mathématiques', icon: '🧮', description: 'Calculez les mélanges sur un boulier.' },
-  { id: 'katana-scissors', name: 'Katana Scissors', subject: 'Pratique', icon: '⚔️', description: 'Coupez les mèches avec la précision du sabre.' , primary: true},
+  { id: 'katana-scissors', name: 'Katana Scissors', subject: 'EPS', icon: '⚔️', description: 'Sauter pour échapper aux méchants avec la précision du sabre.' , primary: true},
   { id: 'safety-shuriken', name: 'Safety Shuriken', subject: 'PSE', icon: '🎯', description: 'Éliminez les risques professionnels.' },
   { id: 'skin-defense', name: 'Skin Defense', subject: 'Biologie appliquée', icon: '🛡️', description: 'Protégez la barrière cutanée.', primary: true },
   { id: 'ph-alchemy', name: 'pH Alchemy', subject: 'Sciences', icon: '🧪', description: 'Stabilisez le pH de vos solutions.' },
