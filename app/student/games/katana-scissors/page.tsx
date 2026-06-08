@@ -59,71 +59,64 @@ export default function KatanaScissorsRunner() {
     setVelocity(-2.8);
   };
 
-  const update = useCallback(() => {
-    if (!gameStarted || gameOver) return;
+  // Update loop
+    const update = useCallback(() => {
+        if (!gameStarted || gameOver) return;
 
-    // Gravity
-    setVelocity(v => v + 0.18);
-    setScissorsY(y => Math.max(0, Math.min(90, y + velocity)));
+        // Gravity
+        setVelocity(v => v + 0.18);
+        setScissorsY(y => Math.max(0, Math.min(90, y + velocity)));
 
-  // Move obstacles Right to Left (Enemies and Coins)
-    setObstacles(prev => {
-        const next = prev.map(o => ({...o, x: o.x - 1.2}));
-        // On garde une petite marge pour la suppression
-        return next.filter(o => o.x > -15);
-    });
-
-    // Collision
-    setObstacles(prev => {
-        let hit = false;
-        const remaining = prev.filter(o => {
-            const isCollision = Math.abs(o.x - SCISSORS_X) < 6 && Math.abs(o.y - scissorsY) < 8;
-            if (isCollision) {
-                if (o.type === 'ENEMY') {
-                    setLives(l => {
-                        const next = l - 1;
-                        if (next <= 0) {
-                            setGameOver(true);
-                            saveGameScore(session?.user?.id || '', GAME_KEY, score);
-                        }
-                        return next;
-                    });
-                } else if (o.type === 'COIN') {
-                    setScore(s => s + Math.floor(20 * powerUps.streakMultiplier * (powerUps.scoreDouble ? 2 : 1)));
-                }
-                hit = true;
-                return false;
-            }
-            return true;
+        // Move obstacles
+        setObstacles(prev => {
+            const next = prev.map(o => ({...o, x: o.x - 1.2}));
+            return next.filter(o => o.x > -15);
         });
-        return remaining;
-    });
 
-    gameLoop.current = requestAnimationFrame(update);
-  }, [gameStarted, gameOver, velocity, scissorsY, powerUps, score, session]);
+        // Collision detection
+        setObstacles(prev => {
+            let hit = false;
+            const remaining = prev.filter(o => {
+                const isCollision = Math.abs(o.x - SCISSORS_X) < 6 && Math.abs(o.y - scissorsY) < 8;
+                if (isCollision) {
+                    if (o.type === 'ENEMY') {
+                        setLives(l => {
+                            const next = l - 1;
+                            if (next <= 0) {
+                                setGameOver(true);
+                                saveGameScore(session?.user?.id || '', GAME_KEY, score);
+                            }
+                            return next;
+                        });
+                    } else if (o.type === 'COIN') {
+                        setScore(s => s + 20);
+                    }
+                    return false; // Remove item
+                }
+                return true;
+            });
+            return remaining;
+        });
 
-  useEffect(() => {
-    if (gameStarted && !gameOver) {
         gameLoop.current = requestAnimationFrame(update);
-        
-        const spawner = setInterval(() => {
-            const isEnemy = Math.random() > 0.3;
-            const newObstacle = {
-                id: Math.random(), // ID unique simple
-                type: isEnemy ? 'ENEMY' : 'COIN',
-                icon: isEnemy ? ENEMY_ICONS[Math.floor(Math.random() * ENEMY_ICONS.length)] : '⭐',
-                x: 105, 
-                y: 10 + Math.random() * 75
-            };
-            setObstacles(prev => [...prev, newObstacle]);
-        }, 1000);
+    }, [gameStarted, gameOver, velocity, scissorsY, score, session]);
 
-        return () => { 
-            if (gameLoop.current) cancelAnimationFrame(gameLoop.current); 
-            clearInterval(spawner); 
-        };
-    }
-  }, [gameStarted, gameOver, update]);
+    // Spawner
+    useEffect(() => {
+        if (gameStarted && !gameOver) {
+            const spawner = setInterval(() => {
+                const isEnemy = Math.random() > 0.3;
+                setObstacles(prev => [...prev, {
+                    id: Math.random(),
+                    type: isEnemy ? 'ENEMY' : 'COIN',
+                    icon: isEnemy ? ENEMY_ICONS[Math.floor(Math.random() * ENEMY_ICONS.length)] : '⭐',
+                    x: 105, 
+                    y: 10 + Math.random() * 75
+                }]);
+            }, 1000);
+            return () => clearInterval(spawner);
+        }
+    }, [gameStarted, gameOver]);
 
   const fetchLeaderboard = useCallback(async () => {
     setLoadingLeaderboard(true);
@@ -136,55 +129,66 @@ export default function KatanaScissorsRunner() {
   useEffect(() => { if (showLeaderboard) fetchLeaderboard(); }, [showLeaderboard, fetchLeaderboard]);
 
   return (
-    <div className="relative h-screen bg-slate-950 overflow-hidden touch-none" onClick={jump}>
+    <div className="flex flex-col items-center justify-center min-h-screen bg-slate-950 p-4 font-sans overflow-hidden">
       
-      {/* Background Decor (Scrolling lines for speed feel) */}
-      <div className="absolute inset-0 opacity-10">
-          <div className="absolute h-px w-full bg-slate-500 top-1/4 animate-pulse"></div>
-          <div className="absolute h-px w-full bg-slate-500 top-2/4 animate-pulse" style={{ animationDelay: '1s' }}></div>
-          <div className="absolute h-px w-full bg-slate-500 top-3/4 animate-pulse" style={{ animationDelay: '0.5s' }}></div>
-      </div>
-
-      {/* HUD & Header */}
-      <div className="absolute top-4 left-4 z-10 flex gap-2">
-        <div className="bg-slate-800/90 backdrop-blur-md p-3 rounded-2xl border border-slate-700 text-white font-black shadow-lg">Score: {score}</div>
-        <div className="bg-slate-800/90 backdrop-blur-md p-3 rounded-2xl border border-slate-700 text-red-500 font-black shadow-lg">HP: {lives}</div>
-      </div>
-      
-      <div className="absolute top-4 right-4 z-10 flex gap-2">
-        <button onClick={(e) => { e.stopPropagation(); setShowAdvantages(true); }} className="h-12 w-12 flex items-center justify-center bg-slate-800/90 rounded-2xl border border-slate-700 text-blue-400 shadow-lg">⚡</button>
-        <button onClick={(e) => { e.stopPropagation(); setShowLeaderboard(true); }} className="h-12 w-12 flex items-center justify-center bg-slate-800/90 rounded-2xl border border-slate-700 text-amber-400 shadow-lg">🏆</button>
-      </div>
-      
-      {/* Katana (Player) */}
-      <div className="absolute text-6xl transition-transform" style={{ left: `${SCISSORS_X}%`, top: `${scissorsY}%`, transform: `rotate(${velocity * 10}deg)` }}>⚔️</div>
-
-      {/* Items (Enemies and Stars) */}
-      {obstacles.map(o => (
-        <div key={o.id} className="absolute text-5xl drop-shadow-[0_0_10px_rgba(255,0,0,0.5)]" style={{ left: `${o.x}%`, top: `${o.y}%` }}>
-            {o.icon}
+      {/* Header / Stats */}
+      <div className="w-full max-w-2xl flex justify-between items-center mb-4">
+        <Link href="/student/games" className="h-10 w-10 flex items-center justify-center bg-slate-800 rounded-xl border border-slate-700 text-slate-400"><X /></Link>
+        <div className="flex gap-4">
+            <div className="bg-slate-800/90 px-4 py-2 rounded-2xl border border-slate-700 text-white font-black">Score: {score}</div>
+            <div className="bg-slate-800/90 px-4 py-2 rounded-2xl border border-slate-700 text-red-500 font-black">HP: {lives}</div>
         </div>
-      ))}
+        <div className="flex gap-2">
+            <button onClick={() => setShowAdvantages(true)} className="h-10 w-10 flex items-center justify-center bg-slate-800 rounded-xl border border-slate-700 text-blue-400">⚡</button>
+            <button onClick={() => setShowLeaderboard(true)} className="h-10 w-10 flex items-center justify-center bg-slate-800 rounded-xl border border-slate-700 text-amber-400">🏆</button>
+        </div>
+      </div>
 
-      {(!gameStarted || gameOver) && (
-        <div className="absolute inset-0 flex items-center justify-center bg-black/80 z-20 backdrop-blur-md">
-          <div className="text-center text-white p-8 bg-slate-900 border border-slate-700 rounded-[3rem] shadow-2xl max-w-sm w-full mx-4">
-            <h2 className="text-5xl font-black mb-2 italic tracking-tighter text-red-600">KATANA</h2>
-            <p className="text-slate-400 uppercase text-xs font-black tracking-[0.3em] mb-8">Rush & Slay</p>
-            
-            {gameOver && <div className="mb-8 text-3xl font-black">SCORE: {score}</div>}
-            
-            <div className="space-y-4">
-                <button onClick={(e) => { e.stopPropagation(); setGameStarted(true); setGameOver(false); setScore(0); setObstacles([]); setLives(maxLives); }} className="w-full py-5 bg-red-600 hover:bg-red-500 rounded-2xl font-black uppercase tracking-widest transition-all transform hover:scale-105 active:scale-95 shadow-[0_0_20px_rgba(220,38,38,0.4)]">
-                    {gameOver ? "Ressusciter" : "Entrer dans l'Arène"}
-                </button>
-                <Link href="/student/games" className="block w-full py-5 bg-slate-800 hover:bg-slate-700 rounded-2xl font-black uppercase tracking-widest transition-all">
-                    Battre en Retraite
-                </Link>
+      {/* Game Container - Fixed height to avoid scroll */}
+      <div className="relative w-full max-w-2xl h-[400px] bg-slate-900 rounded-[2rem] border-4 border-slate-800 overflow-hidden shadow-2xl" onClick={jump}>
+        
+        {/* Background Decor */}
+        <div className="absolute inset-0 opacity-10 pointer-events-none">
+            <div className="absolute h-px w-full bg-slate-500 top-1/4 animate-pulse"></div>
+            <div className="absolute h-px w-full bg-slate-500 top-2/4 animate-pulse" style={{ animationDelay: '1s' }}></div>
+            <div className="absolute h-px w-full bg-slate-500 top-3/4 animate-pulse" style={{ animationDelay: '0.5s' }}></div>
+        </div>
+
+        {/* Katana (Player) */}
+        <div className="absolute text-5xl transition-transform z-10" style={{ left: `${SCISSORS_X}%`, top: `${scissorsY}%`, transform: `translate(-50%, -50%) rotate(${velocity * 10}deg)` }}>⚔️</div>
+
+        {/* Items (Enemies and Stars) */}
+        {obstacles.map(o => (
+            <div 
+                key={o.id} 
+                className="absolute text-4xl drop-shadow-[0_0_8px_rgba(255,0,0,0.4)] z-10" 
+                style={{ 
+                    left: `${o.x}%`, 
+                    top: `${o.y}%`,
+                    transform: 'translate(-50%, -50%)'
+                }}
+            >
+                {o.icon}
             </div>
-          </div>
-        </div>
-      )}
+        ))}
+
+        {(!gameStarted || gameOver) && (
+            <div className="absolute inset-0 flex items-center justify-center bg-black/80 z-20 backdrop-blur-sm">
+                <div className="text-center text-white p-6">
+                    <h2 className="text-4xl font-black mb-2 italic tracking-tighter text-red-600 uppercase">Katana Rush</h2>
+                    {gameOver && <div className="mb-4 text-xl font-bold">GAME OVER - SCORE: {score}</div>}
+                    <button 
+                        onClick={(e) => { e.stopPropagation(); setGameStarted(true); setGameOver(false); setScore(0); setObstacles([]); setLives(maxLives); }} 
+                        className="px-8 py-4 bg-red-600 hover:bg-red-500 rounded-xl font-black uppercase tracking-widest transition-all shadow-lg"
+                    >
+                        {gameOver ? "Ressusciter" : "Commencer"}
+                    </button>
+                </div>
+            </div>
+        )}
+      </div>
+
+      <p className="mt-4 text-slate-500 text-xs font-bold uppercase tracking-widest">Cliquez ou touchez pour sauter</p>
       
       {/* Advantages Modal (Standardized) */}
       {showAdvantages && (

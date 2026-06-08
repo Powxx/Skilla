@@ -8,25 +8,25 @@ import { X, Trophy, Zap, ArrowUpCircle } from "lucide-react";
 
 // Configuration
 const GAME_KEY = 'skin-defense';
-const GRID_ROWS = 10;
+const GRID_ROWS = 8; 
 const GRID_COLS = 3;
-const TOWER_COST = 50;
-const UPGRADE_COST = 75;
+const TOWER_COST = 60; 
+const UPGRADE_COST = 100; 
 
 // Définition des vagues
 const WAVE_CONFIGS = [
-  { count: 5, healthMult: 1, speedMult: 1 },
-  { count: 8, healthMult: 1.2, speedMult: 1.2 },
-  { count: 12, healthMult: 1.5, speedMult: 1.4 },
-  { count: 15, healthMult: 2, speedMult: 1.6 },
-  { count: 20, healthMult: 3, speedMult: 1.8 },
+  { count: 8, healthMult: 1.2, speedMult: 1.1 },
+  { count: 12, healthMult: 1.8, speedMult: 1.2 },
+  { count: 18, healthMult: 2.5, speedMult: 1.3 },
+  { count: 25, healthMult: 3.5, speedMult: 1.4 },
+  { count: 35, healthMult: 5.0, speedMult: 1.6 },
 ];
 
 export default function SkinDefense() {
   const { data: session } = useSession();
   
   // Game State
-  const [gold, setGold] = useState(100); 
+  const [gold, setGold] = useState(120); 
   const [lives, setLives] = useState(3);
   const [wave, setWave] = useState(1);
   const [enemiesSpawnedInWave, setEnemiesSpawnedInWave] = useState(0);
@@ -137,7 +137,7 @@ export default function SkinDefense() {
 
             const killed = nextEnemies.filter(e => e.health <= 0).length;
             if (killed > 0) {
-                setGold(g => g + killed * 15);
+                setGold(g => g + killed * 12);
             }
             return nextEnemies.filter(e => e.health > 0);
         });
@@ -211,26 +211,26 @@ export default function SkinDefense() {
                     <div 
                         key={i} 
                         onClick={() => handleCellClick(r, c)} 
-                        className={`w-16 h-16 sm:w-20 sm:h-20 border border-white/5 flex items-center justify-center cursor-pointer transition-colors relative ${isPath ? 'bg-slate-950/50' : 'hover:bg-slate-800'}`}
+                        className={`w-12 h-12 sm:w-16 sm:h-16 border border-white/5 flex items-center justify-center cursor-pointer transition-colors relative ${isPath ? 'bg-slate-950/50' : 'hover:bg-slate-800'}`}
                     >
                         {tower ? (
                             <div className="flex flex-col items-center">
-                                <div className={`text-3xl sm:text-4xl animate-bounce-slow ${tower.level === 2 ? 'drop-shadow-[0_0_8px_rgba(52,211,153,0.5)]' : tower.level === 3 ? 'drop-shadow-[0_0_12px_rgba(245,158,11,0.6)]' : ''}`}>🧴</div>
-                                <div className="absolute top-1 right-1 flex gap-0.5">
+                                <div className={`text-2xl sm:text-3xl animate-bounce-slow ${tower.level === 2 ? 'drop-shadow-[0_0_8px_rgba(52,211,153,0.5)]' : tower.level === 3 ? 'drop-shadow-[0_0_12px_rgba(245,158,11,0.6)]' : ''}`}>🧴</div>
+                                <div className="absolute top-0.5 right-0.5 flex gap-0.5">
                                     {Array.from({length: tower.level}).map((_, idx) => (
-                                        <div key={idx} className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_5px_rgba(52,211,153,1)]" />
+                                        <div key={idx} className="w-1 h-1 rounded-full bg-emerald-500 shadow-[0_0_3px_rgba(52,211,153,1)]" />
                                     ))}
                                 </div>
                                 {tower.level < 3 && gold >= (UPGRADE_COST * tower.level) && (
-                                    <div className="absolute bottom-1 right-1 text-emerald-400 animate-pulse">
-                                        <ArrowUpCircle size={14} />
+                                    <div className="absolute bottom-0.5 right-0.5 text-emerald-400 animate-pulse">
+                                        <ArrowUpCircle size={12} />
                                     </div>
                                 )}
                             </div>
                         ) : isPath ? (
-                            <div className="w-1 h-1 bg-slate-800 rounded-full" />
+                            <div className="w-0.5 h-0.5 bg-slate-800 rounded-full" />
                         ) : (
-                            <div className="text-[10px] font-bold text-slate-800 opacity-0 hover:opacity-100 uppercase">Acheter</div>
+                            <div className="text-[8px] font-bold text-slate-800 opacity-0 hover:opacity-100 uppercase leading-none">Acheter</div>
                         )}
                     </div>
                 );
@@ -241,7 +241,7 @@ export default function SkinDefense() {
         {enemies.map(e => (
             <div 
                 key={e.id} 
-                className="absolute text-4xl sm:text-5xl z-20 transition-all duration-200 pointer-events-none drop-shadow-[0_0_10px_rgba(34,197,94,0.3)]"
+                className="absolute text-3xl sm:text-4xl z-20 transition-all duration-200 pointer-events-none drop-shadow-[0_0_8px_rgba(34,197,94,0.3)]"
                 style={{ 
                     left: `${(e.c * 33.33) + 16.66}%`, 
                     top: `${(e.r / GRID_ROWS) * 100}%`,
@@ -249,7 +249,7 @@ export default function SkinDefense() {
                 }}
             >
                 🦠
-                <div className="absolute -top-2 left-1/2 -translate-x-1/2 w-8 h-1 bg-slate-800 rounded-full overflow-hidden">
+                <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-6 h-1 bg-slate-800 rounded-full overflow-hidden">
                     <div className="h-full bg-green-500" style={{ width: `${(e.health / e.maxHealth) * 100}%` }} />
                 </div>
             </div>
