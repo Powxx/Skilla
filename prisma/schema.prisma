@@ -125,6 +125,7 @@ model User {
   canManageRH      Boolean @default(false)
   canImpersonate   Boolean @default(false)
   isActive         Boolean @default(true)
+  deletionRequested Boolean @default(false)
 
   @@index([role])
   @@index([lastName, firstName])
