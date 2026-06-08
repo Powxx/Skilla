@@ -4,21 +4,22 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import Link from 'next/link';
 import { useSession } from 'next-auth/react';
 import { saveGameScore, getLeaderboard, getPersonalBest, getStudentStats } from '@/app/actions/gamification';
-import { X, Trophy, Zap } from "lucide-react";
+import { X, Trophy, Zap, ArrowUpCircle } from "lucide-react";
 
 // Configuration
 const GAME_KEY = 'skin-defense';
 const GRID_ROWS = 10;
 const GRID_COLS = 3;
 const TOWER_COST = 50;
+const UPGRADE_COST = 75;
 
-// Définition des vagues : nombre d'ennemis, multiplicateur de vie, multiplicateur de vitesse
+// Définition des vagues
 const WAVE_CONFIGS = [
   { count: 5, healthMult: 1, speedMult: 1 },
-  { count: 8, healthMult: 1.2, speedMult: 1.1 },
-  { count: 12, healthMult: 1.5, speedMult: 1.2 },
-  { count: 15, healthMult: 2, speedMult: 1.3 },
-  { count: 20, healthMult: 3, speedMult: 1.5 },
+  { count: 8, healthMult: 1.2, speedMult: 1.2 },
+  { count: 12, healthMult: 1.5, speedMult: 1.4 },
+  { count: 15, healthMult: 2, speedMult: 1.6 },
+  { count: 20, healthMult: 3, speedMult: 1.8 },
 ];
 
 export default function SkinDefense() {
@@ -63,19 +64,17 @@ export default function SkinDefense() {
     }
   }, [session]);
 
-  // Game Loop: Spawn Enemies (Top to Bottom in col 1)
+  // Game Loop: Spawn Enemies
   useEffect(() => {
     if (gameOver) return;
     
-    // Si on a spawn tous les ennemis de la vague et qu'il n'en reste plus à l'écran, on passe à la vague suivante
     if (enemiesSpawnedInWave >= currentWaveConfig.count && enemies.length === 0) {
         setWave(prev => prev + 1);
         setEnemiesSpawnedInWave(0);
-        setGold(prev => prev + 50); // Bonus de fin de vague
+        setGold(prev => prev + 50);
         return;
     }
 
-    // Spawn d'ennemis
     if (enemiesSpawnedInWave < currentWaveConfig.count) {
         const interval = setInterval(() => {
             setEnemies(prev => [...prev, { 
@@ -96,7 +95,7 @@ export default function SkinDefense() {
   useEffect(() => {
     if (gameOver) return;
     const loop = setInterval(() => {
-        // Move enemies down column 1
+        // Move enemies
         setEnemies(prev => prev.map(e => ({...e, r: e.r + (e.speed || 0.1)}))
             .filter(e => {
                 if (e.r >= GRID_ROWS) {
@@ -104,7 +103,7 @@ export default function SkinDefense() {
                         const next = l - 1;
                         if (next <= 0) {
                             setGameOver(true);
-                            saveGameScore(session?.user?.id || '', GAME_KEY, wave); // Score basé sur les vagues
+                            saveGameScore(session?.user?.id || '', GAME_KEY, wave);
                         }
                         return next;
                     });
@@ -113,22 +112,28 @@ export default function SkinDefense() {
                 return true;
             }));
 
-        // Tower Attack logic
+        // Tower Attack
         setEnemies(prev => {
             let nextEnemies = [...prev];
             let newLasers: any[] = [];
             
             towers.forEach(t => {
-                // Tower at (r, c) targets enemies in range (2 cells)
-                const target = nextEnemies.find(e => Math.abs(e.r - t.r) <= 2 && Math.abs(e.c - t.c) <= 1);
+                const range = t.level >= 2 ? 3 : 2;
+                const damage = (powerUps.damageBoost ? 20 : 10) * (t.level || 1);
+                
+                const target = nextEnemies.find(e => Math.abs(e.r - t.r) <= range && Math.abs(e.c - t.c) <= 1);
                 if (target) {
-                    target.health -= (powerUps.damageBoost ? 20 : 10);
-                    newLasers.push({ id: Math.random(), fromR: t.r, fromC: t.c, toR: target.r, toC: target.c });
+                    target.health -= damage;
+                    newLasers.push({ 
+                      id: Math.random(), 
+                      fromR: t.r, fromC: t.c, toR: target.r, toC: target.c,
+                      level: t.level || 1
+                    });
                 }
             });
             
             setLasers(newLasers);
-            setTimeout(() => setLasers([]), 100); // Flash laser
+            setTimeout(() => setLasers([]), 100);
 
             const killed = nextEnemies.filter(e => e.health <= 0).length;
             if (killed > 0) {
@@ -140,10 +145,28 @@ export default function SkinDefense() {
     return () => clearInterval(loop);
   }, [gameOver, towers, powerUps, wave, session]);
 
-  const placeTower = (r: number, c: number) => {
-    if (gold < TOWER_COST || towers.find(t => t.r === r && t.c === c) || c === 1) return; 
-    setTowers(prev => [...prev, { r, c }]);
-    setGold(g => g - TOWER_COST);
+  const handleCellClick = (r: number, c: number) => {
+    const existingTowerIndex = towers.findIndex(t => t.r === r && t.c === c);
+    
+    if (existingTowerIndex !== -1) {
+        // Upgrade existing tower
+        const tower = towers[existingTowerIndex];
+        const nextLevel = (tower.level || 1) + 1;
+        const cost = UPGRADE_COST * tower.level;
+        
+        if (gold >= cost && tower.level < 3) {
+            setGold(g => g - cost);
+            const newTowers = [...towers];
+            newTowers[existingTowerIndex] = { ...tower, level: nextLevel };
+            setTowers(newTowers);
+        }
+    } else if (c !== 1) {
+        // Place new tower
+        if (gold >= TOWER_COST) {
+            setTowers(prev => [...prev, { r, c, level: 1 }]);
+            setGold(g => g - TOWER_COST);
+        }
+    }
   };
 
   const fetchLeaderboard = useCallback(async () => {
@@ -187,11 +210,23 @@ export default function SkinDefense() {
                 return (
                     <div 
                         key={i} 
-                        onClick={() => placeTower(r, c)} 
-                        className={`w-16 h-16 sm:w-20 sm:h-20 border border-white/5 flex items-center justify-center cursor-pointer transition-colors ${isPath ? 'bg-slate-950/50' : 'hover:bg-slate-800'}`}
+                        onClick={() => handleCellClick(r, c)} 
+                        className={`w-16 h-16 sm:w-20 sm:h-20 border border-white/5 flex items-center justify-center cursor-pointer transition-colors relative ${isPath ? 'bg-slate-950/50' : 'hover:bg-slate-800'}`}
                     >
                         {tower ? (
-                            <div className="text-3xl sm:text-4xl animate-bounce-slow">🧴</div>
+                            <div className="flex flex-col items-center">
+                                <div className={`text-3xl sm:text-4xl animate-bounce-slow ${tower.level === 2 ? 'drop-shadow-[0_0_8px_rgba(52,211,153,0.5)]' : tower.level === 3 ? 'drop-shadow-[0_0_12px_rgba(245,158,11,0.6)]' : ''}`}>🧴</div>
+                                <div className="absolute top-1 right-1 flex gap-0.5">
+                                    {Array.from({length: tower.level}).map((_, idx) => (
+                                        <div key={idx} className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_5px_rgba(52,211,153,1)]" />
+                                    ))}
+                                </div>
+                                {tower.level < 3 && gold >= (UPGRADE_COST * tower.level) && (
+                                    <div className="absolute bottom-1 right-1 text-emerald-400 animate-pulse">
+                                        <ArrowUpCircle size={14} />
+                                    </div>
+                                )}
+                            </div>
                         ) : isPath ? (
                             <div className="w-1 h-1 bg-slate-800 rounded-full" />
                         ) : (
@@ -229,9 +264,9 @@ export default function SkinDefense() {
                     y1={`${((l.fromR + 0.5) / GRID_ROWS) * 100}%`}
                     x2={`${(l.toC * 33.33) + 16.66}%`}
                     y2={`${((l.toR + 0.5) / GRID_ROWS) * 100}%`}
-                    stroke="rgba(52, 211, 153, 0.8)"
-                    strokeWidth="3"
-                    strokeDasharray="5,5"
+                    stroke={l.level === 3 ? "rgba(245, 158, 11, 0.9)" : l.level === 2 ? "rgba(52, 211, 153, 0.9)" : "rgba(52, 211, 153, 0.6)"}
+                    strokeWidth={l.level + 1}
+                    strokeDasharray={l.level === 1 ? "5,5" : "none"}
                     className="animate-pulse"
                 />
             ))}
@@ -240,7 +275,8 @@ export default function SkinDefense() {
       
       <div className="mt-8 text-center text-slate-500">
         <p className="text-xs font-bold uppercase tracking-widest text-emerald-600">Vague {wave} : {enemiesSpawnedInWave} / {currentWaveConfig.count} ennemis</p>
-        <p className="text-[9px] font-medium uppercase tracking-[0.2em] mt-1">Tapotez sur les côtés pour placer des tours (50 Or)</p>
+        <p className="text-[9px] font-medium uppercase tracking-[0.2em] mt-1 italic">Tours Niv.2 (+Portée) • Niv.3 (+Dégâts)</p>
+        <p className="text-[9px] font-medium uppercase tracking-[0.2em] mt-0.5 text-slate-600">Appuyez sur une tour pour l'améliorer</p>
       </div>
 
       {gameOver && (
@@ -254,7 +290,7 @@ export default function SkinDefense() {
         </div>
       )}
 
-      {/* Advantages Modal (Standardized) */}
+      {/* Advantages Modal */}
       {showAdvantages && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={() => setShowAdvantages(false)}>
            <div className="bg-slate-800 w-full max-w-sm rounded-[2rem] border border-slate-700 p-6">
@@ -275,7 +311,7 @@ export default function SkinDefense() {
         </div>
       )}
 
-      {/* Leaderboard Modal (Standardized) */}
+      {/* Leaderboard Modal */}
       {showLeaderboard && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={() => setShowLeaderboard(false)}>
            <div className="bg-slate-800 w-full max-w-sm rounded-[2rem] border border-slate-700 overflow-hidden">

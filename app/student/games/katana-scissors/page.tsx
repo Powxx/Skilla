@@ -66,54 +66,57 @@ export default function KatanaScissorsRunner() {
     setVelocity(v => v + 0.18);
     setScissorsY(y => Math.max(0, Math.min(90, y + velocity)));
 
-    // Move obstacles Right to Left (Enemies and Coins)
-    setObstacles(prev => prev.map(o => ({...o, x: o.x - 1.2})) // Un peu plus rapide
-        .filter(o => o.x > -10));
+  // Move obstacles Right to Left (Enemies and Coins)
+    setObstacles(prev => {
+        const next = prev.map(o => ({...o, x: o.x - 1.2}));
+        // On garde une petite marge pour la suppression
+        return next.filter(o => o.x > -15);
+    });
 
     // Collision
-    obstacles.forEach(o => {
-        // Collision box
-        const playerBox = { x: SCISSORS_X, y: scissorsY, w: 5, h: 8 };
-        const objectBox = { x: o.x, y: o.y, w: 6, h: 6 };
-
-        if (Math.abs(o.x - SCISSORS_X) < 6 && Math.abs(o.y - scissorsY) < 8) {
-            if (o.type === 'ENEMY') {
-                setLives(l => {
-                    const next = l - 1;
-                    if (next <= 0) {
-                        setGameOver(true);
-                        saveGameScore(session?.user?.id || '', GAME_KEY, score);
-                    }
-                    return next;
-                });
-                setObstacles(prev => prev.filter(item => item.id !== o.id));
-            } else if (o.type === 'COIN') {
-                setScore(s => s + Math.floor(20 * powerUps.streakMultiplier * (powerUps.scoreDouble ? 2 : 1)));
-                setObstacles(prev => prev.filter(item => item.id !== o.id));
+    setObstacles(prev => {
+        let hit = false;
+        const remaining = prev.filter(o => {
+            const isCollision = Math.abs(o.x - SCISSORS_X) < 6 && Math.abs(o.y - scissorsY) < 8;
+            if (isCollision) {
+                if (o.type === 'ENEMY') {
+                    setLives(l => {
+                        const next = l - 1;
+                        if (next <= 0) {
+                            setGameOver(true);
+                            saveGameScore(session?.user?.id || '', GAME_KEY, score);
+                        }
+                        return next;
+                    });
+                } else if (o.type === 'COIN') {
+                    setScore(s => s + Math.floor(20 * powerUps.streakMultiplier * (powerUps.scoreDouble ? 2 : 1)));
+                }
+                hit = true;
+                return false;
             }
-        }
+            return true;
+        });
+        return remaining;
     });
 
     gameLoop.current = requestAnimationFrame(update);
-  }, [gameStarted, gameOver, velocity, scissorsY, obstacles, powerUps, score, session]);
+  }, [gameStarted, gameOver, velocity, scissorsY, powerUps, score, session]);
 
   useEffect(() => {
     if (gameStarted && !gameOver) {
         gameLoop.current = requestAnimationFrame(update);
         
         const spawner = setInterval(() => {
-            const isEnemy = Math.random() > 0.3; // 70% chance of enemy
-            setObstacles(prev => {
-                const newObstacle = {
-                    id: Date.now() + Math.random(),
-                    type: isEnemy ? 'ENEMY' : 'COIN',
-                    icon: isEnemy ? ENEMY_ICONS[Math.floor(Math.random() * ENEMY_ICONS.length)] : '⭐',
-                    x: 110, 
-                    y: Math.random() * 80 + 5
-                };
-                return [...prev, newObstacle];
-            });
-        }, 1200);
+            const isEnemy = Math.random() > 0.3;
+            const newObstacle = {
+                id: Math.random(), // ID unique simple
+                type: isEnemy ? 'ENEMY' : 'COIN',
+                icon: isEnemy ? ENEMY_ICONS[Math.floor(Math.random() * ENEMY_ICONS.length)] : '⭐',
+                x: 105, 
+                y: 10 + Math.random() * 75
+            };
+            setObstacles(prev => [...prev, newObstacle]);
+        }, 1000);
 
         return () => { 
             if (gameLoop.current) cancelAnimationFrame(gameLoop.current); 
