@@ -230,7 +230,7 @@ export default function SkinDefense() {
                     <p className="text-xs font-black text-white">Série x{powerUps.streakMultiplier.toFixed(1)}</p>
                     <span className="text-2xl">🔥</span>
                  </div>
-                 <div className={`p-4 rounded-2xl border ${powerUps.scoreDouble ? 'bg-emerald-600/10 border-emerald-500/20' : 'opacity-40'}`}>
+                 <div className={`p-4 rounded-2xl border ${powerUps.damageBoost ? 'bg-emerald-600/10 border-emerald-500/20' : 'opacity-40'}`}>
                     <p className="text-xs font-black text-emerald-500">Moyenne &gt; 16 : Dégâts x2</p>
                  </div>
                  <div className={`p-4 rounded-2xl border ${powerUps.extraLife ? 'bg-blue-600/10 border-blue-500/20' : 'opacity-40'}`}>
