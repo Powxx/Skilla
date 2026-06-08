@@ -12,13 +12,23 @@ const GRID_ROWS = 10;
 const GRID_COLS = 3;
 const TOWER_COST = 50;
 
+// Définition des vagues : nombre d'ennemis, multiplicateur de vie, multiplicateur de vitesse
+const WAVE_CONFIGS = [
+  { count: 5, healthMult: 1, speedMult: 1 },
+  { count: 8, healthMult: 1.2, speedMult: 1.1 },
+  { count: 12, healthMult: 1.5, speedMult: 1.2 },
+  { count: 15, healthMult: 2, speedMult: 1.3 },
+  { count: 20, healthMult: 3, speedMult: 1.5 },
+];
+
 export default function SkinDefense() {
   const { data: session } = useSession();
   
   // Game State
-  const [score, setScore] = useState(100); 
+  const [gold, setGold] = useState(100); 
   const [lives, setLives] = useState(3);
   const [wave, setWave] = useState(1);
+  const [enemiesSpawnedInWave, setEnemiesSpawnedInWave] = useState(0);
   const [gameOver, setGameOver] = useState(false);
   const [towers, setTowers] = useState<any[]>([]);
   const [enemies, setEnemies] = useState<any[]>([]);
@@ -32,6 +42,10 @@ export default function SkinDefense() {
   const [studentStats, setStudentStats] = useState<{ average: number, streak: number, classId: string | null }>({ average: 0, streak: 0, classId: null });
   const [lbScope, setLbScope] = useState<'class' | 'school'>('class');
   const [loadingLeaderboard, setLoadingLeaderboard] = useState(false);
+
+  const currentWaveConfig = useMemo(() => {
+    return WAVE_CONFIGS[Math.min(wave - 1, WAVE_CONFIGS.length - 1)];
+  }, [wave]);
 
   const powerUps = useMemo(() => ({
     damageBoost: studentStats.average >= 16,
@@ -52,25 +66,45 @@ export default function SkinDefense() {
   // Game Loop: Spawn Enemies (Top to Bottom in col 1)
   useEffect(() => {
     if (gameOver) return;
-    const interval = setInterval(() => {
-        setEnemies(prev => [...prev, { id: Date.now(), r: -1, c: 1, health: 100 * (1 + wave * 0.2) }]);
-    }, 2000 - Math.min(1000, wave * 100));
-    return () => clearInterval(interval);
-  }, [gameOver, wave]);
+    
+    // Si on a spawn tous les ennemis de la vague et qu'il n'en reste plus à l'écran, on passe à la vague suivante
+    if (enemiesSpawnedInWave >= currentWaveConfig.count && enemies.length === 0) {
+        setWave(prev => prev + 1);
+        setEnemiesSpawnedInWave(0);
+        setGold(prev => prev + 50); // Bonus de fin de vague
+        return;
+    }
+
+    // Spawn d'ennemis
+    if (enemiesSpawnedInWave < currentWaveConfig.count) {
+        const interval = setInterval(() => {
+            setEnemies(prev => [...prev, { 
+                id: Date.now() + Math.random(), 
+                r: -1, 
+                c: 1, 
+                health: 100 * currentWaveConfig.healthMult,
+                maxHealth: 100 * currentWaveConfig.healthMult,
+                speed: 0.1 * currentWaveConfig.speedMult
+            }]);
+            setEnemiesSpawnedInWave(prev => prev + 1);
+        }, 2000 / currentWaveConfig.speedMult);
+        return () => clearInterval(interval);
+    }
+  }, [gameOver, wave, enemiesSpawnedInWave, enemies.length, currentWaveConfig]);
 
   // Update loop: Tower Attack & Movement
   useEffect(() => {
     if (gameOver) return;
     const loop = setInterval(() => {
         // Move enemies down column 1
-        setEnemies(prev => prev.map(e => ({...e, r: e.r + 0.1}))
+        setEnemies(prev => prev.map(e => ({...e, r: e.r + (e.speed || 0.1)}))
             .filter(e => {
                 if (e.r >= GRID_ROWS) {
                     setLives(l => {
                         const next = l - 1;
                         if (next <= 0) {
                             setGameOver(true);
-                            saveGameScore(session?.user?.id || '', GAME_KEY, score);
+                            saveGameScore(session?.user?.id || '', GAME_KEY, wave); // Score basé sur les vagues
                         }
                         return next;
                     });
@@ -85,7 +119,7 @@ export default function SkinDefense() {
             let newLasers: any[] = [];
             
             towers.forEach(t => {
-                // Tower at (r, c) targets enemies in range
+                // Tower at (r, c) targets enemies in range (2 cells)
                 const target = nextEnemies.find(e => Math.abs(e.r - t.r) <= 2 && Math.abs(e.c - t.c) <= 1);
                 if (target) {
                     target.health -= (powerUps.damageBoost ? 20 : 10);
@@ -98,19 +132,18 @@ export default function SkinDefense() {
 
             const killed = nextEnemies.filter(e => e.health <= 0).length;
             if (killed > 0) {
-                setScore(s => s + killed * 20);
-                if (score > 0 && score % 200 === 0) setWave(w => w + 1);
+                setGold(g => g + killed * 15);
             }
             return nextEnemies.filter(e => e.health > 0);
         });
     }, 200);
     return () => clearInterval(loop);
-  }, [gameOver, towers, powerUps, score, session]);
+  }, [gameOver, towers, powerUps, wave, session]);
 
   const placeTower = (r: number, c: number) => {
-    if (score < TOWER_COST || towers.find(t => t.r === r && t.c === c) || c === 1) return; // Path is col 1
+    if (gold < TOWER_COST || towers.find(t => t.r === r && t.c === c) || c === 1) return; 
     setTowers(prev => [...prev, { r, c }]);
-    setScore(s => s - TOWER_COST);
+    setGold(g => g - TOWER_COST);
   };
 
   const fetchLeaderboard = useCallback(async () => {
@@ -138,8 +171,8 @@ export default function SkinDefense() {
       </div>
 
       <div className="grid grid-cols-3 gap-2 mb-6 w-full max-w-xs">
-        <div className="bg-slate-900 border border-slate-800 p-2 rounded-2xl text-center"><div className="text-[8px] text-slate-500 uppercase font-bold">Gold</div><div className="text-lg font-black text-emerald-400">{score}</div></div>
-        <div className="bg-slate-900 border border-slate-800 p-2 rounded-2xl text-center"><div className="text-[8px] text-slate-500 uppercase font-bold">Wave</div><div className="text-lg font-black">{wave}</div></div>
+        <div className="bg-slate-900 border border-slate-800 p-2 rounded-2xl text-center"><div className="text-[8px] text-slate-500 uppercase font-bold">Or</div><div className="text-lg font-black text-emerald-400">{gold}</div></div>
+        <div className="bg-slate-900 border border-slate-800 p-2 rounded-2xl text-center"><div className="text-[8px] text-slate-500 uppercase font-bold">Vague</div><div className="text-lg font-black">{wave}</div></div>
         <div className="bg-slate-900 border border-slate-800 p-2 rounded-2xl text-center text-red-500"><div className="text-[8px] text-slate-500 uppercase font-bold">HP</div><div className="text-lg font-black">{lives}</div></div>
       </div>
 
@@ -162,7 +195,7 @@ export default function SkinDefense() {
                         ) : isPath ? (
                             <div className="w-1 h-1 bg-slate-800 rounded-full" />
                         ) : (
-                            <div className="text-[10px] font-bold text-slate-800 opacity-0 hover:opacity-100 uppercase">Buy</div>
+                            <div className="text-[10px] font-bold text-slate-800 opacity-0 hover:opacity-100 uppercase">Acheter</div>
                         )}
                     </div>
                 );
@@ -182,7 +215,7 @@ export default function SkinDefense() {
             >
                 🦠
                 <div className="absolute -top-2 left-1/2 -translate-x-1/2 w-8 h-1 bg-slate-800 rounded-full overflow-hidden">
-                    <div className="h-full bg-green-500" style={{ width: `${(e.health / (100 * (1 + wave * 0.2))) * 100}%` }} />
+                    <div className="h-full bg-green-500" style={{ width: `${(e.health / e.maxHealth) * 100}%` }} />
                 </div>
             </div>
         ))}
@@ -206,16 +239,17 @@ export default function SkinDefense() {
       </div>
       
       <div className="mt-8 text-center text-slate-500">
-        <p className="text-xs font-bold uppercase tracking-widest">Tap on the sides to place towers (50 Gold)</p>
+        <p className="text-xs font-bold uppercase tracking-widest text-emerald-600">Vague {wave} : {enemiesSpawnedInWave} / {currentWaveConfig.count} ennemis</p>
+        <p className="text-[9px] font-medium uppercase tracking-[0.2em] mt-1">Tapotez sur les côtés pour placer des tours (50 Or)</p>
       </div>
 
       {gameOver && (
         <div className="absolute inset-0 flex items-center justify-center bg-black/90 z-[200] backdrop-blur-md">
           <div className="text-center text-white p-10 bg-slate-900 border border-red-900/50 rounded-[3rem] shadow-2xl max-w-xs">
-            <h2 className="text-4xl font-black mb-2 text-red-600 uppercase italic">Infected!</h2>
-            <p className="text-slate-400 mb-8 font-bold uppercase tracking-widest text-xs">The skin has been compromised</p>
-            <div className="text-2xl font-black mb-8">SCORE: {score}</div>
-            <button onClick={() => window.location.reload()} className="w-full py-5 bg-red-600 hover:bg-red-500 rounded-2xl font-black uppercase tracking-widest shadow-[0_0_20px_rgba(220,38,38,0.4)] transition-all">Retry</button>
+            <h2 className="text-4xl font-black mb-2 text-red-600 uppercase italic">Infecté !</h2>
+            <p className="text-slate-400 mb-8 font-bold uppercase tracking-widest text-xs">La barrière cutanée a cédé</p>
+            <div className="text-2xl font-black mb-8 italic">VAGUE ATTEINTE : {wave}</div>
+            <button onClick={() => window.location.reload()} className="w-full py-5 bg-red-600 hover:bg-red-500 rounded-2xl font-black uppercase tracking-widest shadow-[0_0_20px_rgba(220,38,38,0.4)] transition-all">Recommencer</button>
           </div>
         </div>
       )}

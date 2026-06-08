@@ -100,18 +100,25 @@ export default function KatanaScissorsRunner() {
   useEffect(() => {
     if (gameStarted && !gameOver) {
         gameLoop.current = requestAnimationFrame(update);
+        
         const spawner = setInterval(() => {
-            const isEnemy = Math.random() > 0.4;
-            setObstacles(prev => [...prev, {
-                id: Date.now(),
-                type: isEnemy ? 'ENEMY' : 'COIN',
-                icon: isEnemy ? ENEMY_ICONS[Math.floor(Math.random() * ENEMY_ICONS.length)] : '⭐',
-                x: 110, 
-                y: Math.random() * 80 + 5
-            }]);
-        }, 800);
+            const isEnemy = Math.random() > 0.3; // 70% chance of enemy
+            setObstacles(prev => {
+                const newObstacle = {
+                    id: Date.now() + Math.random(),
+                    type: isEnemy ? 'ENEMY' : 'COIN',
+                    icon: isEnemy ? ENEMY_ICONS[Math.floor(Math.random() * ENEMY_ICONS.length)] : '⭐',
+                    x: 110, 
+                    y: Math.random() * 80 + 5
+                };
+                return [...prev, newObstacle];
+            });
+        }, 1200);
 
-        return () => { cancelAnimationFrame(gameLoop.current!); clearInterval(spawner); };
+        return () => { 
+            if (gameLoop.current) cancelAnimationFrame(gameLoop.current); 
+            clearInterval(spawner); 
+        };
     }
   }, [gameStarted, gameOver, update]);
 
