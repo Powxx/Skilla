@@ -15,11 +15,25 @@ const UPGRADE_COST = 150; // Augmenté de 100
 
 // Définition des vagues : nettement plus difficiles
 const WAVE_CONFIGS = [
-  { count: 10, healthMult: 1.5, speedMult: 1.2 },
-  { count: 15, healthMult: 2.5, speedMult: 1.4 },
-  { count: 20, healthMult: 4.0, speedMult: 1.6 },
-  { count: 25, healthMult: 7.0, speedMult: 1.8 },
+  { count: 5, healthMult: 1.5, speedMult: 1.2 },
+  { count: 10, healthMult: 2.5, speedMult: 1.4 },
+  { count: 15, healthMult: 4.0, speedMult: 1.6 },
+  { count: 20, healthMult: 7.0, speedMult: 1.8 },
   { count: 30, healthMult: 12.0, speedMult: 2.0 },
+  { count: 30, healthMult: 15.0, speedMult: 2.2 },
+  { count: 30, healthMult: 18.0, speedMult: 2.4 },
+  { count: 30, healthMult: 21.0, speedMult: 2.6 },
+  { count: 30, healthMult: 24.0, speedMult: 2.8 },
+  { count: 30, healthMult: 27.0, speedMult: 3.0 },
+  { count: 30, healthMult: 30.0, speedMult: 3.2 },
+  { count: 30, healthMult: 30.0, speedMult: 3.4 },
+  { count: 30, healthMult: 30.0, speedMult: 3.6 },
+  { count: 30, healthMult: 30.0, speedMult: 3.8 },
+  { count: 30, healthMult: 30.0, speedMult: 4.0 },
+  { count: 30, healthMult: 30.0, speedMult: 4.0 },
+  { count: 30, healthMult: 30.0, speedMult: 4.0 },
+  { count: 30, healthMult: 30.0, speedMult: 4.0 },
+  { count: 30, healthMult: 30.0, speedMult: 4.0 },
 ];
 
 export default function SkinDefense() {
