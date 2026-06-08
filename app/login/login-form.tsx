@@ -32,6 +32,14 @@ export default function LoginForm() {
   const [pending, setPending] = useState(false);
   const [success, setSuccess] = useState(false);
 
+  // Détection du paramètre reason=timeout
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("reason") === "timeout") {
+      setError("Votre session a expiré après une période d'inactivité.");
+    }
+  }, []);
+
   // Redirection automatique si déjà connecté
   useEffect(() => {
     if (status === "authenticated" && session?.user?.role) {
