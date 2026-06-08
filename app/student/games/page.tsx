@@ -13,7 +13,7 @@ const GAMES = [
   { id: 'ninja-intuition', name: 'Ninja Intuition', subject: 'Diagnostic', icon: '👁️', description: 'Identifiez les anomalies en un temps record.' },
   { id: 'haiku-scrabble', name: 'Haiku Scrabble', subject: 'Français', icon: '📜', description: 'Formez des mots pour compléter les haïkus.' },
   { id: 'koban-salon', name: 'Koban Salon', subject: 'Gestion', icon: '💰', description: 'Gérez les finances de votre salon Edo.' },
-  { id: 'silk-road', name: 'Silk Road Explorer', subject: 'Histoire-Géo', icon: '🗺️', description: 'Explorez l\'origine des rituels de beauté.' },
+  { id: 'silk-road', name: 'Silk Road Memory', subject: 'Histoire-Géo', icon: '🗺️', description: 'Mémorisez les cités impériales du Japon.', primary: true },
   { id: 'zen-connect', name: 'Zen Connect', subject: 'Informatique', icon: '🔌', description: 'Reliez les flux de données du salon.' },
   { id: 'abacus-dosages', name: 'Abacus Dosages', subject: 'Mathématiques', icon: '🧮', description: 'Calculez les mélanges sur un boulier.' },
   { id: 'katana-scissors', name: 'Katana Scissors', subject: 'EPS', icon: '⚔️', description: 'Sauter pour échapper aux méchants avec la précision du sabre.' , primary: true},
