@@ -25,6 +25,8 @@ export default function KatanaScissorsRunner() {
   const obstaclesRef = useRef<any[]>([]);
   const scoreRef = useRef(0);
   const livesRef = useRef(3);
+  const startTimeRef = useRef<number>(0);
+  const [speedMultiplier, setSpeedMultiplier] = useState(1);
   const frameIdRef = useRef<number | null>(null);
   const lastTimeRef = useRef<number>(0);
 
@@ -79,6 +81,11 @@ export default function KatanaScissorsRunner() {
     if (!visualState.gameStarted || visualState.gameOver) return;
 
     // Delta time could be used for frame-independent movement, but for simplicity we use constant steps
+    // Update Speed Multiplier every 5 seconds
+    const elapsed = (Date.now() - startTimeRef.current) / 1000;
+    const newMultiplier = 1 + Math.floor(elapsed / 5) * 0.1;
+    if (newMultiplier !== speedMultiplier) setSpeedMultiplier(newMultiplier);
+
     // Apply Physics
     velocityRef.current += GRAVITY;
     playerYRef.current += velocityRef.current;
@@ -99,7 +106,7 @@ export default function KatanaScissorsRunner() {
     
     for (let i = 0; i < currentObstacles.length; i++) {
         const o = currentObstacles[i];
-        o.x -= OBSTACLE_SPEED;
+        o.x -= OBSTACLE_SPEED * speedMultiplier;
 
         // Collision Check
         const distX = Math.abs(o.x - SCISSORS_X);
@@ -184,6 +191,8 @@ export default function KatanaScissorsRunner() {
     playerYRef.current = 50;
     velocityRef.current = 0;
     obstaclesRef.current = [];
+    startTimeRef.current = Date.now();
+    setSpeedMultiplier(1);
     setVisualState({
         playerY: 50,
         obstacles: [],
