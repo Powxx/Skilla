@@ -60,47 +60,41 @@ export default function KatanaScissorsRunner() {
   };
 
   // Update loop
-    const update = useCallback(() => {
-        if (!gameStarted || gameOver) return;
+  const update = useCallback(() => {
+      if (!gameStarted || gameOver) return;
 
-        // Gravity
-        setVelocity(v => v + 0.18);
-        setScissorsY(y => Math.max(0, Math.min(90, y + velocity)));
+      // Apply Gravity to player Y
+      setVelocity(v => v + 0.18);
+      setScissorsY(y => Math.max(0, Math.min(90, y + velocity)));
 
-        // Move obstacles
-        setObstacles(prev => {
-            const next = prev.map(o => ({...o, x: o.x - 1.2}));
-            return next.filter(o => o.x > -15);
-        });
+      // Move obstacles and handle collision in one state update
+      setObstacles(prev => {
+          return prev
+              .map(o => ({...o, x: o.x - 1.2}))
+              .filter(o => {
+                  // Collision Check
+                  const isCollision = Math.abs(o.x - SCISSORS_X) < 6 && Math.abs(o.y - scissorsY) < 8;
+                  if (isCollision) {
+                      if (o.type === 'ENEMY') {
+                          setLives(l => {
+                              const next = l - 1;
+                              if (next <= 0) {
+                                  setGameOver(true);
+                                  saveGameScore(session?.user?.id || '', GAME_KEY, score);
+                              }
+                              return next;
+                          });
+                      } else if (o.type === 'COIN') {
+                          setScore(s => s + 20);
+                      }
+                      return false; // Remove on hit
+                  }
+                  return o.x > -15; // Keep if on screen
+              });
+      });
 
-        // Collision detection
-        setObstacles(prev => {
-            let hit = false;
-            const remaining = prev.filter(o => {
-                const isCollision = Math.abs(o.x - SCISSORS_X) < 6 && Math.abs(o.y - scissorsY) < 8;
-                if (isCollision) {
-                    if (o.type === 'ENEMY') {
-                        setLives(l => {
-                            const next = l - 1;
-                            if (next <= 0) {
-                                setGameOver(true);
-                                saveGameScore(session?.user?.id || '', GAME_KEY, score);
-                            }
-                            return next;
-                        });
-                    } else if (o.type === 'COIN') {
-                        setScore(s => s + 20);
-                    }
-                    return false; // Remove item
-                }
-                return true;
-            });
-            return remaining;
-        });
-
-        gameLoop.current = requestAnimationFrame(update);
-    }, [gameStarted, gameOver, velocity, scissorsY, score, session]);
-
+      gameLoop.current = requestAnimationFrame(update);
+  }, [gameStarted, gameOver, velocity, scissorsY, score, session]);
     // Spawner
     useEffect(() => {
         if (gameStarted && !gameOver) {
