@@ -1,111 +1,136 @@
 "use client";
 
-import React, { useState, useTransition } from 'react';
+import React, { useState, useTransition, useMemo } from 'react';
 import { addTeacherAvailability, deleteTeacherAvailability } from './actions';
-import { Trash2, Plus, Clock } from 'lucide-react';
+import { Trash2, Plus, Clock, ChevronLeft, ChevronRight, Check } from 'lucide-react';
 
 const DAYS = ["Dimanche", "Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi"];
+const HOURS = Array.from({ length: 12 }, (_, i) => i + 8); // 8h to 19h
 
 export default function TeacherAvailabilityClient({ teachers, initialAvailabilities }: any) {
+  const [selectedTeacherId, setSelectedTeacherId] = useState(teachers[0]?.id || '');
   const [isPending, startTransition] = useTransition();
-  const [form, setForm] = useState({ teacherId: '', dayOfWeek: 1, startTime: '08:00', endTime: '17:00' });
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!form.teacherId) return;
+  const teacherAvailabilities = useMemo(() => {
+    return initialAvailabilities.filter((a: any) => a.teacherId === selectedTeacherId);
+  }, [initialAvailabilities, selectedTeacherId]);
+
+  const toggleSlot = (dayOfWeek: number, hour: number) => {
+    if (!selectedTeacherId) return;
+
+    const startTime = `${hour.toString().padStart(2, '0')}:00`;
+    const endTime = `${(hour + 1).toString().padStart(2, '0')}:00`;
+
+    const existing = teacherAvailabilities.find((a: any) => 
+      a.dayOfWeek === dayOfWeek && a.startTime === startTime
+    );
+
     startTransition(async () => {
-      await addTeacherAvailability(form.teacherId, form.dayOfWeek, form.startTime, form.endTime);
+      if (existing) {
+        await deleteTeacherAvailability(existing.id);
+      } else {
+        await addTeacherAvailability(selectedTeacherId, dayOfWeek, startTime, endTime);
+      }
     });
   };
 
+  const isSlotSelected = (dayOfWeek: number, hour: number) => {
+    const startTime = `${hour.toString().padStart(2, '0')}:00`;
+    return teacherAvailabilities.some((a: any) => a.dayOfWeek === dayOfWeek && a.startTime === startTime);
+  };
+
   return (
-    <div className="space-y-12">
-      <form onSubmit={handleSubmit} className="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm grid gap-6 md:grid-cols-5 items-end">
-        <div className="md:col-span-2">
-          <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2 block ml-1">1. Professeur</label>
-          <select 
-            className="w-full rounded-2xl border-slate-200 text-sm font-bold h-12 focus:ring-slate-900"
-            value={form.teacherId}
-            onChange={e => setForm({...form, teacherId: e.target.value})}
-          >
-            <option value="">Sélectionner...</option>
-            {teachers.map((t: any) => <option key={t.id} value={t.id}>{t.lastName} {t.firstName}</option>)}
-          </select>
-        </div>
-        <div>
-          <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2 block ml-1">2. Jour</label>
-          <select 
-            className="w-full rounded-2xl border-slate-200 text-sm font-bold h-12 focus:ring-slate-900"
-            value={form.dayOfWeek}
-            onChange={e => setForm({...form, dayOfWeek: parseInt(e.target.value)})}
-          >
-            {[1,2,3,4,5,6,0].map(d => <option key={d} value={d}>{DAYS[d]}</option>)}
-          </select>
-        </div>
-        <div className="grid grid-cols-2 gap-2">
-           <div>
-              <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2 block ml-1">Début</label>
-              <input 
-                type="time" 
-                className="w-full rounded-2xl border-slate-200 text-sm font-bold h-12 focus:ring-slate-900"
-                value={form.startTime}
-                onChange={e => setForm({...form, startTime: e.target.value})}
-              />
-           </div>
-           <div>
-              <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2 block ml-1">Fin</label>
-              <input 
-                type="time" 
-                className="w-full rounded-2xl border-slate-200 text-sm font-bold h-12 focus:ring-slate-900"
-                value={form.endTime}
-                onChange={e => setForm({...form, endTime: e.target.value})}
-              />
-           </div>
-        </div>
-        <button 
-          disabled={isPending}
-          className="bg-slate-900 text-white h-12 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-800 transition disabled:opacity-50 flex items-center justify-center gap-2"
-        >
-          <Plus className="h-4 w-4" />
-          {isPending ? "Ajout..." : "Ajouter"}
-        </button>
-      </form>
+    <div className="space-y-8">
+      {/* Teacher Selector */}
+      <div className="bg-white p-6 rounded-[2.5rem] border border-slate-200 shadow-sm flex flex-col md:flex-row justify-between items-center gap-6">
+         <div className="flex items-center gap-4">
+            <div className="h-12 w-12 rounded-2xl bg-slate-900 flex items-center justify-center text-white shadow-xl shadow-slate-200">
+               <Clock className="h-6 w-6" />
+            </div>
+            <div>
+               <h3 className="text-sm font-black uppercase tracking-widest text-slate-900">Planning de Disponibilité</h3>
+               <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Cliquez sur les cases pour définir les créneaux</p>
+            </div>
+         </div>
 
-      <div className="grid gap-6 md:grid-cols-2">
-         {teachers.map((teacher: any) => {
-            const teacherAvails = initialAvailabilities.filter((a: any) => a.teacherId === teacher.id);
-            if (teacherAvails.length === 0) return null;
+         <select 
+           className="w-full md:w-64 h-12 rounded-2xl border-slate-200 text-sm font-black focus:ring-slate-900 bg-slate-50"
+           value={selectedTeacherId}
+           onChange={e => setSelectedTeacherId(e.target.value)}
+         >
+           <option value="" disabled>Sélectionner un professeur</option>
+           {teachers.map((t: any) => <option key={t.id} value={t.id}>{t.lastName} {t.firstName}</option>)}
+         </select>
+      </div>
 
-            return (
-               <div key={teacher.id} className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden flex flex-col">
-                  <div className="p-6 bg-slate-50 border-b border-slate-100">
-                     <h3 className="font-black text-slate-900 uppercase tracking-tight">{teacher.lastName} {teacher.firstName}</h3>
-                  </div>
-                  <div className="p-6 space-y-3 flex-1">
-                     {teacherAvails.map((avail: any) => (
-                        <div key={avail.id} className="flex justify-between items-center p-3 bg-white rounded-2xl border border-slate-100 group hover:border-blue-200 transition-colors shadow-sm">
-                           <div className="flex items-center gap-4">
-                              <div className="h-10 w-10 rounded-xl bg-blue-50 flex items-center justify-center text-blue-600">
-                                 <Clock className="h-5 w-5" />
-                              </div>
-                              <div>
-                                 <p className="text-xs font-black text-slate-900 uppercase">{DAYS[avail.dayOfWeek]}</p>
-                                 <p className="text-[10px] font-bold text-slate-400">{avail.startTime} — {avail.endTime}</p>
-                              </div>
-                           </div>
-                           <button 
-                             onClick={() => startTransition(() => deleteTeacherAvailability(avail.id))}
-                             className="p-2 text-slate-300 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all"
-                           >
-                             <Trash2 className="h-4 w-4" />
-                           </button>
-                        </div>
-                     ))}
-                  </div>
+      {/* Calendar Grid */}
+      <div className="bg-white rounded-[3rem] border border-slate-200 shadow-xl overflow-hidden">
+         <div className="grid grid-cols-8 border-b border-slate-100">
+            <div className="p-4 bg-slate-50 border-r border-slate-100"></div>
+            {[1,2,3,4,5,6].map(d => (
+               <div key={d} className="p-4 text-center bg-slate-50 border-r border-slate-100 last:border-r-0">
+                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">{DAYS[d].substring(0, 3)}</p>
                </div>
-            );
-         })}
+            ))}
+         </div>
+
+         <div className="relative">
+            {HOURS.map(hour => (
+               <div key={hour} className="grid grid-cols-8 border-b border-slate-50 last:border-b-0 group">
+                  <div className="p-4 text-right pr-6 bg-slate-50/50 border-r border-slate-100 flex items-center justify-end">
+                     <span className="text-[10px] font-black text-slate-400 uppercase">{hour}h</span>
+                  </div>
+                  {[1,2,3,4,5,6].map(day => {
+                     const selected = isSlotSelected(day, hour);
+                     return (
+                        <div 
+                          key={day} 
+                          onClick={() => toggleSlot(day, hour)}
+                          className={`
+                            h-16 border-r border-slate-50 last:border-r-0 cursor-pointer transition-all relative flex items-center justify-center
+                            ${selected ? 'bg-blue-600 shadow-inner' : 'hover:bg-blue-50'}
+                          `}
+                        >
+                           {selected && (
+                              <div className="animate-in zoom-in-50 duration-300">
+                                 <Check className="h-5 w-5 text-white stroke-[4px]" />
+                              </div>
+                           )}
+                           {isPending && !selected && <div className="absolute inset-0 bg-white/50 animate-pulse" />}
+                        </div>
+                     );
+                  })}
+               </div>
+            ))}
+         </div>
+      </div>
+
+      {/* Legend */}
+      <div className="flex justify-center gap-8 items-center bg-slate-900 p-6 rounded-[2rem] text-white">
+         <div className="flex items-center gap-3">
+            <div className="h-4 w-4 rounded-md bg-blue-600"></div>
+            <span className="text-[10px] font-black uppercase tracking-widest">Disponible</span>
+         </div>
+         <div className="flex items-center gap-3">
+            <div className="h-4 w-4 rounded-md bg-white/10 border border-white/20"></div>
+            <span className="text-[10px] font-black uppercase tracking-widest">Indisponible</span>
+         </div>
+         {isPending && (
+            <div className="flex items-center gap-2 text-blue-400">
+               <RotateCw className="h-4 w-4 animate-spin" />
+               <span className="text-[10px] font-black uppercase tracking-widest">Mise à jour...</span>
+            </div>
+         )}
       </div>
     </div>
+  );
+}
+
+function RotateCw({ className }: { className?: string }) {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+      <path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8" />
+      <path d="M21 3v5h-5" />
+    </svg>
   );
 }
