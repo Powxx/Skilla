@@ -29,7 +29,11 @@ export const getGlobalSettings = unstable_cache(
 );
 
 export async function updateGlobalSetting(key: string, value: string) {
-  await prisma.globalSetting.update({ where: { key }, data: { value } });
+  await prisma.globalSetting.upsert({
+    where: { key },
+    update: { value },
+    create: { key, value }
+  });
   revalidateTag("global-settings", { expire: 0 });
 }
 

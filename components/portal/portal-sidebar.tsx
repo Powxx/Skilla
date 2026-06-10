@@ -31,9 +31,10 @@ type Props = {
   variant: "prof" | "student" | "parent" | "admin" | "employer";
   resolvedChildId?: string;
   schoolName?: string;
+  arcadeEnabled?: boolean;
 };
 
-export default function PortalSidebar({ variant, resolvedChildId, schoolName = "Skilla" }: Props) {
+export default function PortalSidebar({ variant, resolvedChildId, schoolName = "Skilla", arcadeEnabled = true }: Props) {
   const pathname = usePathname() ?? "";
   const [isOpen, setIsOpen] = useState(false);
 
@@ -70,8 +71,12 @@ export default function PortalSidebar({ variant, resolvedChildId, schoolName = "
       navItems.push(
         { href: "/student/dashboard", label: "Synthèse", icon: LayoutDashboard },
         { href: "/student/planning", label: "Emploi du temps", icon: Calendar },
-        { href: "/student/grades", label: "Notes", icon: GraduationCap },
-        { href: "/student/games", label: "Arcade", icon: Gamepad2 },
+        { href: "/student/grades", label: "Notes", icon: GraduationCap }
+      );
+      if (arcadeEnabled) {
+        navItems.push({ href: "/student/games", label: "Arcade", icon: Gamepad2 });
+      }
+      navItems.push(
         { href: "/student/livret", label: "Livret", icon: BookOpen },
         { href: "/student/absences", label: "Absences", icon: Clock },
         { href: "/settings/password", label: "Mot de passe", icon: Key }

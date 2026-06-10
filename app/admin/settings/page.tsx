@@ -30,6 +30,11 @@ export default async function AdminSettingsPage() {
     }),
   ]);
 
+  const settingsMap = (globalSettings || []).reduce((acc: any, curr: any) => {
+    acc[curr.key] = curr.value;
+    return acc;
+  }, {});
+
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900">
       <div className="mx-auto max-w-5xl">
@@ -56,7 +61,7 @@ export default async function AdminSettingsPage() {
           initialSemesters={semesters} 
           initialNotificationConfigs={notificationConfigs}
           initialHolidays={holidays}
-          globalSettings={globalSettings}
+          globalSettings={settingsMap}
           teachers={teachers}
         />
       </div>

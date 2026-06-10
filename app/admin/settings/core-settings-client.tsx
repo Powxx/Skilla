@@ -42,10 +42,20 @@ export default function CoreSettingsClient({
   const [schoolEmail, setSchoolEmail] = useState(globalSettings.SCHOOL_EMAIL || "");
   const [schoolWebsite, setSchoolWebsite] = useState(globalSettings.SCHOOL_WEBSITE || "");
 
+  // Platform Options
+  const [enableArcade, setEnableArcade] = useState(globalSettings.ENABLE_ARCADE !== "false");
+
   // Sync with props
   useEffect(() => {
     setTeacherList(teachers);
   }, [teachers]);
+
+  const handleUpdateOptions = async (key: string, value: string) => {
+    setLoading(true);
+    await updateGlobalSetting(key, value);
+    setLoading(false);
+    router.refresh();
+  };
 
   const handleUpdateLunch = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -216,6 +226,12 @@ export default function CoreSettingsClient({
           className={`px-5 py-3 text-[10px] font-black uppercase tracking-widest transition whitespace-nowrap ${activeTab === 'notifications' ? 'text-blue-600 border-b-2 border-blue-600 bg-white' : 'text-slate-400 hover:text-slate-600'}`}
         >
           Notifications ({initialNotificationConfigs.length})
+        </button>
+        <button 
+          onClick={() => setActiveTab('options')}
+          className={`px-5 py-3 text-[10px] font-black uppercase tracking-widest transition whitespace-nowrap ${activeTab === 'options' ? 'text-blue-600 border-b-2 border-blue-600 bg-white' : 'text-slate-400 hover:text-slate-600'}`}
+        >
+          Options
         </button>
         <button 
           onClick={() => setActiveTab('planning')}
@@ -534,6 +550,52 @@ export default function CoreSettingsClient({
                   <div className="absolute top-0 left-0 w-1 h-full bg-blue-500 opacity-10 group-hover:opacity-100 transition"></div>
                 </div>
               ))}
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'options' && (
+          <div className="space-y-6 max-w-2xl">
+            <div className="bg-slate-900 rounded-3xl p-8 text-white relative overflow-hidden">
+               <div className="absolute top-0 right-0 w-64 h-64 bg-emerald-500/10 blur-3xl -mr-20 -mt-20 rounded-full"></div>
+               <div className="relative z-10">
+                 <h3 className="text-xl font-black uppercase tracking-widest mb-2">Options de la Plateforme</h3>
+                 <p className="text-slate-400 text-xs font-medium leading-relaxed max-w-md">
+                   Activez ou désactivez les modules optionnels de la plateforme pour tous les utilisateurs.
+                 </p>
+               </div>
+            </div>
+
+            <div className="grid gap-4">
+              <div className="p-6 rounded-2xl border border-slate-200 bg-white shadow-sm flex items-center justify-between group hover:border-blue-100 transition">
+                <div className="flex items-center gap-4">
+                  <div className="h-12 w-12 rounded-xl bg-blue-50 flex items-center justify-center text-blue-600">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-6 h-6">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M15.59 14.37a6 6 0 01-5.84 7.38v-4.8m5.84-2.58a14.98 14.98 0 006.16-12.12A14.98 14.98 0 009.631 8.41m5.96 5.96a14.926 14.926 0 01-5.841 2.58m-.119-8.54a6 6 0 00-7.381 5.84h4.8m2.581-5.84a14.927 14.927 0 00-2.58 5.84m2.699 2.7c-.103.021-.207.041-.311.06a15.09 15.09 0 01-2.448-2.448 14.9 14.9 0 01.06-.312m-2.24 2.39a4.493 4.493 0 00-1.757 4.306 4.493 4.493 0 004.306-1.758M16.5 9a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-black text-slate-900 uppercase tracking-widest">Module Arcade</h4>
+                    <p className="text-xs text-slate-500 font-medium">Jeux et gamification pour les étudiants.</p>
+                  </div>
+                </div>
+                
+                <button
+                  onClick={() => {
+                    const newValue = !enableArcade;
+                    setEnableArcade(newValue);
+                    handleUpdateOptions("ENABLE_ARCADE", String(newValue));
+                  }}
+                  disabled={loading}
+                  className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition shadow-sm ${
+                    enableArcade 
+                      ? 'bg-emerald-500 text-white hover:bg-emerald-600 shadow-emerald-500/20' 
+                      : 'bg-slate-200 text-slate-500 hover:bg-slate-300'
+                  }`}
+                >
+                  {enableArcade ? 'Activé' : 'Désactivé'}
+                </button>
+              </div>
             </div>
           </div>
         )}
