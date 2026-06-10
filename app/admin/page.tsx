@@ -2,6 +2,21 @@ import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import AdminMeetingsManager from "@/components/admin/admin-meetings-manager";
 import { getGlobalSettings } from "@/app/actions/settings";
+import { 
+  Users, 
+  Settings, 
+  DoorOpen, 
+  Calendar, 
+  FileWarning, 
+  ShieldCheck, 
+  HeartHandshake, 
+  Home, 
+  ArrowRight,
+  Briefcase,
+  GraduationCap,
+  ClipboardList,
+  LayoutDashboard
+} from "lucide-react";
 
 export const dynamic = 'force-dynamic';
 
@@ -22,77 +37,142 @@ export default async function AdminHomePage() {
 
   const schoolName = globalSettings.find(s => s.key === "SCHOOL_NAME")?.value || "ECM Academie";
 
+  const mainActions = [
+    { href: "/admin/settings", label: "Configuration", sub: "Core system & options", icon: Settings, color: "text-blue-600", bg: "bg-blue-50" },
+    { href: "/admin/users", label: "Utilisateurs", sub: "Élèves, profs, admins", icon: Users, color: "text-indigo-600", bg: "bg-indigo-50" },
+    { href: "/admin/planning", label: "Emploi du temps", sub: "Gérer le calendrier", icon: Calendar, color: "text-emerald-600", bg: "bg-emerald-50" },
+    { href: "/admin/rooms", label: "Salles", sub: "Capacité & ressources", icon: DoorOpen, color: "text-amber-600", bg: "bg-amber-50" },
+  ];
+
+  const pedagogieActions = [
+    { href: "/admin/livret", label: "Livrets", sub: "Suivi & Exploitation", icon: ClipboardList, color: "text-rose-600", bg: "bg-rose-50" },
+    { href: "/admin/absences", label: "Absences", icon: FileWarning, color: "text-orange-600", bg: "bg-orange-50" },
+    { href: "/admin/dispenses", label: "Dispenses", icon: ShieldCheck, color: "text-red-600", bg: "bg-red-50" },
+    { href: "/admin/report-cards", label: "Bulletins", icon: GraduationCap, color: "text-violet-600", bg: "bg-violet-50" },
+  ];
+
+  const relationsActions = [
+    { href: "/admin/hr", label: "Gestion RH", sub: "Contrats & Paie", icon: Briefcase, color: "text-slate-600", bg: "bg-slate-50" },
+    { href: "/admin/relations/families", label: "Familles", icon: Home, color: "text-cyan-600", bg: "bg-cyan-50" },
+    { href: "/admin/relations/contracts", label: "Alternance", icon: HeartHandshake, color: "text-teal-600", bg: "bg-teal-50" },
+    { href: "/admin/recap", label: "Récapitulatif", icon: LayoutDashboard, color: "text-slate-900", bg: "bg-slate-100" },
+  ];
+
   return (
-    <div className="h-full flex flex-col gap-6 font-sans text-slate-900">
-      <header className="flex flex-col sm:flex-row justify-between items-center gap-4 shrink-0">
+    <div className="h-full flex flex-col gap-8 font-sans text-slate-900 animate-in fade-in slide-in-from-bottom-4 duration-700">
+      <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6 shrink-0">
         <div>
-           <h1 className="text-xl font-black tracking-tight text-slate-900 uppercase tracking-widest">Pilotage Administratif</h1>
-           <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">Gestion globale de la {schoolName}</p>
+           <div className="flex items-center gap-3 mb-1">
+              <span className="h-8 w-8 rounded-xl bg-slate-900 flex items-center justify-center text-white shadow-xl shadow-slate-900/20">
+                 <ShieldCheck className="h-5 w-5" />
+              </span>
+              <h1 className="text-2xl font-black tracking-tight text-slate-900 uppercase tracking-widest">Pilotage Administratif</h1>
+           </div>
+           <p className="text-xs text-slate-400 font-bold uppercase tracking-widest ml-11">Gestion globale de la {schoolName}</p>
         </div>
-        <div className="flex gap-2">
-           <Link href="/admin/impersonate" className="px-3 py-1.5 bg-white border border-slate-200 rounded-xl text-[10px] font-black text-slate-400 uppercase tracking-widest hover:text-slate-900 transition shadow-sm">
+        <div className="flex gap-3">
+           <Link href="/admin/impersonate" className="group flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-2xl text-[10px] font-black text-slate-500 uppercase tracking-widest hover:text-slate-900 hover:border-slate-900 transition-all shadow-sm active:scale-95">
+             <Users className="h-3.5 w-3.5 group-hover:scale-110 transition-transform" />
              Impersonnalisation
            </Link>
         </div>
       </header>
 
-      <div className="flex-1 grid gap-6 lg:grid-cols-12 min-h-0">
-        <div className="lg:col-span-8 overflow-y-auto pr-2 custom-scrollbar space-y-6">
-           {/* Combined Operation Bloc */}
-           <section className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
-             <h2 className="text-[10px] font-black text-slate-900 uppercase tracking-[0.2em] mb-4 flex items-center gap-2">
-                <span className="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
-                Gestion Opérationnelle
-             </h2>
-             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                <Link href="/admin/settings" className="p-3 rounded-xl bg-blue-50 border border-blue-100 hover:bg-blue-100 transition text-[10px] font-black text-blue-900 uppercase tracking-tighter text-center">Config Core</Link>
-                <Link href="/admin/users" className="p-3 rounded-xl bg-slate-50 border border-slate-100 hover:bg-slate-100 transition text-[10px] font-black text-slate-700 uppercase tracking-tighter text-center">Utilisateurs</Link>
-                <Link href="/admin/rooms" className="p-3 rounded-xl bg-slate-50 border border-slate-100 hover:bg-slate-100 transition text-[10px] font-black text-slate-700 uppercase tracking-tighter text-center">Salles</Link>
-                <Link href="/admin/planning" className="p-3 rounded-xl bg-slate-50 border border-slate-100 hover:bg-slate-100 transition text-[10px] font-black text-slate-700 uppercase tracking-tighter text-center">Emploi du temps</Link>
-                <Link href="/admin/dispenses" className="p-3 rounded-xl bg-red-50 border border-red-100 hover:bg-red-100 transition text-[10px] font-black text-red-900 uppercase tracking-tighter text-center">Gestion des Dispenses</Link>
-                <Link href="/admin/hr" className="p-3 rounded-xl bg-slate-50 border border-slate-100 hover:bg-slate-100 transition text-[10px] font-black text-slate-700 uppercase tracking-tighter text-center">Gestion RH</Link>
-                <Link href="/admin/teachers/subjects" className="p-3 rounded-xl bg-amber-50 border border-amber-100 hover:bg-amber-100 transition text-[10px] font-black text-amber-900 uppercase tracking-tighter text-center">Habilitations Profs</Link>
-             </div>
-           </section>
-
-           <section className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
-              <h2 className="text-[10px] font-black text-slate-900 uppercase tracking-[0.2em] mb-4 flex items-center gap-2">
-                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                 Liaisons & Suivi
-              </h2>
-              <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
-                 <Link href="/admin/relations/families" className="p-3 rounded-xl bg-emerald-50/50 border border-emerald-100 hover:bg-emerald-100 transition">
-                    <p className="text-[10px] font-black text-emerald-900 uppercase tracking-tighter">Familles</p>
-                 </Link>
-                 <Link href="/admin/relations/contracts" className="p-3 rounded-xl bg-slate-50 border border-slate-100 hover:bg-slate-100 transition">
-                    <p className="text-[10px] font-black text-slate-700 uppercase tracking-tighter">Alternance</p>
-                 </Link>
-                 <Link href="/admin/recap" className="p-3 rounded-xl bg-indigo-50 border border-indigo-100 hover:bg-indigo-100 transition flex items-center justify-center">
-                    <p className="text-[10px] font-black text-indigo-900 uppercase tracking-widest">Récapitulatif</p>
-                 </Link>
-                 <Link href="/admin/recap/competencies" className="p-3 rounded-xl bg-violet-50 border border-violet-100 hover:bg-violet-100 transition flex items-center justify-center">
-                    <p className="text-[10px] font-black text-violet-900 uppercase tracking-widest">Compétences</p>
-                 </Link>
+      <div className="flex-1 grid gap-8 lg:grid-cols-12 min-h-0">
+        <div className="lg:col-span-8 overflow-y-auto pr-2 custom-scrollbar space-y-8">
+           
+           {/* Section 1: Opérations Core */}
+           <section className="space-y-4">
+              <h2 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] ml-1">Fondamentaux Système</h2>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {mainActions.map((action) => (
+                  <Link key={action.href} href={action.href} className="group flex items-center justify-between p-5 bg-white rounded-3xl border border-slate-200 shadow-sm hover:shadow-xl hover:border-blue-200 transition-all duration-300">
+                    <div className="flex items-center gap-4">
+                      <div className={`h-12 w-12 rounded-2xl ${action.bg} ${action.color} flex items-center justify-center transition-transform group-hover:scale-110 group-hover:rotate-3`}>
+                        <action.icon className="h-6 w-6" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-black text-slate-900 uppercase tracking-tight">{action.label}</p>
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter mt-0.5">{action.sub}</p>
+                      </div>
+                    </div>
+                    <ArrowRight className="h-5 w-5 text-slate-200 group-hover:text-blue-500 transition-all group-hover:translate-x-1" />
+                  </Link>
+                ))}
               </div>
            </section>
+
+           {/* Section 2: Pédagogie & Suivi */}
+           <section className="space-y-4">
+              <h2 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] ml-1">Scolarité & Pédagogie</h2>
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                {pedagogieActions.map((action) => (
+                  <Link key={action.href} href={action.href} className="group flex flex-col items-center justify-center p-6 bg-white rounded-3xl border border-slate-200 shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all duration-300 text-center">
+                    <div className={`h-12 w-12 rounded-2xl ${action.bg} ${action.color} flex items-center justify-center mb-4 transition-transform group-hover:rotate-6`}>
+                      <action.icon className="h-6 w-6" />
+                    </div>
+                    <p className="text-[10px] font-black text-slate-900 uppercase tracking-widest">{action.label}</p>
+                  </Link>
+                ))}
+              </div>
+           </section>
+
+           {/* Section 3: Relations & RH */}
+           <section className="space-y-4">
+              <h2 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] ml-1">RH & Relations Externes</h2>
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                {relationsActions.map((action) => (
+                  <Link key={action.href} href={action.href} className="group flex flex-col items-center justify-center p-6 bg-white rounded-3xl border border-slate-200 shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all duration-300 text-center">
+                    <div className={`h-12 w-12 rounded-2xl ${action.bg} ${action.color} flex items-center justify-center mb-4 transition-transform group-hover:-rotate-6`}>
+                      <action.icon className="h-6 w-6" />
+                    </div>
+                    <p className="text-[10px] font-black text-slate-900 uppercase tracking-widest">{action.label}</p>
+                  </Link>
+                ))}
+              </div>
+           </section>
+
+           <div className="h-8"></div>
         </div>
 
         {/* Action Feed (Column 4) */}
-        <div className="lg:col-span-4 flex flex-col gap-6 min-h-0 bg-slate-50/50 rounded-2xl border border-slate-200 p-4">
-           <h2 className="text-[10px] font-black text-slate-900 uppercase tracking-[0.2em]">Flux d'Actions</h2>
-           <div className="flex-1 overflow-y-auto space-y-4">
-              <AdminMeetingsManager initialMeetings={pendingMeetings} />
+        <div className="lg:col-span-4 flex flex-col gap-6 min-h-0 bg-slate-900 rounded-[2.5rem] p-6 shadow-2xl shadow-slate-200">
+           <div className="flex items-center justify-between mb-2">
+              <h2 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em]">Flux d'Actions</h2>
+              <span className="flex h-2 w-2 rounded-full bg-emerald-500 animate-ping"></span>
+           </div>
+           
+           <div className="flex-1 overflow-y-auto space-y-6 custom-scrollbar pr-2">
+              <div className="bg-white/5 backdrop-blur-xl rounded-3xl p-1 border border-white/10">
+                 <AdminMeetingsManager initialMeetings={pendingMeetings} />
+              </div>
               
               {pendingSubs.length > 0 && (
-                <div className="bg-orange-50 border border-orange-100 p-4 rounded-xl">
-                  <h3 className="text-[9px] font-black uppercase tracking-widest text-orange-800 mb-3">Remplacements ({pendingSubs.length})</h3>
-                  {pendingSubs.map(sub => (
-                    <div key={sub.id} className="text-xs p-2 bg-white rounded border border-orange-100 mb-2">
-                        {sub.originalTeacher.firstName} {sub.originalTeacher.lastName}
-                    </div>
-                  ))}
+                <div className="bg-orange-500/10 border border-orange-500/20 p-5 rounded-[2rem]">
+                  <h3 className="text-[10px] font-black uppercase tracking-widest text-orange-400 mb-4 flex items-center gap-2">
+                     <FileWarning className="h-4 w-4" />
+                     Remplacements ({pendingSubs.length})
+                  </h3>
+                  <div className="space-y-2">
+                    {pendingSubs.map(sub => (
+                      <div key={sub.id} className="text-[11px] font-bold p-3 bg-white/5 text-orange-200 rounded-2xl border border-white/5 hover:bg-white/10 transition-colors">
+                          {sub.originalTeacher.firstName} {sub.originalTeacher.lastName}
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
+
+              {/* Quick Info Card */}
+              <div className="mt-auto bg-blue-600 rounded-[2rem] p-6 text-white overflow-hidden relative group cursor-help">
+                 <div className="absolute -right-4 -top-4 h-24 w-24 bg-blue-400/20 rounded-full blur-2xl group-hover:scale-150 transition-transform duration-700"></div>
+                 <h4 className="text-[10px] font-black uppercase tracking-[0.2em] opacity-60 mb-2">Statut Serveur</h4>
+                 <div className="flex items-center gap-2">
+                    <div className="h-1.5 w-1.5 rounded-full bg-emerald-400"></div>
+                    <p className="text-sm font-black uppercase">Système Nominal</p>
+                 </div>
+                 <p className="text-[9px] font-bold opacity-60 mt-3 uppercase leading-relaxed tracking-wider">Toutes les synchronisations sont à jour.</p>
+              </div>
            </div>
         </div>
       </div>

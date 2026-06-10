@@ -27,7 +27,12 @@ export default function ClassCompetenciesClient({ initialClasses, initialCompete
 
   const handleImportCSV = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file || !activeImportClassId) return;
+    if (!file) return;
+
+    if (!activeImportClassId) {
+      handleGlobalImport(e);
+      return;
+    }
 
     Papa.parse(file, {
       header: true,
@@ -44,22 +49,75 @@ export default function ClassCompetenciesClient({ initialClasses, initialCompete
             await createClassCompetency(comp);
           }
           setActiveImportClassId(null);
+          alert("Importation terminée.");
         });
       }
     });
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!form.classId || !form.name) return;
-    startTransition(async () => {
-      await createClassCompetency(form);
-      setForm({ ...form, name: '' });
+  const handleGlobalExport = () => {
+    const data = initialCompetencies.map((c: any) => ({
+      Classe: c.class.name,
+      Nom: c.name,
+      Catégorie: c.category
+    }));
+    const csv = Papa.unparse(data);
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `toutes_competences.csv`);
+    link.click();
+  };
+
+  const handleGlobalImport = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    Papa.parse(file, {
+      header: true,
+      skipEmptyLines: true,
+      complete: (results) => {
+        const payload = results.data.map((row: any) => {
+          const targetClass = initialClasses.find((cl: any) => cl.name === row.Classe);
+          if (!targetClass) return null;
+          return {
+            classId: targetClass.id,
+            name: row.Nom || row.name || "",
+            category: (row.Catégorie || row.category || "SCHOOL").toUpperCase()
+          };
+        }).filter((c: any) => c && c.name);
+
+        startTransition(async () => {
+          for (const comp of payload) {
+            await createClassCompetency(comp);
+          }
+          alert("Importation globale terminée.");
+        });
+      }
     });
   };
 
   return (
     <div className="space-y-12">
+      <div className="flex justify-end gap-3 mb-4">
+        <button 
+          onClick={handleGlobalExport}
+          className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-black uppercase tracking-widest transition"
+        >
+          Export Global (Toutes les classes)
+        </button>
+        <button 
+          onClick={() => {
+            setActiveImportClassId(null); // Signal global import
+            fileInputRef.current?.click();
+          }}
+          className="px-4 py-2 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-100 rounded-xl text-xs font-black uppercase tracking-widest transition"
+        >
+          Import Global
+        </button>
+      </div>
+
       <form onSubmit={handleSubmit} className="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm grid gap-6 md:grid-cols-4 items-end">
         <div>
           <label className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-2 block">Classe</label>
