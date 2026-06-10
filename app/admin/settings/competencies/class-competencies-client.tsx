@@ -78,15 +78,17 @@ export default function ClassCompetenciesClient({ initialClasses, initialCompete
       header: true,
       skipEmptyLines: true,
       complete: (results) => {
-        const payload = results.data.map((row: any) => {
-          const targetClass = initialClasses.find((cl: any) => cl.name === row.Classe);
-          if (!targetClass) return null;
-          return {
-            classId: targetClass.id,
-            name: row.Nom || row.name || "",
-            category: (row.Catégorie || row.category || "SCHOOL").toUpperCase()
-          };
-        }).filter((c: any) => c && c.name);
+        const payload = results.data
+          .map((row: any) => {
+            const targetClass = initialClasses.find((cl: any) => cl.name === row.Classe);
+            if (!targetClass) return null;
+            return {
+              classId: targetClass.id,
+              name: row.Nom || row.name || "",
+              category: (row.Catégorie || row.category || "SCHOOL").toUpperCase()
+            };
+          })
+          .filter((c): c is { classId: string; name: string; category: string } => c !== null && !!c.name);
 
         startTransition(async () => {
           for (const comp of payload) {
@@ -95,6 +97,15 @@ export default function ClassCompetenciesClient({ initialClasses, initialCompete
           alert("Importation globale terminée.");
         });
       }
+    });
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!form.classId || !form.name) return;
+    startTransition(async () => {
+      await createClassCompetency(form);
+      setForm({ ...form, name: '' });
     });
   };
 
