@@ -46,9 +46,11 @@ export default async function AdminHomePage() {
 
   const pedagogieActions = [
     { href: "/admin/livret", label: "Livrets", sub: "Suivi & Exploitation", icon: ClipboardList, color: "text-rose-600", bg: "bg-rose-50" },
+    { href: "/admin/recap/competencies", label: "Compétences", sub: "Suivi global", icon: LayoutDashboard, color: "text-violet-600", bg: "bg-violet-50" },
     { href: "/admin/absences", label: "Absences", icon: FileWarning, color: "text-orange-600", bg: "bg-orange-50" },
     { href: "/admin/dispenses", label: "Dispenses", icon: ShieldCheck, color: "text-red-600", bg: "bg-red-50" },
     { href: "/admin/report-cards", label: "Bulletins", icon: GraduationCap, color: "text-violet-600", bg: "bg-violet-50" },
+    { href: "/admin/teachers/subjects", label: "Habilitations", sub: "Profs & Matières", icon: ShieldCheck, color: "text-amber-600", bg: "bg-amber-50" },
   ];
 
   const relationsActions = [
@@ -59,7 +61,7 @@ export default async function AdminHomePage() {
   ];
 
   return (
-    <div className="h-full flex flex-col gap-8 font-sans text-slate-900 animate-in fade-in slide-in-from-bottom-4 duration-700">
+    <div className="flex flex-col gap-8 font-sans text-slate-900 animate-in fade-in slide-in-from-bottom-4 duration-700">
       <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6 shrink-0">
         <div>
            <div className="flex items-center gap-3 mb-1">
@@ -78,8 +80,8 @@ export default async function AdminHomePage() {
         </div>
       </header>
 
-      <div className="flex-1 grid gap-8 lg:grid-cols-12 min-h-0">
-        <div className="lg:col-span-8 overflow-y-auto pr-2 custom-scrollbar space-y-8">
+      <div className="grid gap-8 lg:grid-cols-12">
+        <div className="lg:col-span-8 space-y-8">
            
            {/* Section 1: Opérations Core */}
            <section className="space-y-4">
@@ -105,13 +107,14 @@ export default async function AdminHomePage() {
            {/* Section 2: Pédagogie & Suivi */}
            <section className="space-y-4">
               <h2 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] ml-1">Scolarité & Pédagogie</h2>
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
                 {pedagogieActions.map((action) => (
                   <Link key={action.href} href={action.href} className="group flex flex-col items-center justify-center p-6 bg-white rounded-3xl border border-slate-200 shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all duration-300 text-center">
                     <div className={`h-12 w-12 rounded-2xl ${action.bg} ${action.color} flex items-center justify-center mb-4 transition-transform group-hover:rotate-6`}>
                       <action.icon className="h-6 w-6" />
                     </div>
-                    <p className="text-[10px] font-black text-slate-900 uppercase tracking-widest">{action.label}</p>
+                    <p className="text-[10px] font-black text-slate-900 uppercase tracking-widest leading-tight">{action.label}</p>
+                    {action.sub && <p className="text-[8px] font-bold text-slate-400 uppercase mt-1 tracking-tighter">{action.sub}</p>}
                   </Link>
                 ))}
               </div>
@@ -136,13 +139,13 @@ export default async function AdminHomePage() {
         </div>
 
         {/* Action Feed (Column 4) */}
-        <div className="lg:col-span-4 flex flex-col gap-6 min-h-0 bg-slate-900 rounded-[2.5rem] p-6 shadow-2xl shadow-slate-200">
+        <div className="lg:col-span-4 flex flex-col gap-6 bg-slate-900 rounded-[2.5rem] p-6 shadow-2xl shadow-slate-200 h-fit lg:sticky lg:top-8">
            <div className="flex items-center justify-between mb-2">
               <h2 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em]">Flux d'Actions</h2>
               <span className="flex h-2 w-2 rounded-full bg-emerald-500 animate-ping"></span>
            </div>
            
-           <div className="flex-1 overflow-y-auto space-y-6 custom-scrollbar pr-2">
+           <div className="space-y-6">
               <div className="bg-white/5 backdrop-blur-xl rounded-3xl p-1 border border-white/10">
                  <AdminMeetingsManager initialMeetings={pendingMeetings} />
               </div>
@@ -164,7 +167,7 @@ export default async function AdminHomePage() {
               )}
 
               {/* Quick Info Card */}
-              <div className="mt-auto bg-blue-600 rounded-[2rem] p-6 text-white overflow-hidden relative group cursor-help">
+              <div className="bg-blue-600 rounded-[2rem] p-6 text-white overflow-hidden relative group cursor-help">
                  <div className="absolute -right-4 -top-4 h-24 w-24 bg-blue-400/20 rounded-full blur-2xl group-hover:scale-150 transition-transform duration-700"></div>
                  <h4 className="text-[10px] font-black uppercase tracking-[0.2em] opacity-60 mb-2">Statut Serveur</h4>
                  <div className="flex items-center gap-2">
