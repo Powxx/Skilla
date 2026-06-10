@@ -158,9 +158,10 @@ model StudentProfile {
 
 // --- STRUCTURE PÉDAGOGIQUE ---
 model Class {
-  id               String                    @id @default(cuid())
-  name             String                    @unique
-  rhythm           RhythmType                @default(WEEKLY)
+  id               String            @id @default(cuid())
+  name             String            @unique
+  rhythm           RhythmType        @default(WEEKLY)
+  cycleWeeks       Int               @default(1) // Number of weeks in a cycle
   students         User[]
   lessons          Lesson[]
   attendanceSheets AttendanceSheet[]
