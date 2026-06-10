@@ -56,21 +56,21 @@ model Dispensation {
 }
 
 model User {
-  id            String    @id @default(cuid())
-  email         String?   @unique
+  id            String  @id @default(cuid())
+  email         String? @unique
   password      String?
-  role          Role      @default(STUDENT)
-  calendarToken String?   @unique @default(cuid())
-  
+  role          Role    @default(STUDENT)
+  calendarToken String? @unique @default(cuid())
+
   // Noms : On garde les deux pour supporter ton code de création et de login
-  name          String?   // Format combiné "Prénom Nom"
-  firstName     String?
-  lastName      String?
-  
-  phone         String?
-  address       String?
-  birthday      DateTime?
-  createdAt     DateTime  @default(now())
+  name      String? // Format combiné "Prénom Nom"
+  firstName String?
+  lastName  String?
+
+  phone     String?
+  address   String?
+  birthday  DateTime?
+  createdAt DateTime  @default(now())
 
   // Relations Profil & Classe
   studentProfile StudentProfile?
@@ -79,56 +79,68 @@ model User {
   dispensations  Dispensation[]  @relation("StudentDispensation")
 
   // Relations Responsables (Self-relation pour les parents/tuteurs)
-  students      User[]    @relation("UserToResponsible")
-  responsibles  User[]    @relation("UserToResponsible")
-  
+  students     User[] @relation("UserToResponsible")
+  responsibles User[] @relation("UserToResponsible")
+
   // Relations Entreprises
   studentContracts CompanyContract[] @relation("StudentInCompany")
   tutorContracts   CompanyContract[] @relation("TutorInCompany")
 
   // Relations Enseignement
-  subjects      Subject[] 
-  lessons       Lesson[]          @relation("TeacherLessons")
-  substitutions Lesson[]          @relation("SubstituteTeacher")
+  subjects      Subject[]
+  lessons       Lesson[]         @relation("TeacherLessons")
+  substitutions Lesson[]         @relation("SubstituteTeacher")
   contract      TeacherContract?
   skillMatrix   SkillMatrix[]
 
   // Relations Pédagogiques
-  grades        Grade[]
-  absences      Attendance[]
-  reportCards   ReportCard[]
-  evaluations   Evaluation[] 
-  
+  grades      Grade[]
+  absences    Attendance[]
+  reportCards ReportCard[]
+  evaluations Evaluation[]
+
   // Substitution Requests
   substitutionRequestsSent     SubstitutionRequest[] @relation("OriginalTeacher")
   substitutionRequestsReceived SubstitutionRequest[] @relation("SubstituteTeacherReq")
 
   // Qualiopi & Feedback
-  complaints    Complaint[]       @relation("Sender")
-  surveys       SatisfactionSurvey[]
-  meetingRequestsSent MeetingRequest[]  @relation("MeetingSender")
-  notifications  Notification[]
-  sentNotifications ClassNotificationLog[] @relation("NotificationSender")
-  pushSubscriptions PushSubscription[]
-  gameScores        GameScore[]
-  assignedGrades    Grade[]           @relation("TeacherGrades")
+  complaints          Complaint[]            @relation("Sender")
+  surveys             SatisfactionSurvey[]
+  meetingRequestsSent MeetingRequest[]       @relation("MeetingSender")
+  notifications       Notification[]
+  sentNotifications   ClassNotificationLog[] @relation("NotificationSender")
+  pushSubscriptions   PushSubscription[]
+  gameScores          GameScore[]
+  assignedGrades      Grade[]                @relation("TeacherGrades")
 
   // Gamification & Assiduité
-  loginStreak       Int       @default(0)
-  lastLoginAt       DateTime?
+  loginStreak    Int                   @default(0)
+  lastLoginAt    DateTime?
+  availabilities TeacherAvailability[]
 
   // Habilitations spécifiques
-  canAccessLivrets Boolean @default(false)
-  canManageUsers   Boolean @default(false)
+  canAccessLivrets  Boolean @default(false)
+  canManageUsers    Boolean @default(false)
   canManageSettings Boolean @default(false)
   canManagePlanning Boolean @default(false)
-  canManageRH      Boolean @default(false)
-  canImpersonate   Boolean @default(false)
-  isActive         Boolean @default(true)
+  canManageRH       Boolean @default(false)
+  canImpersonate    Boolean @default(false)
+  isActive          Boolean @default(true)
   deletionRequested Boolean @default(false)
 
   @@index([role])
   @@index([lastName, firstName])
+}
+
+model TeacherAvailability {
+  id        String @id @default(cuid())
+  dayOfWeek Int // 0 (Sunday) to 6 (Saturday)
+  startTime String // "HH:mm"
+  endTime   String // "HH:mm"
+  teacherId String
+  teacher   User   @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+
+  @@index([teacherId])
 }
 
 model GlobalSetting {
@@ -146,14 +158,26 @@ model StudentProfile {
 
 // --- STRUCTURE PÉDAGOGIQUE ---
 model Class {
-  id               String            @id @default(cuid())
-  name             String            @unique
-  rhythm           RhythmType        @default(WEEKLY)
+  id               String                    @id @default(cuid())
+  name             String                    @unique
+  rhythm           RhythmType                @default(WEEKLY)
   students         User[]
   lessons          Lesson[]
   attendanceSheets AttendanceSheet[]
   competencies     ClassCompetency[]
   notifications    ClassNotificationLog[]
+  requirements     ClassSubjectRequirement[]
+}
+
+model ClassSubjectRequirement {
+  id          String  @id @default(cuid())
+  classId     String
+  subjectId   String
+  weeklyHours Float
+  class       Class   @relation(fields: [classId], references: [id], onDelete: Cascade)
+  subject     Subject @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+
+  @@unique([classId, subjectId])
 }
 
 model Room {
@@ -164,13 +188,14 @@ model Room {
 }
 
 model Subject {
-  id          String        @id @default(cuid())
-  name        String        @unique
-  teachers    User[]
-  lessons     Lesson[]
-  grades      Grade[]
-  skillMatrix SkillMatrix[]
-  dispensations Dispensation[]
+  id                       String                    @id @default(cuid())
+  name                     String                    @unique
+  teachers                 User[]
+  lessons                  Lesson[]
+  grades                   Grade[]
+  skillMatrix              SkillMatrix[]
+  dispensations            Dispensation[]
+  classSubjectRequirements ClassSubjectRequirement[]
 }
 
 model Semester {
@@ -184,37 +209,37 @@ model Semester {
 
 // --- PLANNING & ÉMARGEMENT ---
 model Lesson {
-  id                String           @id @default(cuid())
-  startTime         DateTime
-  endTime           DateTime
-  isCancelled       Boolean          @default(false)
-  isAttendanceValidated Boolean       @default(false)
-  
-  subjectId         String
-  subject           Subject          @relation(fields: [subjectId], references: [id])
-  
-  teacherId         String
-  teacher           User             @relation("TeacherLessons", fields: [teacherId], references: [id])
-  
-  substituteId      String?
-  substitute        User?            @relation("SubstituteTeacher", fields: [substituteId], references: [id])
-  replacementNote   String?
+  id                    String   @id @default(cuid())
+  startTime             DateTime
+  endTime               DateTime
+  isCancelled           Boolean  @default(false)
+  isAttendanceValidated Boolean  @default(false)
 
-  classId           String
-  class             Class            @relation(fields: [classId], references: [id])
-  
-  roomId            String?
-  room              Room?            @relation(fields: [roomId], references: [id])
-  groupId           String?
+  subjectId String
+  subject   Subject @relation(fields: [subjectId], references: [id])
 
-  attendances       Attendance[]
+  teacherId String
+  teacher   User   @relation("TeacherLessons", fields: [teacherId], references: [id])
 
-  attendanceSheetId String?
-  attendanceSheet   AttendanceSheet? @relation(fields: [attendanceSheetId], references: [id])
+  substituteId    String?
+  substitute      User?   @relation("SubstituteTeacher", fields: [substituteId], references: [id])
+  replacementNote String?
+
+  classId String
+  class   Class  @relation(fields: [classId], references: [id])
+
+  roomId  String?
+  room    Room?   @relation(fields: [roomId], references: [id])
+  groupId String?
+
+  attendances Attendance[]
+
+  attendanceSheetId    String?
+  attendanceSheet      AttendanceSheet?      @relation(fields: [attendanceSheetId], references: [id])
   substitutionRequests SubstitutionRequest[]
-  
-  summary           String?          @db.Text
-  homework          String?          @db.Text
+
+  summary  String? @db.Text
+  homework String? @db.Text
 
   @@index([startTime, endTime])
 }
@@ -240,34 +265,34 @@ model Attendance {
 
 // --- NOTES & BULLETINS ---
 model Grade {
-  id           String   @id @default(cuid())
-  value        Float
-  coefficient  Float    @default(1.0)
-  subjectName  String?  // Stockage du nom pour historique
-  comment      String?  
-  createdAt    DateTime @default(now())
+  id          String   @id @default(cuid())
+  value       Float
+  coefficient Float    @default(1.0)
+  subjectName String? // Stockage du nom pour historique
+  comment     String?
+  createdAt   DateTime @default(now())
 
-  studentId    String
-  student      User     @relation(fields: [studentId], references: [id], onDelete: Cascade)
-  
-  teacherId    String?
-  teacher      User?    @relation("TeacherGrades", fields: [teacherId], references: [id])
-  
-  subjectId    String
-  subject      Subject  @relation(fields: [subjectId], references: [id], onDelete: Cascade)
-  
-  semesterId   String
-  semester     Semester @relation(fields: [semesterId], references: [id], onDelete: Cascade)
+  studentId String
+  student   User   @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  teacherId String?
+  teacher   User?   @relation("TeacherGrades", fields: [teacherId], references: [id])
+
+  subjectId String
+  subject   Subject @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+
+  semesterId String
+  semester   Semester @relation(fields: [semesterId], references: [id], onDelete: Cascade)
 }
 
 model ReportCard {
-  id                String   @id @default(cuid())
-  generalAppraisal  String?
-  distinction       String?  
-  semesterId        String
-  semester          Semester @relation(fields: [semesterId], references: [id], onDelete: Cascade)
-  studentId         String
-  student           User     @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  id               String   @id @default(cuid())
+  generalAppraisal String?
+  distinction      String?
+  semesterId       String
+  semester         Semester @relation(fields: [semesterId], references: [id], onDelete: Cascade)
+  studentId        String
+  student          User     @relation(fields: [studentId], references: [id], onDelete: Cascade)
 
   @@unique([studentId, semesterId])
 }
@@ -295,21 +320,21 @@ model TeacherContract {
 
 // --- MODULES QUALIOPI ---
 model Evaluation {
-  id          String @id @default(cuid())
-  competency  String
-  level       Int      
-  source      String   
-  category    String   @default("SCHOOL") // "SCHOOL" or "ENTERPRISE"
-  studentId   String
-  student     User   @relation(fields: [studentId], references: [id])
+  id         String @id @default(cuid())
+  competency String
+  level      Int
+  source     String
+  category   String @default("SCHOOL") // "SCHOOL" or "ENTERPRISE"
+  studentId  String
+  student    User   @relation(fields: [studentId], references: [id])
 }
 
 model ClassCompetency {
-  id        String @id @default(cuid())
-  name      String
-  category  String // "SCHOOL" or "ENTERPRISE"
-  classId   String
-  class     Class  @relation(fields: [classId], references: [id])
+  id       String @id @default(cuid())
+  name     String
+  category String // "SCHOOL" or "ENTERPRISE"
+  classId  String
+  class    Class  @relation(fields: [classId], references: [id])
 }
 
 model SkillMatrix {
@@ -331,15 +356,15 @@ model Complaint {
 }
 
 model SubstitutionRequest {
-  id                 String             @id @default(cuid())
-  lessonId           String
-  lesson             Lesson             @relation(fields: [lessonId], references: [id])
-  originalTeacherId  String
-  originalTeacher    User               @relation("OriginalTeacher", fields: [originalTeacherId], references: [id])
+  id                  String             @id @default(cuid())
+  lessonId            String
+  lesson              Lesson             @relation(fields: [lessonId], references: [id])
+  originalTeacherId   String
+  originalTeacher     User               @relation("OriginalTeacher", fields: [originalTeacherId], references: [id])
   substituteTeacherId String?
-  substituteTeacher  User?               @relation("SubstituteTeacherReq", fields: [substituteTeacherId], references: [id])
-  status             SubstitutionStatus @default(PENDING)
-  createdAt          DateTime           @default(now())
+  substituteTeacher   User?              @relation("SubstituteTeacherReq", fields: [substituteTeacherId], references: [id])
+  status              SubstitutionStatus @default(PENDING)
+  createdAt           DateTime           @default(now())
 }
 
 enum MeetingStatus {
@@ -368,16 +393,16 @@ model SatisfactionSurvey {
 }
 
 model Notification {
-  id        String   @id @default(cuid())
-  userId    String
-  user      User     @relation(fields: [userId], references: [id])
-  title     String
-  message   String
-  type      String   @default("INFO") // INFO, WARNING, SUCCESS, ERROR
-  isRead    Boolean  @default(false)
-  link      String?  // Optional link to navigate to
-  senderName String  @default("Système")
-  createdAt DateTime @default(now())
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id])
+  title      String
+  message    String
+  type       String   @default("INFO") // INFO, WARNING, SUCCESS, ERROR
+  isRead     Boolean  @default(false)
+  link       String? // Optional link to navigate to
+  senderName String   @default("Système")
+  createdAt  DateTime @default(now())
 }
 
 model ClassNotificationLog {
@@ -395,8 +420,8 @@ model NotificationConfig {
   id          String   @id @default(cuid())
   event       String   @unique // e.g., "NEW_GRADE", "MEETING_UPDATE"
   isEnabled   Boolean  @default(true)
-  title       String   // Default title template
-  message     String   // Default message template
+  title       String // Default title template
+  message     String // Default message template
   targetRoles Role[]   @default([STUDENT])
   updatedAt   DateTime @updatedAt
 }
@@ -419,7 +444,7 @@ model PushSubscription {
 
 model GameScore {
   id        String   @id @default(cuid())
-  gameKey   String   // Clé identifiant le jeu (ex: "katana-scissors")
+  gameKey   String // Clé identifiant le jeu (ex: "katana-scissors")
   score     Int
   userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)

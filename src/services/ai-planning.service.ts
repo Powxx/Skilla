@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { Room, Class } from "@prisma/client";
-import { addHours, startOfDay, addDays } from "date-fns";
+import { addHours, startOfDay, addDays, getDay, parse, format, isBefore, isAfter, isEqual } from "date-fns";
 
 export interface OptimizationResult {
   scheduledLessons: ScheduledLesson[];
@@ -37,16 +37,19 @@ export class AIPlanningService {
    */
   static async optimizeWeek(startDate: Date, classId?: string): Promise<OptimizationResult> {
     // 1. Récupérer les données de base
-    const [teachers, rooms, classes, subjects, existingLessons] = await Promise.all([
+    const [teachers, rooms, classes, requirementsData, existingLessons] = await Promise.all([
       prisma.user.findMany({
         where: { role: "TEACHER" },
-        include: { subjects: true }
+        include: { subjects: true, availabilities: true }
       }),
       prisma.room.findMany(),
       classId 
         ? prisma.class.findMany({ where: { id: classId } })
         : prisma.class.findMany(),
-      prisma.subject.findMany(),
+      prisma.classSubjectRequirement.findMany({
+        where: classId ? { classId } : {},
+        include: { subject: true }
+      }),
       prisma.lesson.findMany({
         where: {
           startTime: { gte: startOfDay(startDate) },
@@ -55,16 +58,24 @@ export class AIPlanningService {
       })
     ]);
     
-    // 2. Définir les besoins (4h par matière par classe pour l'exemple, ou basé sur une config si elle existe)
-    // Dans une version future, cela viendra d'un modèle de formation (Syllabus)
-    const requirements: Requirement[] = [];
-    for (const cls of classes) {
-      for (const subject of subjects) {
-        requirements.push({
-          classId: cls.id,
-          subjectId: subject.id,
-          durationHours: 4 // Par défaut 4h par matière
-        });
+    // 2. Transformer les données en format de requirements interne
+    const requirements: Requirement[] = requirementsData.map(r => ({
+      classId: r.classId,
+      subjectId: r.subjectId,
+      durationHours: r.weeklyHours
+    }));
+
+    // Si aucune contrainte n'est définie en base pour une classe, on en génère par défaut pour le test
+    if (requirements.length === 0) {
+      const subjects = await prisma.subject.findMany();
+      for (const cls of classes) {
+        for (const subject of subjects) {
+          requirements.push({
+            classId: cls.id,
+            subjectId: subject.id,
+            durationHours: 4 // Par défaut 4h
+          });
+        }
       }
     }
 
@@ -98,6 +109,22 @@ export class AIPlanningService {
     return slots;
   }
 
+  private static isTeacherAvailable(teacher: any, slot: { start: Date; end: Date }) {
+    // Si aucune disponibilité n'est renseignée, on suppose qu'il est disponible tout le temps
+    if (!teacher.availabilities || teacher.availabilities.length === 0) return true;
+
+    const dayOfWeek = getDay(slot.start);
+    const slotStartTimeStr = format(slot.start, "HH:mm");
+    const slotEndTimeStr = format(slot.end, "HH:mm");
+
+    return teacher.availabilities.some((avail: any) => {
+      if (avail.dayOfWeek !== dayOfWeek) return false;
+      
+      // On compare les chaînes HH:mm
+      return avail.startTime <= slotStartTimeStr && avail.endTime >= slotEndTimeStr;
+    });
+  }
+
   private static runConstraintBasedOptimization(
     requirements: Requirement[],
     teachers: any[],
@@ -109,27 +136,24 @@ export class AIPlanningService {
     const unscheduledLessons: UnscheduledRequirement[] = [];
     const conflicts: string[] = [];
 
-    // Trier les besoins par "difficulté" (ex: classes avec le plus de matières en premier)
+    // Trier les besoins par "difficulté"
     const sortedRequirements = [...requirements].sort((a, b) => {
       const teachersA = teachers.filter(t => t.subjects.some((s: any) => s.id === a.subjectId)).length;
       const teachersB = teachers.filter(t => t.subjects.some((s: any) => s.id === b.subjectId)).length;
-      return teachersA - teachersB; // Priorité aux matières avec peu de profs
+      return teachersA - teachersB;
     });
 
     for (const req of sortedRequirements) {
-      // Pour chaque matière, on doit placer X heures (divisées en blocs de 2h)
       let remainingHours = req.durationHours;
       const blocksNeeded = Math.ceil(remainingHours / 2);
 
       for (let b = 0; b < blocksNeeded; b++) {
         let placed = false;
         
-        const availableTeachers = teachers.filter(t => 
+        const competentTeachers = teachers.filter(t => 
           t.subjects.some((s: any) => s.id === req.subjectId)
         );
 
-        // Algorithme de recherche de créneau : on cherche le meilleur slot
-        // Score = (Disponibilité prof) + (Disponibilité salle) + (Equilibre emploi du temps)
         for (const slot of timeSlots) {
           // 1. Vérifier si la classe est libre
           const isClassBusy = [...scheduledLessons, ...existingLessons].some(l => 
@@ -137,8 +161,9 @@ export class AIPlanningService {
           );
           if (isClassBusy) continue;
 
-          // 2. Trouver un prof libre et compétent
-          const teacher = availableTeachers.find(t => 
+          // 2. Trouver un prof libre, compétent ET disponible sur ce créneau horaire
+          const teacher = competentTeachers.find(t => 
+            this.isTeacherAvailable(t, slot) &&
             ![...scheduledLessons, ...existingLessons].some(l => 
               l.teacherId === t.id && this.doSlotsOverlap(l, slot)
             )
@@ -153,7 +178,6 @@ export class AIPlanningService {
           );
           if (!room) continue;
 
-          // Slot trouvé !
           scheduledLessons.push({
             startTime: slot.start,
             endTime: slot.end,
@@ -167,16 +191,15 @@ export class AIPlanningService {
           });
           placed = true;
           remainingHours -= 2;
-          break; // Sortir des timeSlots pour ce bloc
+          break;
         }
 
         if (!placed) {
-          unscheduledLessons.push({ ...req, durationHours: 2, reason: "Conflit de ressources (Prof/Salle/Classe)" });
+          unscheduledLessons.push({ ...req, durationHours: 2, reason: "Conflit Prof (dispo/déjà pris), Salle ou Classe" });
         }
       }
     }
 
-    // Calcul du score final
     const totalBlocksRequested = requirements.reduce((acc, r) => acc + Math.ceil(r.durationHours / 2), 0);
     const score = scheduledLessons.length / (totalBlocksRequested || 1);
 
