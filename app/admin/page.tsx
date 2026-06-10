@@ -15,7 +15,8 @@ import {
   Briefcase,
   GraduationCap,
   ClipboardList,
-  LayoutDashboard
+  LayoutDashboard,
+  Clock
 } from "lucide-react";
 
 export const dynamic = 'force-dynamic';
@@ -42,6 +43,8 @@ export default async function AdminHomePage() {
     { href: "/admin/users", label: "Utilisateurs", sub: "Élèves, profs, admins", icon: Users, color: "text-indigo-600", bg: "bg-indigo-50" },
     { href: "/admin/planning", label: "Emploi du temps", sub: "Gérer le calendrier", icon: Calendar, color: "text-emerald-600", bg: "bg-emerald-50" },
     { href: "/admin/rooms", label: "Salles", sub: "Capacité & ressources", icon: DoorOpen, color: "text-amber-600", bg: "bg-amber-50" },
+    { href: "/admin/settings/requirements", label: "Quotas Horaires", sub: "Heures par classe", icon: ClipboardList, color: "text-pink-600", bg: "bg-pink-50" },
+    { href: "/admin/teachers/availability", label: "Disponibilités", sub: "Plages horaires profs", icon: Clock, color: "text-cyan-600", bg: "bg-cyan-50" },
   ];
 
   const pedagogieActions = [
