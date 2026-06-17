@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { MessageButton } from "@/components/chat/MessageButton";
 
 export default function TeacherSubjectsClient({ teachers, subjects }: { teachers: any[], subjects: any[] }) {
   const router = useRouter();
@@ -57,10 +58,6 @@ export default function TeacherSubjectsClient({ teachers, subjects }: { teachers
           <h2 className="font-semibold text-slate-800">Professeurs</h2>
         </div>
         <ul className="divide-y divide-slate-100 max-h-[600px] overflow-y-auto">
-import { MessageButton } from "@/components/chat/MessageButton";
-// ... (le reste des imports)
-
-// ... dans le JSX :
           {teachers.map(teacher => (
             <li key={teacher.id}>
               <div className="flex items-center gap-2">
