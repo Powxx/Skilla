@@ -111,4 +111,5 @@ export default function LivretBody({ studentName, competencies, isEditable, onUp
         </div>
       </div>
     </div>
+  );
 }

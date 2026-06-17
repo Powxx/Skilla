@@ -87,12 +87,14 @@ export default function AdminLivretManagerClient({ classes, students }: Props) {
           id: `comp-${index}-school`,
           name: `${name} (École)`,
           level: schoolEval?.level || 1,
+          category: 'SCHOOL',
           lastUpdated: new Date().toISOString()
         },
         {
           id: `comp-${index}-enterprise`,
           name: `${name} (Entreprise)`,
           level: enterpriseEval?.level || 1,
+          category: 'ENTERPRISE',
           lastUpdated: new Date().toISOString()
         }
       ];
