@@ -27,6 +27,7 @@ interface ClassVisibility {
 interface AverageData {
   subjectId: string;
   subjectName: string;
+  teacherNames: string;
   average: number | null;
   classAverage: number | null;
   comments: string;
@@ -194,7 +195,10 @@ export default function ReportCardClient({ students, semesters, initialClasses =
             <div className="space-y-4">
               {averages.map((a) => (
                 <div key={a.subjectId} className="flex justify-between items-center p-4 bg-slate-50 rounded-2xl border border-slate-100">
-                  <span className="font-bold text-slate-700">{a.subjectName}</span>
+                  <div>
+                    <div className="font-bold text-slate-700">{a.subjectName}</div>
+                    <div className="text-[10px] text-slate-400 font-medium">{a.teacherNames}</div>
+                  </div>
                   <span className="text-lg font-black text-blue-600">
                     {a.isDispensed ? <span className="text-slate-400 italic font-medium">Dispensé</span> : (a.average !== null ? a.average.toFixed(2) : '—')}
                     {!a.isDispensed && a.average !== null && <span className="text-[10px] text-slate-400 ml-1">/20</span>}
@@ -307,7 +311,10 @@ export default function ReportCardClient({ students, semesters, initialClasses =
                <tbody className="divide-y divide-slate-100">
                  {averages.map((a) => (
                    <tr key={a.subjectId} className="break-inside-avoid">
-                     <td className="py-4 font-bold text-slate-900">{a.subjectName}</td>
+                     <td className="py-4">
+                        <div className="font-bold text-slate-900">{a.subjectName}</div>
+                        <div className="text-[9px] text-slate-400 uppercase tracking-widest">{a.teacherNames}</div>
+                     </td>
                      <td className="py-4 text-right font-black text-blue-600">
                        {a.average !== null ? a.average.toFixed(1) : '—'}
                      </td>
