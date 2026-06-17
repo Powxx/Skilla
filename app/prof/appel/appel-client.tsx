@@ -124,7 +124,7 @@ export default function AppelClient({ initialLessons }: { initialLessons: any[] 
                 )}
               </div>
               <div className="text-lg font-semibold text-slate-900 group-hover:text-blue-700">
-                {lesson.subject.name}
+                {lesson.isFreeLesson ? (lesson.customSubject || "Cours libre") : (lesson.subject?.name || "Sans matière")}
               </div>
               <div className="mt-1 text-sm text-slate-600">
                 Classe : {lesson.class.name}
@@ -151,7 +151,9 @@ export default function AppelClient({ initialLessons }: { initialLessons: any[] 
           ← Retour à la liste
         </button>
         <div>
-          <h2 className="text-lg font-semibold text-slate-900">{selectedLesson.subject.name} - {selectedLesson.class.name}</h2>
+          <h2 className="text-lg font-semibold text-slate-900">
+            {selectedLesson.isFreeLesson ? (selectedLesson.customSubject || "Cours libre") : (selectedLesson.subject?.name || "Sans matière")} - {selectedLesson.class.name}
+          </h2>
           <p className="text-sm text-slate-500">{format(new Date(selectedLesson.startTime), 'EEEE d MMMM', { locale: fr })} | {format(new Date(selectedLesson.startTime), 'HH:mm')} - {format(new Date(selectedLesson.endTime), 'HH:mm')}</p>
         </div>
       </div>

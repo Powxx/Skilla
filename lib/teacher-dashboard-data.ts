@@ -101,14 +101,14 @@ export async function loadTeacherDashboardPayload(teacherId: string): Promise<Te
     classesCount,
     studentsCount,
     nextLesson: nextLesson ? {
-      subject: nextLesson.subject.name,
+      subject: nextLesson.isFreeLesson ? (nextLesson.customSubject || "Cours libre") : (nextLesson.subject?.name || "Sans matière"),
       class: nextLesson.class.name,
       start: nextLesson.startTime.toISOString(),
       room: nextLesson.room?.name || "N/A"
     } : null,
     recentLessons: recentLessons.map(l => ({
       id: l.id,
-      subject: l.subject.name,
+      subject: l.isFreeLesson ? (l.customSubject || "Cours libre") : (l.subject?.name || "Sans matière"),
       class: l.class.name,
       start: l.startTime.toISOString(),
       isValidated: l.isAttendanceValidated

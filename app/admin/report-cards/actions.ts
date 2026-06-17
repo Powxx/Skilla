@@ -52,6 +52,7 @@ export async function calculateStudentAverages(studentId: string, semesterId: st
   });
 
   studentGrades.forEach(g => {
+    if (!g.subject) return; // Skip if subject relation is missing (should not happen for grades)
     if (!studentStats[g.subjectId]) {
       studentStats[g.subjectId] = { sum: 0, count: 0, name: g.subject.name, comments: [], isDispensed: dispensedSubjectIds.includes(g.subjectId) };
     }

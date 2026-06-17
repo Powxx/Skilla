@@ -103,10 +103,11 @@ export async function PUT(request: Request) {
       const isEnabled = await checkEventEnabled("SUBSTITUTION_VALIDATED");
       if (isEnabled) {
         for (const student of updatedLesson.class.students) {
+          const subjectName = updatedLesson.isFreeLesson ? (updatedLesson.customSubject || "Cours libre") : (updatedLesson.subject?.name || "Sans matière");
           createNotification({
             userId: student.id,
             title: "Remplacement validé",
-            message: `M. ${updatedLesson.teacher.lastName} assurera le cours de ${updatedLesson.subject.name} du ${updatedLesson.startTime.toLocaleDateString('fr-FR')}.`,
+            message: `M. ${updatedLesson.teacher?.lastName || "l'intervenant"} assurera le cours de ${subjectName} du ${updatedLesson.startTime.toLocaleDateString('fr-FR')}.`,
             type: "SUCCESS",
             link: "/student/planning"
           }).catch(e => console.error(e));

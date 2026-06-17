@@ -243,11 +243,12 @@ export async function PUT(request: Request) {
         const isEnabled = await checkEventEnabled("ROOM_CHANGE");
         if (isEnabled) {
           const room = updateData.roomId ? await prisma.room.findUnique({ where: { id: updateData.roomId } }) : null;
+          const subjectName = oldLesson.isFreeLesson ? (oldLesson.customSubject || "Cours libre") : (oldLesson.subject?.name || "Sans matière");
           for (const student of oldLesson.class.students) {
             createNotification({
               userId: student.id,
               title: "Changement de salle",
-              message: `Le cours de ${oldLesson.subject.name} aura lieu en ${room?.name || 'salle non définie'}.`,
+              message: `Le cours de ${subjectName} aura lieu en ${room?.name || 'salle non définie'}.`,
               type: "INFO",
               link: "/student/planning"
             }).catch(e => console.error(e));
@@ -259,11 +260,12 @@ export async function PUT(request: Request) {
       if (updateData.isCancelled === true && !oldLesson.isCancelled) {
         const isEnabled = await checkEventEnabled("LESSON_CANCELLED");
         if (isEnabled) {
+          const subjectName = oldLesson.isFreeLesson ? (oldLesson.customSubject || "Cours libre") : (oldLesson.subject?.name || "Sans matière");
           for (const student of oldLesson.class.students) {
             createNotification({
               userId: student.id,
               title: "Cours annulé",
-              message: `Le cours de ${oldLesson.subject.name} du ${oldLesson.startTime.toLocaleDateString('fr-FR')} a été annulé.`,
+              message: `Le cours de ${subjectName} du ${oldLesson.startTime.toLocaleDateString('fr-FR')} a été annulé.`,
               type: "ERROR",
               link: "/student/planning"
             }).catch(e => console.error(e));
