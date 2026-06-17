@@ -86,9 +86,11 @@ export default function ChatClient() {
                 {contacts.map(c => (
                     <button key={c.id} onClick={() => { 
                         setShowContacts(false);
-                        sendMessage(c.id, "Bonjour").then(() => {
-                            loadConversations();
-                        });
+                        // Créer la conversation en envoyant un message vide ou en laissant l'utilisateur envoyer le premier message
+                        // Puisque sendMessage nécessite un contenu, nous allons simplement sélectionner le destinataire
+                        // et attendre que l'utilisateur tape un message.
+                        setSelectedConversation({ otherParticipant: c });
+                        setMessages([]);
                     }} className="w-full p-2 hover:bg-slate-50 rounded text-left">
                         {c.firstName} {c.lastName} <span className="text-xs text-slate-400">({c.role})</span>
                     </button>
