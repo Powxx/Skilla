@@ -17,7 +17,8 @@ import {
   Menu,
   X,
   Key,
-  Gamepad2
+  Gamepad2,
+  MessageSquare
 } from "lucide-react";
 
 type NavItem = {
@@ -53,6 +54,7 @@ export default function PortalSidebar({ variant, resolvedChildId, schoolName = "
         { href: "/admin/notifications", label: "Notifications", icon: FileText },
         { href: "/admin/connexion-docs", label: "Connexion Docs", icon: Key },
         { href: "/admin/settings", label: "Config", icon: Settings },
+        { href: "/messages", label: "Messages", icon: MessageSquare },
         { href: "/settings/password", label: "Mot de passe", icon: Key }
       );
       break;
@@ -64,6 +66,7 @@ export default function PortalSidebar({ variant, resolvedChildId, schoolName = "
         { href: "/prof/notes", label: "Notes", icon: GraduationCap },
         { href: "/prof/livret", label: "Livret", icon: BookOpen },
         { href: "/prof/notifications", label: "Notifications", icon: FileText },
+        { href: "/messages", label: "Messages", icon: MessageSquare },
         { href: "/settings/password", label: "Mot de passe", icon: Key }
       );
       break;
@@ -79,6 +82,7 @@ export default function PortalSidebar({ variant, resolvedChildId, schoolName = "
       navItems.push(
         { href: "/student/livret", label: "Livret", icon: BookOpen },
         { href: "/student/absences", label: "Absences", icon: Clock },
+        { href: "/messages", label: "Messages", icon: MessageSquare },
         { href: "/settings/password", label: "Mot de passe", icon: Key }
       );
       break;
@@ -92,6 +96,7 @@ export default function PortalSidebar({ variant, resolvedChildId, schoolName = "
         { href: `${prefix}/grades${suffix}`, label: "Notes", icon: GraduationCap },
         { href: `${prefix}/livret${suffix}`, label: "Livret", icon: BookOpen },
         { href: `${prefix}/absences${suffix}`, label: "Absences", icon: Clock },
+        { href: "/messages", label: "Messages", icon: MessageSquare },
         { href: "/settings/password", label: "Mot de passe", icon: Key }
       );
       break;
