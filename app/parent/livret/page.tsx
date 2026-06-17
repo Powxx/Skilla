@@ -44,14 +44,14 @@ export default async function ParentLivretPage({
     .filter(cc => cc.category === 'SCHOOL')
     .map(cc => {
       const existing = evaluations.find(e => e.competency === cc.name && e.category === 'SCHOOL');
-      return { id: cc.id, name: cc.name, level: existing?.level || 1, lastUpdated: existing?.id || 'new' };
+      return { id: cc.id, name: cc.name, level: existing?.level || 1, category: 'SCHOOL', lastUpdated: existing?.id || 'new' };
     });
 
   const enterpriseEvaluations = classComps
     .filter(cc => cc.category === 'ENTERPRISE')
     .map(cc => {
       const existing = evaluations.find(e => e.competency === cc.name && e.category === 'ENTERPRISE');
-      return { id: cc.id, name: cc.name, level: existing?.level || 1, lastUpdated: existing?.id || 'new' };
+      return { id: cc.id, name: cc.name, level: existing?.level || 1, category: 'ENTERPRISE', lastUpdated: existing?.id || 'new' };
     });
 
   return (

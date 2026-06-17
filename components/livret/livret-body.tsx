@@ -8,7 +8,7 @@ type Competency = {
   id: string;
   name: string;
   level: number; // 1, 2, 3
-  category: 'SCHOOL' | 'ENTERPRISE'; // Assumé basé sur le schéma prisma
+  category: string; // Autoriser string pour éviter les conflits de types
   lastUpdated: string;
 };
 
