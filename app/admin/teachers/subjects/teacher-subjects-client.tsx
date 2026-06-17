@@ -57,15 +57,24 @@ export default function TeacherSubjectsClient({ teachers, subjects }: { teachers
           <h2 className="font-semibold text-slate-800">Professeurs</h2>
         </div>
         <ul className="divide-y divide-slate-100 max-h-[600px] overflow-y-auto">
+import { MessageButton } from "@/components/chat/MessageButton";
+// ... (le reste des imports)
+
+// ... dans le JSX :
           {teachers.map(teacher => (
             <li key={teacher.id}>
-              <button 
-                onClick={() => handleSelectTeacher(teacher.id)}
-                className={`w-full text-left px-4 py-3 transition ${selectedTeacherId === teacher.id ? 'bg-blue-50 text-blue-700' : 'hover:bg-slate-50'}`}
-              >
-                <div className="font-medium">{teacher.lastName} {teacher.firstName}</div>
-                <div className="text-xs text-slate-500 mt-1">{teacher.subjects.length} matière(s) assignée(s)</div>
-              </button>
+              <div className="flex items-center gap-2">
+                <button 
+                    onClick={() => handleSelectTeacher(teacher.id)}
+                    className={`flex-1 text-left px-4 py-3 transition ${selectedTeacherId === teacher.id ? 'bg-blue-50 text-blue-700' : 'hover:bg-slate-50'}`}
+                >
+                    <div className="font-medium">{teacher.lastName} {teacher.firstName}</div>
+                    <div className="text-xs text-slate-500 mt-1">{teacher.subjects.length} matière(s) assignée(s)</div>
+                </button>
+                <div className="pr-2">
+                    <MessageButton recipientId={teacher.id} recipientName={`${teacher.lastName} ${teacher.firstName}`} />
+                </div>
+              </div>
             </li>
           ))}
         </ul>

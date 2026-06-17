@@ -8,7 +8,8 @@ import { useRouter } from "next/navigation";
 import { createUser, deleteUserSafe, updateUser, importUsersAction, updateAdminPermissions } from "./actions";
 import { useRef } from "react";
 import { useSession } from "next-auth/react";
-import { Shield, ShieldAlert, ShieldCheck, Key, FileText, X } from "lucide-react";
+import { Shield, ShieldAlert, ShieldCheck, Key, FileText, X, MessageSquare } from "lucide-react";
+import { MessageButton } from "@/components/chat/MessageButton";
 
 const inputClass =
   "w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-sky-600 focus:ring-2 focus:ring-sky-600/20";
@@ -258,6 +259,7 @@ export default function UsersShell(props: Props) {
                     </td>
                     <td className="px-5 py-3 text-right">
                       <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition">
+                        <MessageButton recipientId={u.id} recipientName={`${u.lastName} ${u.firstName}`} />
                         {isSuperAdmin && u.role === Role.ADMIN && (
                             <button
                                 onClick={() => setManagingPermissions(u)}
