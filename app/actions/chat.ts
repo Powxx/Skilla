@@ -42,8 +42,31 @@ export async function getConversations() {
   }));
 }
 
+async function getRetentionDays() {
+  const setting = await prisma.globalSetting.findUnique({
+    where: { key: 'CHAT_RETENTION_DAYS' }
+  });
+  return setting ? parseInt(setting.value, 10) : 7; // 7 jours par défaut
+}
+
+async function cleanupOldMessages() {
+  const days = await getRetentionDays();
+  const thresholdDate = new Date();
+  thresholdDate.setDate(thresholdDate.getDate() - days);
+  
+  await prisma.chatMessage.deleteMany({
+    where: {
+      createdAt: { lt: thresholdDate }
+    }
+  });
+}
+
 export async function getMessages(conversationId: string) {
   if (!(await isChatEnabled())) throw new Error("Le chat est désactivé");
+  
+  // Appliquer la rétention avant de récupérer
+  await cleanupOldMessages();
+
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) throw new Error("Non autorisé");
 
@@ -55,8 +78,15 @@ export async function getMessages(conversationId: string) {
   });
   if (!conversation) throw new Error("Conversation introuvable");
 
+  const days = await getRetentionDays();
+  const thresholdDate = new Date();
+  thresholdDate.setDate(thresholdDate.getDate() - days);
+
   return prisma.chatMessage.findMany({
-    where: { conversationId },
+    where: { 
+        conversationId,
+        createdAt: { gte: thresholdDate }
+    },
     orderBy: { createdAt: 'asc' },
     include: { sender: { select: { firstName: true, lastName: true } } }
   });
