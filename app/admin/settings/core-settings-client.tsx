@@ -44,11 +44,16 @@ export default function CoreSettingsClient({
 
   // Platform Options
   const [enableArcade, setEnableArcade] = useState(globalSettings.ENABLE_ARCADE !== "false");
+  const [enableChat, setEnableChat] = useState(globalSettings.CHAT_ENABLED !== "false"); // Chat activé par défaut
+  const [chatRetentionDays, setChatRetentionDays] = useState(parseInt(globalSettings.CHAT_RETENTION_DAYS || "7", 10)); // 7 jours par défaut
 
   // Sync with props
   useEffect(() => {
     setTeacherList(teachers);
-  }, [teachers]);
+    setEnableArcade(globalSettings.ENABLE_ARCADE !== "false");
+    setEnableChat(globalSettings.CHAT_ENABLED !== "false");
+    setChatRetentionDays(parseInt(globalSettings.CHAT_RETENTION_DAYS || "7", 10));
+  }, [teachers, globalSettings]);
 
   const handleUpdateOptions = async (key: string, value: string) => {
     setLoading(true);
@@ -595,6 +600,67 @@ export default function CoreSettingsClient({
                 >
                   {enableArcade ? 'Activé' : 'Désactivé'}
                 </button>
+              </div>
+
+              {/* Chat Module */}
+              <div className="p-6 rounded-2xl border border-slate-200 bg-white shadow-sm flex items-center justify-between group hover:border-blue-100 transition">
+                <div className="flex items-center gap-4">
+                  <div className="h-12 w-12 rounded-xl bg-blue-50 flex items-center justify-center text-blue-600">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-6 h-6">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M8.625 12a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H8.25m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H12m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0h-.375M21 12c0 1.38-.625 2.63-1.637 3.48a7 7 0 01-5.068 1.94 7 7 0 01-5.068-1.94A7 7 0 013 12c0-1.38.625-2.63 1.637-3.48a7 7 0 015.068-1.94 7 7 0 015.068 1.94C20.375 9.37 21 10.62 21 12z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-black text-slate-900 uppercase tracking-widest">Module Chat</h4>
+                    <p className="text-xs text-slate-500 font-medium">Permet aux utilisateurs de converser entre eux selon les rôles.</p>
+                  </div>
+                </div>
+                
+                <button
+                  onClick={() => {
+                    const newValue = !enableChat;
+                    setEnableChat(newValue);
+                    handleUpdateOptions("CHAT_ENABLED", String(newValue));
+                  }}
+                  disabled={loading}
+                  className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition shadow-sm ${
+                    enableChat
+                      ? 'bg-emerald-500 text-white hover:bg-emerald-600 shadow-emerald-500/20' 
+                      : 'bg-slate-200 text-slate-500 hover:bg-slate-300'
+                  }`}
+                >
+                  {enableChat ? 'Activé' : 'Désactivé'}
+                </button>
+              </div>
+
+              {/* Chat Retention Days */}
+              <div className="p-6 rounded-2xl border border-slate-200 bg-white shadow-sm flex items-center justify-between group hover:border-blue-100 transition">
+                <div className="flex items-center gap-4">
+                  <div className="h-12 w-12 rounded-xl bg-blue-50 flex items-center justify-center text-blue-600">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-6 h-6">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-black text-slate-900 uppercase tracking-widest">Rétention des messages (jours)</h4>
+                    <p className="text-xs text-slate-500 font-medium">Durée de conservation des messages avant suppression automatique.</p>
+                  </div>
+                </div>
+                
+                <input
+                  type="number"
+                  min="1"
+                  value={chatRetentionDays}
+                  onChange={(e) => {
+                    const value = parseInt(e.target.value, 10);
+                    if (!isNaN(value) && value >= 1) {
+                      setChatRetentionDays(value);
+                      handleUpdateOptions("CHAT_RETENTION_DAYS", String(value));
+                    }
+                  }}
+                  disabled={loading || !enableChat}
+                  className="w-20 p-2 rounded-xl border-slate-200 text-sm focus:ring-blue-500/20 text-right disabled:opacity-50"
+                />
               </div>
             </div>
           </div>
