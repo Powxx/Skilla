@@ -35,7 +35,7 @@ export async function calculateStudentAverages(studentId: string, semesterId: st
   });
   const dispensedSubjectIds = dispensations.map(d => d.subjectId);
 
-  const studentStats: Record<string, { sum: number, count: number, name: string, comments: string[], isDispensed: boolean }> = {};
+  const studentStats: Record<string, { sum: number, count: number, name: string, comments: string[], isDispensed: boolean, teacherNames: string }> = {};
   
   // Initialize with class subjects
   const classSubjects = await prisma.subject.findMany({
