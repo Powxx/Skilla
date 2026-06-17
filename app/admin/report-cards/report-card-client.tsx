@@ -94,8 +94,27 @@ export default function ReportCardClient({ students, semesters, initialClasses =
 
   return (
     <div className="space-y-8">
+      <style jsx global>{`
+        @media print {
+          body * {
+            visibility: hidden;
+          }
+          .print-only, .print-only * {
+            visibility: visible;
+          }
+          .print-only {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 100%;
+          }
+          .break-inside-avoid {
+            break-inside: avoid;
+          }
+        }
+      `}</style>
       {/* VISIBILITY CONTROL */}
-      <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm">
+      <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm print:hidden">
         <h3 className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-4">Visibilité des bulletins par classe</h3>
         <div className="flex gap-2 mb-4">
             <button
@@ -129,7 +148,7 @@ export default function ReportCardClient({ students, semesters, initialClasses =
         </div>
       </div>
 
-      <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm flex flex-wrap gap-4 items-end">
+      <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm flex flex-wrap gap-4 items-end print:hidden">
         <div className="flex-1 min-w-[200px]">
           <label className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-2 block">Élève</label>
           <select 
@@ -165,7 +184,7 @@ export default function ReportCardClient({ students, semesters, initialClasses =
       </div>
 
       {showForm && (
-        <div className="bg-white rounded-3xl border border-slate-200 shadow-xl overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-500">
+        <div className="bg-white rounded-3xl border border-slate-200 shadow-xl overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-500 print:hidden">
           <div className="p-8 border-b border-slate-100 bg-slate-50/50">
              <h2 className="text-xl font-bold text-slate-900">Récapitulatif des Moyennes</h2>
              <p className="text-sm text-slate-500 mt-1">Vérifiez les résultats avant de valider le bulletin.</p>
@@ -226,105 +245,105 @@ export default function ReportCardClient({ students, semesters, initialClasses =
               </div>
             </div>
           </div>
-
-          {/* Print Only Section */}
-          <div className="hidden print:block fixed inset-0 bg-white z-[9999] p-8 overflow-y-visible">
-            <div className="max-w-4xl mx-auto space-y-8">
-              <header className="flex justify-between items-start border-b-2 border-slate-900 pb-6">
-                <div>
-                  <h1 className="text-3xl font-black text-slate-900">BULLETIN SCOLAIRE</h1>
-                  <p className="text-lg text-slate-500 mt-1">{semesters.find((s) => s.id === selectedSemester)?.name}</p>
-                </div>
-                <div className="text-right">
-                  <p className="text-xl font-bold text-slate-900">ECM Academie</p>
-                  <p className="text-xs text-slate-500">Portail Académique</p>
-                </div>
-              </header>
-
-              <section className="grid grid-cols-2 gap-8">
-                <div>
-                   <h3 className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">Élève</h3>
-                   <p className="text-xl font-black text-slate-900">{students.find((s) => s.id === selectedStudent)?.name}</p>
-                   <p className="text-slate-500 font-medium text-sm">Classe : {students.find((s) => s.id === selectedStudent)?.className}</p>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 text-right">
-                     <h3 className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">Moy. Élève</h3>
-                     <p className="text-3xl font-black text-blue-600">
-                       {(() => {
-                         const graded = averages.filter((a) => a.average !== null);
-                         if (graded.length === 0) return '—';
-                         const total = graded.reduce((acc: number, cur) => acc + (cur.average ?? 0), 0);
-                         return (total / graded.length).toFixed(1);
-                       })()}
-                     </p>
-                  </div>
-                  <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 text-right">
-                     <h3 className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">Moy. Classe</h3>
-                     <p className="text-3xl font-black text-slate-900">
-                       {(() => {
-                         const graded = averages.filter((a) => a.classAverage !== null);
-                         if (graded.length === 0) return '—';
-                         const total = graded.reduce((acc: number, cur) => acc + (cur.classAverage ?? 0), 0);
-                         return (total / graded.length).toFixed(1);
-                       })()}
-                     </p>
-                  </div>
-                </div>
-              </section>
-
-              <section className="break-inside-avoid">
-                 <table className="w-full border-collapse text-sm">
-                   <thead>
-                     <tr className="border-b-2 border-slate-900">
-                       <th className="py-3 text-left text-[10px] font-black uppercase tracking-widest text-slate-900">Matière</th>
-                       <th className="py-3 text-right text-[10px] font-black uppercase tracking-widest text-slate-900">Moy. Élève</th>
-                       <th className="py-3 text-right text-[10px] font-black uppercase tracking-widest text-slate-900">Moy. Classe</th>
-                       <th className="py-3 text-right text-[10px] font-black uppercase tracking-widest text-slate-900">Appréciation</th>
-                     </tr>
-                   </thead>
-                   <tbody className="divide-y divide-slate-100">
-                     {averages.map((a) => (
-                       <tr key={a.subjectId}>
-                         <td className="py-4 font-bold text-slate-900">{a.subjectName}</td>
-                         <td className="py-4 text-right font-black text-blue-600">
-                           {a.average !== null ? a.average.toFixed(1) : '—'}
-                         </td>
-                         <td className="py-4 text-right font-bold text-slate-500">
-                           {a.classAverage !== null ? a.classAverage.toFixed(1) : '—'}
-                         </td>
-                         <td className="py-4 text-right text-slate-500 italic text-xs max-w-xs">
-                           {a.comments || "—"}
-                         </td>
-                       </tr>
-                     ))}
-                   </tbody>
-                 </table>
-              </section>
-
-              <section className="bg-slate-900 text-white p-6 rounded-2xl shadow-lg break-inside-avoid">
-                 <h3 className="text-[9px] font-black uppercase tracking-widest text-white/50 mb-2">Bilan de l&apos;établissement</h3>
-                 <p className="text-base font-medium leading-relaxed">&quot;{appraisal}&quot;</p>
-                 {distinction && (
-                   <div className="mt-4 pt-4 border-t border-white/10">
-                     <p className="text-xs font-black uppercase tracking-[0.2em] text-blue-400">Mention : {distinction}</p>
-                   </div>
-                 )}
-              </section>
-
-              <footer className="pt-8 flex justify-between items-end border-t border-slate-100">
-                 <div className="text-[10px] text-slate-400">
-                   Document généré le {format(new Date(), 'dd MMMM yyyy HH:mm', { locale: fr })}
-                 </div>
-                 <div className="text-center w-48">
-                   <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-8">Cachet et Signature</p>
-                   <div className="h-px w-full bg-slate-300"></div>
-                 </div>
-              </footer>
-            </div>
-          </div>
         </div>
       )}
+
+      {/* Print Only Section */}
+      <div className="print-only hidden print:block bg-white p-8">
+        <div className="max-w-4xl mx-auto space-y-8">
+          <header className="flex justify-between items-start border-b-2 border-slate-900 pb-6 break-inside-avoid">
+            <div>
+              <h1 className="text-3xl font-black text-slate-900">BULLETIN SCOLAIRE</h1>
+              <p className="text-lg text-slate-500 mt-1">{semesters.find((s) => s.id === selectedSemester)?.name}</p>
+            </div>
+            <div className="text-right">
+              <p className="text-xl font-bold text-slate-900">ECM Academie</p>
+              <p className="text-xs text-slate-500">Portail Académique</p>
+            </div>
+          </header>
+
+          <section className="grid grid-cols-2 gap-8 break-inside-avoid">
+            <div>
+               <h3 className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">Élève</h3>
+               <p className="text-xl font-black text-slate-900">{students.find((s) => s.id === selectedStudent)?.name}</p>
+               <p className="text-slate-500 font-medium text-sm">Classe : {students.find((s) => s.id === selectedStudent)?.className}</p>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 text-right">
+                 <h3 className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">Moy. Élève</h3>
+                 <p className="text-3xl font-black text-blue-600">
+                   {(() => {
+                     const graded = averages.filter((a) => a.average !== null);
+                     if (graded.length === 0) return '—';
+                     const total = graded.reduce((acc: number, cur) => acc + (cur.average ?? 0), 0);
+                     return (total / graded.length).toFixed(1);
+                   })()}
+                 </p>
+              </div>
+              <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 text-right">
+                 <h3 className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">Moy. Classe</h3>
+                 <p className="text-3xl font-black text-slate-900">
+                   {(() => {
+                     const graded = averages.filter((a) => a.classAverage !== null);
+                     if (graded.length === 0) return '—';
+                     const total = graded.reduce((acc: number, cur) => acc + (cur.classAverage ?? 0), 0);
+                     return (total / graded.length).toFixed(1);
+                   })()}
+                 </p>
+              </div>
+            </div>
+          </section>
+
+          <section className="break-inside-avoid">
+             <table className="w-full border-collapse text-sm">
+               <thead>
+                 <tr className="border-b-2 border-slate-900">
+                   <th className="py-3 text-left text-[10px] font-black uppercase tracking-widest text-slate-900">Matière</th>
+                   <th className="py-3 text-right text-[10px] font-black uppercase tracking-widest text-slate-900">Moy. Élève</th>
+                   <th className="py-3 text-right text-[10px] font-black uppercase tracking-widest text-slate-900">Moy. Classe</th>
+                   <th className="py-3 text-right text-[10px] font-black uppercase tracking-widest text-slate-900">Appréciation</th>
+                 </tr>
+               </thead>
+               <tbody className="divide-y divide-slate-100">
+                 {averages.map((a) => (
+                   <tr key={a.subjectId} className="break-inside-avoid">
+                     <td className="py-4 font-bold text-slate-900">{a.subjectName}</td>
+                     <td className="py-4 text-right font-black text-blue-600">
+                       {a.average !== null ? a.average.toFixed(1) : '—'}
+                     </td>
+                     <td className="py-4 text-right font-bold text-slate-500">
+                       {a.classAverage !== null ? a.classAverage.toFixed(1) : '—'}
+                     </td>
+                     <td className="py-4 text-right text-slate-500 italic text-xs max-w-xs">
+                       {a.comments || "—"}
+                     </td>
+                   </tr>
+                 ))}
+               </tbody>
+             </table>
+          </section>
+
+          <section className="bg-slate-900 text-white p-6 rounded-2xl shadow-lg break-inside-avoid">
+             <h3 className="text-[9px] font-black uppercase tracking-widest text-white/50 mb-2">Bilan de l&apos;établissement</h3>
+             <p className="text-base font-medium leading-relaxed">&quot;{appraisal}&quot;</p>
+             {distinction && (
+               <div className="mt-4 pt-4 border-t border-white/10">
+                 <p className="text-xs font-black uppercase tracking-[0.2em] text-blue-400">Mention : {distinction}</p>
+               </div>
+             )}
+          </section>
+
+          <footer className="pt-8 flex justify-between items-end border-t border-slate-100 break-inside-avoid">
+             <div className="text-[10px] text-slate-400">
+               Document généré le {format(new Date(), 'dd MMMM yyyy HH:mm', { locale: fr })}
+             </div>
+             <div className="text-center w-48">
+               <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-8">Cachet et Signature</p>
+               <div className="h-px w-full bg-slate-300"></div>
+             </div>
+          </footer>
+        </div>
+      </div>
     </div>
   );
 }

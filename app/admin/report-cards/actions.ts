@@ -39,22 +39,26 @@ export async function calculateStudentAverages(studentId: string, semesterId: st
   
   // Initialize with class subjects
   const classSubjects = await prisma.subject.findMany({
-    where: { lessons: { some: { classId: student.classId } } }
+    where: { lessons: { some: { classId: student.classId } } },
+    include: { teachers: { select: { firstName: true, lastName: true } } }
   });
   classSubjects.forEach(s => {
+    const teacherNames = s.teachers.map(t => `${t.firstName} ${t.lastName}`).join(', ');
     studentStats[s.id] = { 
         sum: 0, 
         count: 0, 
         name: s.name, 
         comments: [], 
-        isDispensed: dispensedSubjectIds.includes(s.id) 
+        isDispensed: dispensedSubjectIds.includes(s.id),
+        teacherNames: teacherNames || 'Non assigné'
     };
   });
 
   studentGrades.forEach(g => {
     if (!g.subject) return; // Skip if subject relation is missing (should not happen for grades)
     if (!studentStats[g.subjectId]) {
-      studentStats[g.subjectId] = { sum: 0, count: 0, name: g.subject.name, comments: [], isDispensed: dispensedSubjectIds.includes(g.subjectId) };
+      const teacherNames = g.subject.teachers.map(t => `${t.firstName} ${t.lastName}`).join(', ');
+      studentStats[g.subjectId] = { sum: 0, count: 0, name: g.subject.name, comments: [], isDispensed: dispensedSubjectIds.includes(g.subjectId), teacherNames: teacherNames || 'Non assigné' };
     }
     const coef = g.coefficient || 1;
     studentStats[g.subjectId].sum += g.value * coef;
@@ -65,6 +69,7 @@ export async function calculateStudentAverages(studentId: string, semesterId: st
   return Object.entries(studentStats).map(([id, data]) => ({
     subjectId: id,
     subjectName: data.name,
+    teacherNames: data.teacherNames,
     average: data.isDispensed ? null : (data.count > 0 ? data.sum / data.count : null),
     classAverage: classStats[id] && classStats[id].count > 0 ? classStats[id].sum / classStats[id].count : null,
     comments: data.isDispensed ? "Dispensé(e)" : data.comments.join(" ; "),
