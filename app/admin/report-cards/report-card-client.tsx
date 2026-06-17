@@ -115,11 +115,12 @@ export default function ReportCardClient({ students, semesters, initialClasses =
           }
           @page {
             size: portrait;
-            margin: 1cm;
+            margin: 0.5cm;
           }
-          .print-only { font-size: 11px; }
-          .print-only h1 { font-size: 18px; }
-          .print-only h3 { font-size: 7px; }
+          .print-only { font-size: 9px; }
+          .print-only h1 { font-size: 16px; margin-bottom: 0.5rem; }
+          .print-only h3 { font-size: 6px; }
+          .print-only table th, .print-only table td { padding-top: 2px !important; padding-bottom: 2px !important; }
         }
       `}</style>
       {/* VISIBILITY CONTROL */}
