@@ -64,9 +64,9 @@ export default function ChatClient() {
   };
 
   return (
-    <div className="h-[calc(100vh-80px)] flex bg-white rounded-3xl border border-slate-200 shadow-xl overflow-hidden">
-      {/* Sidebar */}
-      <div className="w-1/3 border-r border-slate-100 flex flex-col">
+    <div className="h-[calc(100vh-80px)] flex flex-col lg:flex-row bg-white rounded-3xl border border-slate-200 shadow-xl overflow-hidden">
+      {/* Sidebar - Conversations list / Contacts selection */}
+      <div className={`w-full lg:w-1/3 border-b lg:border-b-0 lg:border-r border-slate-100 flex-shrink-0 ${selectedConversation && !showContacts ? 'hidden lg:flex' : 'flex flex-col'}`}>
         <div className="p-6 border-b border-slate-100 flex justify-between items-center">
             <h2 className="font-bold text-lg">Discussions</h2>
             <button onClick={() => setShowContacts(!showContacts)} className="p-2 bg-slate-100 rounded-full hover:bg-slate-200">
@@ -86,9 +86,6 @@ export default function ChatClient() {
                 {contacts.map(c => (
                     <button key={c.id} onClick={() => { 
                         setShowContacts(false);
-                        // Créer la conversation en envoyant un message vide ou en laissant l'utilisateur envoyer le premier message
-                        // Puisque sendMessage nécessite un contenu, nous allons simplement sélectionner le destinataire
-                        // et attendre que l'utilisateur tape un message.
                         setSelectedConversation({ otherParticipant: c });
                         setMessages([]);
                     }} className="w-full p-2 hover:bg-slate-50 rounded text-left">
@@ -118,10 +115,15 @@ export default function ChatClient() {
       </div>
 
       {/* Chat Area */}
-      <div className="flex-1 flex flex-col bg-slate-50/50">
+      <div className={`flex-1 flex flex-col bg-slate-50/50 ${selectedConversation || showContacts ? 'flex' : 'hidden lg:flex'}`}>
         {selectedConversation ? (
             <>
                 <div className="p-4 border-b border-slate-200 bg-white flex items-center gap-3">
+                    <button onClick={() => setSelectedConversation(null)} className="lg:hidden p-1 mr-2 rounded-full hover:bg-slate-100">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
+                        </svg>
+                    </button>
                     <UserCircle className="h-8 w-8 text-slate-300" />
                     <span className="font-bold">{selectedConversation.otherParticipant.firstName} {selectedConversation.otherParticipant.lastName}</span>
                 </div>
