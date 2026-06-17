@@ -84,7 +84,8 @@ export default function ReportCardClient({ students, semesters, initialClasses =
         studentId: selectedStudent,
         semesterId: selectedSemester,
         generalAppraisal: appraisal,
-        distinction: distinction
+        distinction: distinction,
+        subjectComments: averages.map(a => ({ subjectId: a.subjectId, comment: a.comments }))
       });
       if (res.ok) {
         alert("Bulletin enregistré avec succès !");
@@ -112,6 +113,13 @@ export default function ReportCardClient({ students, semesters, initialClasses =
           .break-inside-avoid {
             break-inside: avoid;
           }
+          @page {
+            size: portrait;
+            margin: 1cm;
+          }
+          .print-only { font-size: 11px; }
+          .print-only h1 { font-size: 18px; }
+          .print-only h3 { font-size: 7px; }
         }
       `}</style>
       {/* VISIBILITY CONTROL */}
@@ -193,16 +201,28 @@ export default function ReportCardClient({ students, semesters, initialClasses =
 
           <div className="p-8 grid gap-8 md:grid-cols-2">
             <div className="space-y-4">
-              {averages.map((a) => (
-                <div key={a.subjectId} className="flex justify-between items-center p-4 bg-slate-50 rounded-2xl border border-slate-100">
-                  <div>
-                    <div className="font-bold text-slate-700">{a.subjectName}</div>
-                    <div className="text-[10px] text-slate-400 font-medium">{a.teacherNames}</div>
+              {averages.map((a, index) => (
+                <div key={a.subjectId} className="p-4 bg-slate-50 rounded-2xl border border-slate-100 space-y-2">
+                  <div className="flex justify-between items-center">
+                    <div>
+                        <div className="font-bold text-slate-700">{a.subjectName}</div>
+                        <div className="text-[10px] text-slate-400 font-medium">{a.teacherNames}</div>
+                    </div>
+                    <span className="text-lg font-black text-blue-600">
+                        {a.isDispensed ? <span className="text-slate-400 italic font-medium">Dispensé</span> : (a.average !== null ? a.average.toFixed(2) : '—')}
+                        {!a.isDispensed && a.average !== null && <span className="text-[10px] text-slate-400 ml-1">/20</span>}
+                    </span>
                   </div>
-                  <span className="text-lg font-black text-blue-600">
-                    {a.isDispensed ? <span className="text-slate-400 italic font-medium">Dispensé</span> : (a.average !== null ? a.average.toFixed(2) : '—')}
-                    {!a.isDispensed && a.average !== null && <span className="text-[10px] text-slate-400 ml-1">/20</span>}
-                  </span>
+                  <textarea 
+                    className="w-full rounded-xl border-slate-200 text-xs p-2"
+                    placeholder="Commentaire..."
+                    value={a.comments}
+                    onChange={(e) => {
+                        const newAverages = [...averages];
+                        newAverages[index].comments = e.target.value;
+                        setAverages(newAverages);
+                    }}
+                  />
                 </div>
               ))}
               {averages.length === 0 && (

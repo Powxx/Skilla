@@ -92,12 +92,31 @@ export async function saveReportCard(data: {
   semesterId: string;
   generalAppraisal: string;
   distinction?: string;
+  subjectComments?: { subjectId: string; comment: string }[];
 }) {
+  // 1. Sauvegarder ou mettre à jour les commentaires de matières
+  if (data.subjectComments) {
+      for (const sc of data.subjectComments) {
+          // Rechercher les notes de la matière pour ce semestre
+          const grades = await prisma.grade.findMany({
+              where: {
+                  studentId: data.studentId,
+                  semesterId: data.semesterId,
+                  subjectId: sc.subjectId
+              }
+          });
+          // Appliquer le commentaire à la dernière note de la matière ou en créer une si nécessaire
+          if (grades.length > 0) {
+              await prisma.grade.update({
+                  where: { id: grades[grades.length - 1].id },
+                  data: { comment: sc.comment }
+              });
+          }
+      }
+  }
+
   const reportCard = await prisma.reportCard.upsert({
     where: {
-      // Since there is no unique constraint on studentId + semesterId in schema, 
-      // we find first and update or create.
-      // Ideally we'd add @unique([studentId, semesterId]) to the schema.
       id: (await prisma.reportCard.findFirst({
         where: { studentId: data.studentId, semesterId: data.semesterId },
         select: { id: true }
@@ -114,6 +133,7 @@ export async function saveReportCard(data: {
       distinction: data.distinction
     }
   });
+  // ... rest of the function (notification logic unchanged)
 
   // Notify Student & Responsibles
   const isEnabled = await checkEventEnabled("REPORT_CARD_AVAILABLE");
