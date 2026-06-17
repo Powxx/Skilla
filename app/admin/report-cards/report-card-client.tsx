@@ -59,6 +59,15 @@ export default function ReportCardClient({ students, semesters, initialClasses =
     });
   };
 
+  const handleBulkToggle = (visible: boolean) => {
+    startTransition(async () => {
+        for (const c of classList) {
+            await toggleClassReportCardsVisibility(c.id, visible);
+        }
+        setClassList(classList.map(c => ({ ...c, reportCardsVisible: visible })));
+    });
+  };
+
   const handleFetchAverages = () => {
     if (!selectedStudent || !selectedSemester) return;
     startTransition(async () => {
@@ -88,6 +97,20 @@ export default function ReportCardClient({ students, semesters, initialClasses =
       {/* VISIBILITY CONTROL */}
       <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm">
         <h3 className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-4">Visibilité des bulletins par classe</h3>
+        <div className="flex gap-2 mb-4">
+            <button
+                onClick={() => handleBulkToggle(true)}
+                className="px-4 py-2 bg-emerald-50 text-emerald-700 text-xs font-bold rounded-xl border border-emerald-100 hover:bg-emerald-100 transition"
+            >
+                Afficher tous
+            </button>
+            <button
+                onClick={() => handleBulkToggle(false)}
+                className="px-4 py-2 bg-slate-50 text-slate-600 text-xs font-bold rounded-xl border border-slate-100 hover:bg-slate-100 transition"
+            >
+                Masquer tous
+            </button>
+        </div>
         <div className="flex flex-wrap gap-3">
           {classList.map((c) => (
             <button
