@@ -41,6 +41,7 @@ export default function LivretBody({ studentName, competencies, isEditable, onUp
           .print-only { display: block !important; }
           @page { size: portrait; margin: 1cm; }
           body { font-size: 10px; }
+          .break-avoid { break-inside: avoid; }
         }
       `}</style>
 
@@ -66,7 +67,6 @@ export default function LivretBody({ studentName, competencies, isEditable, onUp
                    </span>
                 </div>
               </div>
-              {/* ... (Édition logique) */}
             </div>
           );
         })}
@@ -74,13 +74,25 @@ export default function LivretBody({ studentName, competencies, isEditable, onUp
 
       {/* Vue Impression */}
       <div className="hidden print:block print-only">
-        <h1 className="text-xl font-black mb-4">Livret d'Apprentissage - {studentName}</h1>
-        <table className="w-full border-collapse border border-slate-300 text-[10px]">
+        <div className="break-avoid">
+          <header className="flex justify-between items-start border-b-2 border-slate-900 pb-4 mb-6">
+            <div>
+              <h1 className="text-xl font-black text-slate-900">LIVRET D'APPRENTISSAGE</h1>
+              <p className="text-xs text-slate-500 mt-1">Élève : <span className="font-bold text-slate-900">{studentName}</span></p>
+            </div>
+            <div className="text-right">
+              <p className="text-sm font-bold text-slate-900">ECM Academie</p>
+              <p className="text-[9px] text-slate-500">Portail Académique</p>
+            </div>
+          </header>
+        </div>
+
+        <table className="w-full border-collapse border border-slate-300 text-[10px] break-avoid">
           <thead>
             <tr className="bg-slate-100">
               <th className="border p-2 text-left">Compétence</th>
-              <th className="border p-2 text-center">École</th>
-              <th className="border p-2 text-center">Entreprise</th>
+              <th className="border p-2 text-center w-24">École</th>
+              <th className="border p-2 text-center w-24">Entreprise</th>
             </tr>
           </thead>
           <tbody>
@@ -93,7 +105,10 @@ export default function LivretBody({ studentName, competencies, isEditable, onUp
             ))}
           </tbody>
         </table>
+        
+        <div className="mt-8 pt-4 border-t text-right text-[9px] text-slate-400 break-avoid">
+           Document généré le {format(new Date(), 'dd/MM/yyyy HH:mm')}
+        </div>
       </div>
     </div>
-  );
 }
