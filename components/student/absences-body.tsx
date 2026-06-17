@@ -17,7 +17,7 @@ function typeLabel(status: string) {
 }
 
 type AttendanceWithLesson = Attendance & {
-  lesson: Lesson & { subject: Subject };
+  lesson: Lesson & { subject: Subject | null };
   lateDuration?: number | null;
 };
 
@@ -113,7 +113,7 @@ export default function AbsencesBody({ student, contextNote }: Props) {
                           {typeLabel(a.status)}
                         </span>
                         <span className="text-[11px] font-black text-slate-900 uppercase truncate">
-                          {a.lesson.subject.name}
+                          {a.lesson.isFreeLesson ? (a.lesson.customSubject || "Cours libre") : (a.lesson.subject?.name || "Sans matière")}
                         </span>
                       </div>
                       

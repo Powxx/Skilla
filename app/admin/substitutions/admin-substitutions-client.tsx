@@ -68,7 +68,9 @@ export default function AdminSubstitutionsClient({ initialRequests, teachers, al
                 <React.Fragment key={req.id}>
                   <tr className="hover:bg-slate-50/50 transition">
                     <td className="px-6 py-4">
-                      <div className="text-sm font-semibold text-slate-900">{req.lesson.subject.name}</div>
+                      <div className="text-sm font-semibold text-slate-900">
+                        {req.lesson.isFreeLesson ? (req.lesson.customSubject || "Cours libre") : (req.lesson.subject?.name || "Sans matière")}
+                      </div>
                       <div className="text-xs text-slate-500">
                         {format(new Date(req.lesson.startTime), 'EEEE d MMMM HH:mm', { locale: fr })}
                       </div>
