@@ -24,6 +24,7 @@ export async function GET(
   const whereClause: any = {};
   if (user.role === "TEACHER") {
     whereClause.teacherId = user.id;
+    whereClause.isFreeLesson = false;
   } else if (user.role === "STUDENT" && user.classId) {
     whereClause.classId = user.classId;
   } else {
@@ -60,6 +61,8 @@ export async function GET(
   const events: ics.EventAttributes[] = lessons.map((lesson) => {
     const start = new Date(lesson.startTime);
     const end = new Date(lesson.endTime);
+    const subjectName = lesson.isFreeLesson ? (lesson.customSubject || "Cours libre") : (lesson.subject?.name || "Sans nom");
+    const teacherName = lesson.isFreeLesson ? (lesson.customTeacher || "Intervenant") : (lesson.teacher ? `${lesson.teacher.firstName} ${lesson.teacher.lastName}` : "Sans prof");
 
     return {
       start: [
@@ -76,10 +79,10 @@ export async function GET(
         end.getHours(),
         end.getMinutes(),
       ],
-      title: lesson.subject.name,
-      description: `Professeur: ${lesson.teacher.firstName} ${lesson.teacher.lastName}\nClasse: ${lesson.class.name}${lesson.summary ? `\n\nRésumé: ${lesson.summary}` : ''}`,
+      title: subjectName,
+      description: `Professeur: ${teacherName}\nClasse: ${lesson.class.name}${lesson.summary ? `\n\nRésumé: ${lesson.summary}` : ''}`,
       location: lesson.room?.name || "Salle non définie",
-      categories: ['Cours', lesson.subject.name],
+      categories: ['Cours', subjectName],
       status: 'CONFIRMED',
       busyStatus: 'BUSY',
       productId: 'Skilla//Calendar//FR',

@@ -54,7 +54,7 @@ export default async function AdminAbsencesPage() {
               <tr key={a.id} className="border-b border-slate-100 last:border-0">
                 <td className="py-4">{a.lesson.startTime.toLocaleDateString()}</td>
                 <td className="py-4">{a.student.lastName} {a.student.firstName}</td>
-                <td className="py-4">{a.lesson.subject.name}</td>
+                <td className="py-4">{a.lesson.isFreeLesson ? (a.lesson.customSubject || "Cours libre") : (a.lesson.subject?.name || "N/A")}</td>
                 <td className="py-4">
                     <form action={updateAttendanceStatus.bind(null, a.id)} className="flex items-center gap-2">
                         <select name="status" defaultValue={a.status} className="border rounded p-1 text-xs">

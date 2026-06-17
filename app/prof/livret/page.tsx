@@ -23,7 +23,7 @@ export default async function ProfLivretPage({ searchParams }: { searchParams?: 
 
   // 1. Get my students (those in my classes)
   const teacherLessons = await prisma.lesson.findMany({
-    where: { teacherId: session.user.id },
+    where: { teacherId: session.user.id, isFreeLesson: false },
     select: { classId: true }
   });
   const classIds = [...new Set(teacherLessons.map(l => l.classId))];

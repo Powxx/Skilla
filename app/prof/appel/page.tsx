@@ -26,6 +26,7 @@ export default async function ProfAppelPage() {
   const lessons = await prisma.lesson.findMany({
     where: {
       teacherId: session.user.id,
+      isFreeLesson: false,
       OR: [
         {
           startTime: {

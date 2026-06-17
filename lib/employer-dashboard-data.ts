@@ -32,7 +32,7 @@ export async function loadEmployerDashboardPayload(tutorId: string) {
     endDate: c.endDate.toISOString(),
     absences: c.student.absences.map(a => ({
       date: a.lesson.startTime.toISOString(),
-      subject: a.lesson.subject.name,
+      subject: a.lesson.isFreeLesson ? (a.lesson.customSubject || "Cours libre") : (a.lesson.subject?.name || "Sans matière"),
       status: a.status
     })),
     skills: c.student.evaluations.map(e => ({

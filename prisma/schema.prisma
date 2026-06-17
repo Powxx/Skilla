@@ -215,12 +215,15 @@ model Lesson {
   endTime               DateTime
   isCancelled           Boolean  @default(false)
   isAttendanceValidated Boolean  @default(false)
+  isFreeLesson          Boolean  @default(false)
+  customSubject         String?
+  customTeacher         String?
 
-  subjectId String
-  subject   Subject @relation(fields: [subjectId], references: [id])
+  subjectId String?
+  subject   Subject? @relation(fields: [subjectId], references: [id])
 
-  teacherId String
-  teacher   User   @relation("TeacherLessons", fields: [teacherId], references: [id])
+  teacherId String?
+  teacher   User?    @relation("TeacherLessons", fields: [teacherId], references: [id])
 
   substituteId    String?
   substitute      User?   @relation("SubstituteTeacher", fields: [substituteId], references: [id])

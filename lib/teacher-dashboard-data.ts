@@ -36,7 +36,8 @@ export async function loadTeacherDashboardPayload(teacherId: string): Promise<Te
       where: {
         teacherId,
         startTime: { gte: todayStart, lte: todayEnd },
-        isCancelled: false
+        isCancelled: false,
+        isFreeLesson: false
       }
     }),
     prisma.lesson.count({
@@ -44,14 +45,16 @@ export async function loadTeacherDashboardPayload(teacherId: string): Promise<Te
         teacherId,
         startTime: { lte: now },
         isAttendanceValidated: false,
-        isCancelled: false
+        isCancelled: false,
+        isFreeLesson: false
       }
     }),
     prisma.lesson.findFirst({
       where: {
         teacherId,
         startTime: { gte: now },
-        isCancelled: false
+        isCancelled: false,
+        isFreeLesson: false
       },
       orderBy: { startTime: 'asc' },
       include: {
@@ -61,7 +64,7 @@ export async function loadTeacherDashboardPayload(teacherId: string): Promise<Te
       }
     }),
     prisma.lesson.findMany({
-      where: { teacherId },
+      where: { teacherId, isFreeLesson: false },
       select: { classId: true }
     }),
     prisma.lesson.findMany({
@@ -69,7 +72,8 @@ export async function loadTeacherDashboardPayload(teacherId: string): Promise<Te
         teacherId,
         startTime: { lte: now },
         isAttendanceValidated: false,
-        isCancelled: false
+        isCancelled: false,
+        isFreeLesson: false
       },
       orderBy: { startTime: 'desc' },
       take: 5,

@@ -19,14 +19,14 @@ export default async function TeacherGradesPage() {
   const [classes, subjects, teacherGrades, semesters] = await Promise.all([
     prisma.class.findMany({
       where: {
-        lessons: { some: { teacherId } }
+        lessons: { some: { teacherId, isFreeLesson: false } }
       },
       orderBy: { name: "asc" },
       select: { id: true, name: true },
     }),
     prisma.subject.findMany({
       where: {
-        lessons: { some: { teacherId } }
+        lessons: { some: { teacherId, isFreeLesson: false } }
       },
       orderBy: { name: "asc" },
       select: { id: true, name: true },

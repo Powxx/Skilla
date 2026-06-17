@@ -33,7 +33,7 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
     if (!teacherId && !classId) {
-      return exportCalendar({ teacherId: session.user.id });
+      return exportCalendar({ teacherId: session.user.id, isTeacherView: true });
     }
   }
 
@@ -47,16 +47,17 @@ export async function GET(request: Request) {
       const user = await prisma.user.findUnique({ where: { id: session.user.id } });
       if (user?.classId) return exportCalendar({ classId: user.classId });
   } else if (role === "TEACHER") {
-      return exportCalendar({ teacherId: session.user.id });
+      return exportCalendar({ teacherId: session.user.id, isTeacherView: true });
   }
 
   return NextResponse.json({ error: "Paramètres manquants" }, { status: 400 });
 }
 
-async function exportCalendar({ classId, teacherId }: { classId?: string, teacherId?: string }) {
+async function exportCalendar({ classId, teacherId, isTeacherView = false }: { classId?: string, teacherId?: string, isTeacherView?: boolean }) {
   const whereClause: any = {};
   if (classId) whereClause.classId = classId;
   if (teacherId) whereClause.teacherId = teacherId;
+  if (isTeacherView) whereClause.isFreeLesson = false;
 
   // We export from 1 month ago to 6 months in the future
   const now = new Date();
@@ -83,6 +84,8 @@ async function exportCalendar({ classId, teacherId }: { classId?: string, teache
   const events: ics.EventAttributes[] = lessons.map((lesson) => {
     const start = new Date(lesson.startTime);
     const end = new Date(lesson.endTime);
+    const subjectName = lesson.isFreeLesson ? (lesson.customSubject || "Cours libre") : (lesson.subject?.name || "Sans nom");
+    const teacherName = lesson.isFreeLesson ? (lesson.customTeacher || "Intervenant") : (lesson.teacher ? `${lesson.teacher.firstName} ${lesson.teacher.lastName}` : "Sans prof");
 
     return {
       start: [
@@ -99,10 +102,10 @@ async function exportCalendar({ classId, teacherId }: { classId?: string, teache
         end.getHours(),
         end.getMinutes(),
       ],
-      title: lesson.subject.name,
-      description: `Professeur: ${lesson.teacher.firstName} ${lesson.teacher.lastName}\nClasse: ${lesson.class.name}${lesson.summary ? `\n\nRésumé: ${lesson.summary}` : ''}`,
+      title: subjectName,
+      description: `Professeur: ${teacherName}\nClasse: ${lesson.class.name}${lesson.summary ? `\n\nRésumé: ${lesson.summary}` : ''}`,
       location: lesson.room?.name || "Salle non définie",
-      categories: ['Cours', lesson.subject.name],
+      categories: ['Cours', subjectName],
       status: 'CONFIRMED',
       busyStatus: 'BUSY',
     };

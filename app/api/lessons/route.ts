@@ -50,15 +50,35 @@ export async function GET(request: Request) {
       gte: startOfWeek(date, { weekStartsOn: 1 }),
       lte: endOfWeek(date, { weekStartsOn: 1 }),
     },
-    subjectId: { notIn: dispensations }
   };
+
+  if (session.user.role === "TEACHER") {
+      whereClause.isFreeLesson = false;
+  }
+
+  if (session.user.role === "STUDENT") {
+      const user = await prisma.user.findUnique({
+          where: { id: session.user.id },
+          include: { dispensations: true }
+      });
+      dispensations = user?.dispensations.map(d => d.subjectId) || [];
+      whereClause.OR = [
+          { subjectId: { notIn: dispensations } },
+          { isFreeLesson: true }
+      ];
+  }
 
   if (classId) whereClause.classId = classId;
   if (teacherId) {
-      whereClause.OR = [
-        { teacherId: teacherId },
-        { substituteId: teacherId }
-      ];
+      if (whereClause.OR) {
+          // If we already have an OR (like for students), we need to be careful.
+          // But for teachers, we wouldn't have the student OR.
+      } else {
+          whereClause.OR = [
+            { teacherId: teacherId },
+            { substituteId: teacherId }
+          ];
+      }
   }
 
   const lessons = await prisma.lesson.findMany({
@@ -72,28 +92,34 @@ export async function GET(request: Request) {
     },
   });
 
-  const formattedEvents = lessons.map((lesson) => ({
-    id: lesson.id,
-    title: lesson.subject.name,
-    start: lesson.startTime.toISOString(),
-    end: lesson.endTime.toISOString(),
-    backgroundColor: lesson.isCancelled ? "#ef4444" : lesson.substitute ? "#f59e0b" : "#3b82f6",
-    extendedProps: {
-      teacher: `${lesson.teacher.firstName} ${lesson.teacher.lastName}`,
-      teacherId: lesson.teacherId,
-      subject: lesson.subject.name,
-      subjectId: lesson.subjectId,
-      class: lesson.class.name,
-      classId: lesson.classId,
-      room: lesson.room?.name,
-      roomId: lesson.roomId,
-      isCancelled: lesson.isCancelled,
-      substituteId: lesson.substituteId,
-      substitute: lesson.substitute ? `${lesson.substitute.firstName} ${lesson.substitute.lastName}` : null,
-      summary: lesson.summary,
-      homework: lesson.homework
-    }
-  }));
+  const formattedEvents = lessons.map((lesson) => {
+    const subjectName = lesson.isFreeLesson ? (lesson.customSubject || "Cours libre") : (lesson.subject?.name || "Sans nom");
+    const teacherName = lesson.isFreeLesson ? (lesson.customTeacher || "Intervenant") : (lesson.teacher ? `${lesson.teacher.firstName} ${lesson.teacher.lastName}` : "Sans prof");
+
+    return {
+      id: lesson.id,
+      title: subjectName,
+      start: lesson.startTime.toISOString(),
+      end: lesson.endTime.toISOString(),
+      backgroundColor: lesson.isFreeLesson ? "#8b5cf6" : (lesson.isCancelled ? "#ef4444" : lesson.substitute ? "#f59e0b" : "#3b82f6"),
+      extendedProps: {
+        teacher: teacherName,
+        teacherId: lesson.teacherId,
+        subject: subjectName,
+        subjectId: lesson.subjectId,
+        class: lesson.class.name,
+        classId: lesson.classId,
+        room: lesson.room?.name,
+        roomId: lesson.roomId,
+        isCancelled: lesson.isCancelled,
+        isFreeLesson: lesson.isFreeLesson,
+        substituteId: lesson.substituteId,
+        substitute: lesson.substitute ? `${lesson.substitute.firstName} ${lesson.substitute.lastName}` : null,
+        summary: lesson.summary,
+        homework: lesson.homework
+      }
+    };
+  });
 
   // --- Inject holiday events ---
   const weekStart = startOfWeek(date, { weekStartsOn: 1 });
@@ -148,10 +174,13 @@ export async function POST(request: Request) {
         startTime: new Date(data.startTime),
         endTime: new Date(data.endTime),
         classId: data.classId,
-        subjectId: data.subjectId,
-        teacherId: data.teacherId,
+        subjectId: data.isFreeLesson ? null : data.subjectId,
+        teacherId: data.isFreeLesson ? null : data.teacherId,
         roomId: data.roomId || null,
-        groupId: data.groupId || null
+        groupId: data.groupId || null,
+        isFreeLesson: data.isFreeLesson || false,
+        customSubject: data.customSubject || null,
+        customTeacher: data.customTeacher || null
       }
     });
     return NextResponse.json(newLesson);

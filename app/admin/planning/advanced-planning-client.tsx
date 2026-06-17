@@ -25,11 +25,13 @@ export default function AdvancedPlanningClient({ classes, teachers, subjects, ro
     roomId: "",
     periodicity: "none",
     occurrences: 5,
-    isFree: false
+    isFree: false,
+    customSubject: "",
+    customTeacher: ""
   });
 
   const selectedTeacher = teachers.find(t => t.id === config.teacherId);
-  const selectedSubject = config.isFree ? { name: "Cycle Libre" } : subjects.find(s => s.id === config.subjectId);
+  const selectedSubject = config.isFree ? { name: config.customSubject || "Cours libre" } : subjects.find(s => s.id === config.subjectId);
   const selectedClass = classes.find(c => c.id === config.classId);
   const selectedRoom = rooms.find(r => r.id === config.roomId);
 
@@ -238,7 +240,10 @@ export default function AdvancedPlanningClient({ classes, teachers, subjects, ro
           subjectId: props.subjectId,
           teacherId: props.teacherId,
           classId: props.classId,
-          roomId: props.roomId || null
+          roomId: props.roomId || null,
+          isFreeLesson: props.isFreeLesson || false,
+          customSubject: props.customSubject || null,
+          customTeacher: props.customTeacher || null
         });
       }
 
@@ -428,7 +433,7 @@ export default function AdvancedPlanningClient({ classes, teachers, subjects, ro
   };
   const stats = calculateStats();
 
-  const isConfigComplete = config.teacherId && config.subjectId && config.classId;
+  const isConfigComplete = config.classId && (config.isFree ? (config.customSubject && config.customTeacher) : (config.teacherId && config.subjectId));
 
   return (
     <div className="h-full flex flex-col lg:flex-row gap-4 items-stretch min-h-0 font-sans text-slate-900">
@@ -463,7 +468,30 @@ export default function AdvancedPlanningClient({ classes, teachers, subjects, ro
                  Cycle Libre
               </label>
           </div>
-          {!config.isFree && (
+          {config.isFree ? (
+            <>
+              <div>
+                <label className="block text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Sujet libre *</label>
+                <input 
+                  type="text" 
+                  className="w-full text-xs rounded-xl border-slate-200 py-1.5 focus:ring-blue-500/20" 
+                  placeholder="Ex: Conférence IA"
+                  value={config.customSubject} 
+                  onChange={e => setConfig({...config, customSubject: e.target.value})}
+                />
+              </div>
+              <div>
+                <label className="block text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Intervenant *</label>
+                <input 
+                  type="text" 
+                  className="w-full text-xs rounded-xl border-slate-200 py-1.5 focus:ring-blue-500/20" 
+                  placeholder="Ex: Jean Dupont"
+                  value={config.customTeacher} 
+                  onChange={e => setConfig({...config, customTeacher: e.target.value})}
+                />
+              </div>
+            </>
+          ) : (
             <div>
               <label className="block text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Matière *</label>
               <select className="w-full text-xs rounded-xl border-slate-200 py-1.5 focus:ring-blue-500/20" value={config.subjectId} onChange={e => setConfig({...config, subjectId: e.target.value})}>
@@ -523,18 +551,23 @@ export default function AdvancedPlanningClient({ classes, teachers, subjects, ro
                 className="fc-event cursor-grab active:cursor-grabbing p-3 rounded-xl bg-blue-600 text-white shadow-lg shadow-blue-500/20 hover:bg-blue-700 transition transform hover:-translate-y-0.5"
                 data-duration={config.duration}
                 data-props={JSON.stringify({
-                  teacherId: config.teacherId,
-                  subjectId: config.subjectId,
+                  teacherId: config.isFree ? null : config.teacherId,
+                  subjectId: config.isFree ? null : config.subjectId,
                   classId: config.classId,
                   roomId: config.roomId,
-                  teacher: `${selectedTeacher?.lastName} ${selectedTeacher?.firstName}`,
-                  subject: selectedSubject?.name,
+                  teacher: config.isFree ? (config.customTeacher || "Intervenant") : `${selectedTeacher?.lastName} ${selectedTeacher?.firstName}`,
+                  subject: config.isFree ? (config.customSubject || "Cours libre") : selectedSubject?.name,
                   class: selectedClass?.name,
-                  room: selectedRoom?.name
+                  room: selectedRoom?.name,
+                  isFreeLesson: config.isFree,
+                  customSubject: config.isFree ? config.customSubject : null,
+                  customTeacher: config.isFree ? config.customTeacher : null
                 })}
               >
-                <div className="font-black text-xs uppercase truncate">{selectedSubject?.name}</div>
-                <div className="text-[9px] font-bold text-blue-100 mt-1 uppercase tracking-tighter">{selectedTeacher?.lastName} • {selectedClass?.name}</div>
+                <div className="font-black text-xs uppercase truncate">{config.isFree ? (config.customSubject || "Cours libre") : selectedSubject?.name}</div>
+                <div className="text-[9px] font-bold text-blue-100 mt-1 uppercase tracking-tighter">
+                    {config.isFree ? (config.customTeacher || "Intervenant") : selectedTeacher?.lastName} • {selectedClass?.name}
+                </div>
                 {selectedRoom && <div className="text-[8px] font-black bg-blue-800/50 inline-block px-1.5 py-0.5 rounded-md mt-1 uppercase tracking-widest">{selectedRoom.name}</div>}
               </div>
             ) : (
