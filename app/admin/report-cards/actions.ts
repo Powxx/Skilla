@@ -55,6 +55,16 @@ export async function calculateStudentAverages(studentId: string, semesterId: st
   });
 
   studentGrades.forEach(g => {
+    // ... rest of the loop
+  });
+
+  // Re-fetch grades with subject AND teachers relation
+  const gradesWithTeachers = await prisma.grade.findMany({
+    where: { semesterId, studentId: studentId },
+    include: { subject: { include: { teachers: { select: { firstName: true, lastName: true } } } } }
+  });
+
+  gradesWithTeachers.forEach(g => {
     if (!g.subject) return; // Skip if subject relation is missing (should not happen for grades)
     if (!studentStats[g.subjectId]) {
       const teacherNames = g.subject.teachers.map(t => `${t.firstName} ${t.lastName}`).join(', ');
