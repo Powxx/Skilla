@@ -6,11 +6,12 @@ import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { sendPushNotification } from "./push";
 
-export async function getNotifications(userId: string) {
+export async function getNotifications(userId: string, page: number = 1, pageSize: number = 20) {
   return await prisma.notification.findMany({
     where: { userId },
     orderBy: { createdAt: "desc" },
-    take: 20,
+    skip: (page - 1) * pageSize,
+    take: pageSize,
   });
 }
 

@@ -62,7 +62,7 @@ async function cleanupOldMessages() {
   });
 }
 
-export async function getMessages(conversationId: string) {
+export async function getMessages(conversationId: string, page: number = 1, pageSize: number = 50) {
   if (!(await isChatEnabled())) throw new Error("Le chat est désactivé");
   
   // Appliquer la rétention avant de récupérer
@@ -88,9 +88,11 @@ export async function getMessages(conversationId: string) {
         conversationId,
         createdAt: { gte: thresholdDate }
     },
-    orderBy: { createdAt: 'asc' },
+    orderBy: { createdAt: 'desc' }, // Inversé pour le 'take' logique (les plus récents)
+    skip: (page - 1) * pageSize,
+    take: pageSize,
     include: { sender: { select: { firstName: true, lastName: true } } }
-  });
+  }).then(messages => messages.reverse()); // Remettre dans l'ordre chronologique
 }
 
 export async function sendMessage(recipientId: string, content: string) {
