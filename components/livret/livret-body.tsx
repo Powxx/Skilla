@@ -29,7 +29,7 @@ export default function LivretBody({ studentName, competencies, isEditable, onUp
   // Grouper les compétences par nom pour le tableau comparatif
   const competencyGroups = competencies.reduce((acc, c) => {
     if (!acc[c.name]) acc[c.name] = { id: c.name, SCHOOL: null, ENTERPRISE: null };
-    acc[c.name][c.category] = c.level;
+    (acc[c.name] as any)[c.category] = c.level;
     return acc;
   }, {} as Record<string, { id: string, SCHOOL: number | null, ENTERPRISE: number | null }>);
 
