@@ -4,6 +4,7 @@ import prisma from "@/lib/prisma";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth-options";
 import { revalidatePath } from "next/cache";
+import { createNotification } from "./notifications";
 
 async function isChatEnabled() {
   const setting = await prisma.globalSetting.findUnique({
@@ -175,6 +176,14 @@ export async function sendMessage(recipientId: string, content: string) {
   await prisma.conversation.update({
     where: { id: conversation.id },
     data: { updatedAt: new Date() }
+  });
+
+  await createNotification({
+      userId: recipientId,
+      title: "Nouveau message",
+      message: content.length > 50 ? content.substring(0, 50) + "..." : content,
+      type: "INFO",
+      link: "/messages"
   });
 
   revalidatePath("/messages");
