@@ -190,6 +190,9 @@ model GlobalSetting {
   value String
 }
 
+// Pour le chat, on utilisera la clé 'CHAT_ENABLED' dans GlobalSetting
+
+
 model StudentProfile {
   id      String @id @default(cuid())
   userId  String @unique

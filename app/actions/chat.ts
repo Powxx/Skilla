@@ -5,7 +5,15 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth-options";
 import { revalidatePath } from "next/cache";
 
+async function isChatEnabled() {
+  const setting = await prisma.globalSetting.findUnique({
+    where: { key: 'CHAT_ENABLED' }
+  });
+  return setting ? setting.value === 'true' : true; // Activé par défaut
+}
+
 export async function getConversations() {
+  if (!(await isChatEnabled())) throw new Error("Le chat est désactivé");
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) throw new Error("Non autorisé");
 
@@ -35,6 +43,7 @@ export async function getConversations() {
 }
 
 export async function getMessages(conversationId: string) {
+  if (!(await isChatEnabled())) throw new Error("Le chat est désactivé");
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) throw new Error("Non autorisé");
 
@@ -54,6 +63,7 @@ export async function getMessages(conversationId: string) {
 }
 
 export async function sendMessage(recipientId: string, content: string) {
+  if (!(await isChatEnabled())) throw new Error("Le chat est désactivé");
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) throw new Error("Non autorisé");
   if (session.user.id === recipientId) throw new Error("Impossible de s'envoyer un message");
@@ -142,6 +152,7 @@ export async function sendMessage(recipientId: string, content: string) {
 }
 
 export async function markAsRead(conversationId: string) {
+  if (!(await isChatEnabled())) throw new Error("Le chat est désactivé");
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) throw new Error("Non autorisé");
 
