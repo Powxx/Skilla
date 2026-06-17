@@ -64,6 +64,7 @@ export default async function EmployerGradesPage({
     <GradesBody
       student={student as any}
       subjectsFromDb={subjectsFromDb}
+      reportCardsVisible={student.class?.reportCardsVisible ?? true}
       contextNote="Vue entreprise : suivi pédagogique de l'alternant."
     />
   );

@@ -162,6 +162,7 @@ model Class {
   name             String            @unique
   rhythm           RhythmType        @default(WEEKLY)
   cycleWeeks       Int               @default(1) // Number of weeks in a cycle
+  reportCardsVisible Boolean         @default(true)
   students         User[]
   lessons          Lesson[]
   attendanceSheets AttendanceSheet[]

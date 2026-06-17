@@ -1,18 +1,63 @@
 "use client";
 
 import React, { useState, useTransition } from 'react';
-import { calculateStudentAverages, saveReportCard } from './actions';
+import { calculateStudentAverages, saveReportCard, toggleClassReportCardsVisibility } from './actions';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
+import { Eye, EyeOff } from 'lucide-react';
 
-export default function ReportCardClient({ students, semesters }: any) {
+interface Student {
+  id: string;
+  name: string;
+  className: string;
+  classId?: string;
+}
+
+interface Semester {
+  id: string;
+  name: string;
+}
+
+interface ClassVisibility {
+  id: string;
+  name: string;
+  reportCardsVisible: boolean;
+}
+
+interface AverageData {
+  subjectId: string;
+  subjectName: string;
+  average: number | null;
+  classAverage: number | null;
+  comments: string;
+  isDispensed: boolean;
+}
+
+interface Props {
+  students: Student[];
+  semesters: Semester[];
+  initialClasses?: ClassVisibility[];
+}
+
+export default function ReportCardClient({ students, semesters, initialClasses = [] }: Props) {
   const [isPending, startTransition] = useTransition();
   const [selectedStudent, setSelectedStudent] = useState('');
   const [selectedSemester, setSelectedSemester] = useState(semesters[0]?.id || '');
-  const [averages, setAverages] = useState<any[]>([]);
+  const [averages, setAverages] = useState<AverageData[]>([]);
   const [appraisal, setAppraisal] = useState('');
   const [distinction, setDistinction] = useState('');
   const [showForm, setShowForm] = useState(false);
+  const [classList, setClassList] = useState<ClassVisibility[]>(initialClasses);
+
+  const handleToggleVisibility = (classId: string, currentVisible: boolean) => {
+    const newVisible = !currentVisible;
+    startTransition(async () => {
+      const res = await toggleClassReportCardsVisibility(classId, newVisible);
+      if (res.ok) {
+        setClassList(classList.map((c) => c.id === classId ? { ...c, reportCardsVisible: newVisible } : c));
+      }
+    });
+  };
 
   const handleFetchAverages = () => {
     if (!selectedStudent || !selectedSemester) return;
@@ -40,6 +85,27 @@ export default function ReportCardClient({ students, semesters }: any) {
 
   return (
     <div className="space-y-8">
+      {/* VISIBILITY CONTROL */}
+      <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm">
+        <h3 className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-4">Visibilité des bulletins par classe</h3>
+        <div className="flex flex-wrap gap-3">
+          {classList.map((c) => (
+            <button
+              key={c.id}
+              onClick={() => handleToggleVisibility(c.id, c.reportCardsVisible)}
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition ${
+                c.reportCardsVisible 
+                ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' 
+                : 'bg-slate-50 text-slate-400 border border-slate-100 opacity-60'
+              }`}
+            >
+              {c.reportCardsVisible ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
+              {c.name}
+            </button>
+          ))}
+        </div>
+      </div>
+
       <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm flex flex-wrap gap-4 items-end">
         <div className="flex-1 min-w-[200px]">
           <label className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-2 block">Élève</label>
@@ -49,7 +115,7 @@ export default function ReportCardClient({ students, semesters }: any) {
             onChange={(e) => setSelectedStudent(e.target.value)}
           >
             <option value="">Sélectionner un élève</option>
-            {students.map((s: any) => (
+            {students.map((s) => (
               <option key={s.id} value={s.id}>[{s.className}] {s.name}</option>
             ))}
           </select>
@@ -61,7 +127,7 @@ export default function ReportCardClient({ students, semesters }: any) {
             value={selectedSemester}
             onChange={(e) => setSelectedSemester(e.target.value)}
           >
-            {semesters.map((s: any) => (
+            {semesters.map((s) => (
               <option key={s.id} value={s.id}>{s.name}</option>
             ))}
           </select>
@@ -84,7 +150,7 @@ export default function ReportCardClient({ students, semesters }: any) {
 
           <div className="p-8 grid gap-8 md:grid-cols-2">
             <div className="space-y-4">
-              {averages.map((a: any) => (
+              {averages.map((a) => (
                 <div key={a.subjectId} className="flex justify-between items-center p-4 bg-slate-50 rounded-2xl border border-slate-100">
                   <span className="font-bold text-slate-700">{a.subjectName}</span>
                   <span className="text-lg font-black text-blue-600">
@@ -144,7 +210,7 @@ export default function ReportCardClient({ students, semesters }: any) {
               <header className="flex justify-between items-start border-b-2 border-slate-900 pb-8">
                 <div>
                   <h1 className="text-4xl font-black text-slate-900">BULLETIN SCOLAIRE</h1>
-                  <p className="text-xl text-slate-500 mt-2">{semesters.find((s: any) => s.id === selectedSemester)?.name}</p>
+                  <p className="text-xl text-slate-500 mt-2">{semesters.find((s) => s.id === selectedSemester)?.name}</p>
                 </div>
                 <div className="text-right">
                   <p className="text-2xl font-bold text-slate-900">ECM Academie</p>
@@ -155,17 +221,18 @@ export default function ReportCardClient({ students, semesters }: any) {
               <section className="grid grid-cols-2 gap-12">
                 <div>
                    <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Élève</h3>
-                   <p className="text-2xl font-black text-slate-900">{students.find((s: any) => s.id === selectedStudent)?.name}</p>
-                   <p className="text-slate-500 font-medium">Classe : {students.find((s: any) => s.id === selectedStudent)?.className}</p>
+                   <p className="text-2xl font-black text-slate-900">{students.find((s) => s.id === selectedStudent)?.name}</p>
+                   <p className="text-slate-500 font-medium">Classe : {students.find((s) => s.id === selectedStudent)?.className}</p>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="bg-slate-50 p-6 rounded-3xl border border-slate-100 text-right">
                      <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Moyenne Élève</h3>
                      <p className="text-4xl font-black text-blue-600">
                        {(() => {
-                         const graded = averages.filter((a: any) => a.average !== null);
+                         const graded = averages.filter((a) => a.average !== null);
                          if (graded.length === 0) return '—';
-                         return (graded.reduce((acc: number, cur: any) => acc + cur.average, 0) / graded.length).toFixed(2);
+                         const total = graded.reduce((acc: number, cur) => acc + (cur.average ?? 0), 0);
+                         return (total / graded.length).toFixed(2);
                        })()}
                      </p>
                   </div>
@@ -173,9 +240,10 @@ export default function ReportCardClient({ students, semesters }: any) {
                      <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Moyenne Classe</h3>
                      <p className="text-4xl font-black text-slate-900">
                        {(() => {
-                         const graded = averages.filter((a: any) => a.classAverage !== null);
+                         const graded = averages.filter((a) => a.classAverage !== null);
                          if (graded.length === 0) return '—';
-                         return (graded.reduce((acc: number, cur: any) => acc + cur.classAverage, 0) / graded.length).toFixed(2);
+                         const total = graded.reduce((acc: number, cur) => acc + (cur.classAverage ?? 0), 0);
+                         return (total / graded.length).toFixed(2);
                        })()}
                      </p>
                   </div>
@@ -193,7 +261,7 @@ export default function ReportCardClient({ students, semesters }: any) {
                      </tr>
                    </thead>
                    <tbody className="divide-y divide-slate-100">
-                     {averages.map((a: any) => (
+                     {averages.map((a) => (
                        <tr key={a.subjectId}>
                          <td className="py-6 font-bold text-slate-900">{a.subjectName}</td>
                          <td className="py-6 text-right font-black text-blue-600 text-lg">
@@ -212,8 +280,8 @@ export default function ReportCardClient({ students, semesters }: any) {
               </section>
 
               <section className="bg-slate-900 text-white p-8 rounded-3xl shadow-xl">
-                 <h3 className="text-[10px] font-black uppercase tracking-widest text-white/40 mb-4">Bilan de l'établissement</h3>
-                 <p className="text-xl font-medium leading-relaxed">"{appraisal}"</p>
+                 <h3 className="text-[10px] font-black uppercase tracking-widest text-white/40 mb-4">Bilan de l&apos;établissement</h3>
+                 <p className="text-xl font-medium leading-relaxed">&quot;{appraisal}&quot;</p>
                  {distinction && (
                    <div className="mt-6 pt-6 border-t border-white/10">
                      <p className="text-sm font-black uppercase tracking-[0.3em] text-blue-400">Mention : {distinction}</p>

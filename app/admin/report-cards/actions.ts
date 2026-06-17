@@ -124,3 +124,12 @@ export async function saveReportCard(data: {
   revalidatePath("/admin/report-cards");
   return { ok: true, id: reportCard.id };
 }
+
+export async function toggleClassReportCardsVisibility(classId: string, visible: boolean) {
+  await prisma.class.update({
+    where: { id: classId },
+    data: { reportCardsVisible: visible }
+  });
+  revalidatePath("/admin/report-cards");
+  return { ok: true };
+}

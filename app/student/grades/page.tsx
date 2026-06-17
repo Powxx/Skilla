@@ -57,7 +57,13 @@ export default async function StudentGradesPage() {
     );
   }
 
-  // On passe les données au composant client avec un cast "as any" 
+  // On passe les données au composant client 
   // pour éviter les frictions de types TypeScript complexes au build
-  return <GradesBody student={student as any} subjectsFromDb={subjectsFromDb} />;
+  return (
+    <GradesBody 
+      student={student as any} 
+      subjectsFromDb={subjectsFromDb} 
+      reportCardsVisible={student.class?.reportCardsVisible ?? true}
+    />
+  );
 }

@@ -34,16 +34,17 @@ export default async function ParentGradesPage({
       where: { id: studentId },
       include: {
         class: true,
-        // 1. La relation est directe avec User
-        // 2. On utilise 'Grade' (nom du modèle) car Prisma le met souvent au singulier
-        // Si 'Grade' échoue, essaie 'grades' au pluriel ici.
         grades: { 
           orderBy: { createdAt: "desc" },
           include: { 
             subject: true,
-            semester: true // On profite du fait qu'ils sont dans ton modèle
+            semester: true
           },
         },
+        reportCards: {
+          orderBy: { semester: { startDate: 'desc' } },
+          include: { semester: true }
+        }
       },
     }),
     prisma.subject.findMany({
@@ -56,17 +57,11 @@ export default async function ParentGradesPage({
     redirect("/parent");
   }
   
-  // 3. On formate l'objet pour le composant
-  const formattedStudent = {
-    ...student,
-    // On renomme Grade en grades si ton composant AbsencesBody/GradesBody attend le pluriel
-    grades: (student as any).Grade || [],
-  };
-  
   return (
     <GradesBody
-      student={formattedStudent as any}
+      student={student as any}
       subjectsFromDb={subjectsFromDb}
+      reportCardsVisible={student.class?.reportCardsVisible ?? true}
       contextNote="Vue famille : données en lecture seule pour l’élève sélectionné."
     />
   );

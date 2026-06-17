@@ -12,17 +12,21 @@ export default async function AdminReportCardsPage() {
     redirect("/login");
   }
 
-  const [students, semesters] = await Promise.all([
+  const [students, semesters, classes] = await Promise.all([
     prisma.user.findMany({
       where: { 
         role: "STUDENT",
         isActive: true
       },
-      select: { id: true, firstName: true, lastName: true, class: { select: { name: true } } },
+      select: { id: true, firstName: true, lastName: true, class: { select: { id: true, name: true } } },
       orderBy: { lastName: 'asc' }
     }),
     prisma.semester.findMany({
       orderBy: { startDate: 'desc' }
+    }),
+    prisma.class.findMany({
+      select: { id: true, name: true, reportCardsVisible: true },
+      orderBy: { name: 'asc' }
     })
   ]);
 
@@ -35,8 +39,9 @@ export default async function AdminReportCardsPage() {
         </header>
 
         <ReportCardClient 
-          students={students.map(s => ({ id: s.id, name: `${s.lastName} ${s.firstName}`, className: s.class?.name || "N/A" }))} 
+          students={students.map(s => ({ id: s.id, name: `${s.lastName} ${s.firstName}`, className: s.class?.name || "N/A", classId: s.class?.id }))} 
           semesters={semesters.map(s => ({ id: s.id, name: s.name }))}
+          initialClasses={classes}
         />
       </div>
     </div>

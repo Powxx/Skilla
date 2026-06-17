@@ -45,21 +45,32 @@ function formatFrAvg(n: number) {
 
 export type SubjectLite = { id: string; name: string };
 
+interface ReportCardLite {
+  id: string;
+  generalAppraisal: string | null;
+  distinction: string | null;
+  semester: {
+    name: string;
+  };
+}
+
 type Props = {
   student: User & {
     class: Class | null;
     grades: Grade[];
-    reportCards: (any)[]; // We'll handle typing in the component
+    reportCards: ReportCardLite[];
   };
   subjectsFromDb: SubjectLite[];
   /** Bandeau informatif (ex. consultation parent). */
   contextNote?: string;
+  reportCardsVisible?: boolean;
 };
 
 export default function GradesBody({
   student,
   subjectsFromDb,
   contextNote,
+  reportCardsVisible = true,
 }: Props) {
   const subjectByExactName = new Map(
     subjectsFromDb.map((s) => [s.name.trim(), s] as const),
@@ -121,7 +132,7 @@ export default function GradesBody({
         </p>
       ) : (
         <>
-          {student.reportCards && student.reportCards.length > 0 && (
+          {reportCardsVisible && student.reportCards && student.reportCards.length > 0 && (
             <section className="mb-10 animate-in fade-in slide-in-from-top-4 duration-700">
                <h2 className="mb-4 text-lg font-bold tracking-tight text-slate-900 flex items-center gap-2">
                  <span className="h-2 w-2 rounded-full bg-blue-600"></span>
@@ -133,7 +144,7 @@ export default function GradesBody({
                  </div>
                  <div className="relative z-10">
                    <p className="text-slate-700 leading-relaxed italic text-lg font-medium">
-                     "{student.reportCards[0].generalAppraisal}"
+                     &quot;{student.reportCards[0].generalAppraisal}&quot;
                    </p>
                    {student.reportCards[0].distinction && (
                      <div className="mt-6 flex items-center gap-3">
