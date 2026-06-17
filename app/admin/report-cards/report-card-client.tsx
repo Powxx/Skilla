@@ -205,72 +205,72 @@ export default function ReportCardClient({ students, semesters, initialClasses =
           </div>
 
           {/* Print Only Section */}
-          <div className="hidden print:block fixed inset-0 bg-white z-[9999] p-12 overflow-y-auto">
-            <div className="max-w-4xl mx-auto space-y-12">
-              <header className="flex justify-between items-start border-b-2 border-slate-900 pb-8">
+          <div className="hidden print:block fixed inset-0 bg-white z-[9999] p-8 overflow-y-visible">
+            <div className="max-w-4xl mx-auto space-y-8">
+              <header className="flex justify-between items-start border-b-2 border-slate-900 pb-6">
                 <div>
-                  <h1 className="text-4xl font-black text-slate-900">BULLETIN SCOLAIRE</h1>
-                  <p className="text-xl text-slate-500 mt-2">{semesters.find((s) => s.id === selectedSemester)?.name}</p>
+                  <h1 className="text-3xl font-black text-slate-900">BULLETIN SCOLAIRE</h1>
+                  <p className="text-lg text-slate-500 mt-1">{semesters.find((s) => s.id === selectedSemester)?.name}</p>
                 </div>
                 <div className="text-right">
-                  <p className="text-2xl font-bold text-slate-900">ECM Academie</p>
-                  <p className="text-sm text-slate-500">Portail Académique</p>
+                  <p className="text-xl font-bold text-slate-900">ECM Academie</p>
+                  <p className="text-xs text-slate-500">Portail Académique</p>
                 </div>
               </header>
 
-              <section className="grid grid-cols-2 gap-12">
+              <section className="grid grid-cols-2 gap-8">
                 <div>
-                   <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Élève</h3>
-                   <p className="text-2xl font-black text-slate-900">{students.find((s) => s.id === selectedStudent)?.name}</p>
-                   <p className="text-slate-500 font-medium">Classe : {students.find((s) => s.id === selectedStudent)?.className}</p>
+                   <h3 className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">Élève</h3>
+                   <p className="text-xl font-black text-slate-900">{students.find((s) => s.id === selectedStudent)?.name}</p>
+                   <p className="text-slate-500 font-medium text-sm">Classe : {students.find((s) => s.id === selectedStudent)?.className}</p>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
-                  <div className="bg-slate-50 p-6 rounded-3xl border border-slate-100 text-right">
-                     <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Moyenne Élève</h3>
-                     <p className="text-4xl font-black text-blue-600">
+                  <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 text-right">
+                     <h3 className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">Moy. Élève</h3>
+                     <p className="text-3xl font-black text-blue-600">
                        {(() => {
                          const graded = averages.filter((a) => a.average !== null);
                          if (graded.length === 0) return '—';
                          const total = graded.reduce((acc: number, cur) => acc + (cur.average ?? 0), 0);
-                         return (total / graded.length).toFixed(2);
+                         return (total / graded.length).toFixed(1);
                        })()}
                      </p>
                   </div>
-                  <div className="bg-slate-50 p-6 rounded-3xl border border-slate-100 text-right">
-                     <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Moyenne Classe</h3>
-                     <p className="text-4xl font-black text-slate-900">
+                  <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 text-right">
+                     <h3 className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">Moy. Classe</h3>
+                     <p className="text-3xl font-black text-slate-900">
                        {(() => {
                          const graded = averages.filter((a) => a.classAverage !== null);
                          if (graded.length === 0) return '—';
                          const total = graded.reduce((acc: number, cur) => acc + (cur.classAverage ?? 0), 0);
-                         return (total / graded.length).toFixed(2);
+                         return (total / graded.length).toFixed(1);
                        })()}
                      </p>
                   </div>
                 </div>
               </section>
 
-              <section>
-                 <table className="w-full border-collapse">
+              <section className="break-inside-avoid">
+                 <table className="w-full border-collapse text-sm">
                    <thead>
                      <tr className="border-b-2 border-slate-900">
-                       <th className="py-4 text-left text-xs font-black uppercase tracking-widest text-slate-900">Matière</th>
-                       <th className="py-4 text-right text-xs font-black uppercase tracking-widest text-slate-900">Moy. Élève</th>
-                       <th className="py-4 text-right text-xs font-black uppercase tracking-widest text-slate-900">Moy. Classe</th>
-                       <th className="py-4 text-right text-xs font-black uppercase tracking-widest text-slate-900">Appréciation</th>
+                       <th className="py-3 text-left text-[10px] font-black uppercase tracking-widest text-slate-900">Matière</th>
+                       <th className="py-3 text-right text-[10px] font-black uppercase tracking-widest text-slate-900">Moy. Élève</th>
+                       <th className="py-3 text-right text-[10px] font-black uppercase tracking-widest text-slate-900">Moy. Classe</th>
+                       <th className="py-3 text-right text-[10px] font-black uppercase tracking-widest text-slate-900">Appréciation</th>
                      </tr>
                    </thead>
                    <tbody className="divide-y divide-slate-100">
                      {averages.map((a) => (
                        <tr key={a.subjectId}>
-                         <td className="py-6 font-bold text-slate-900">{a.subjectName}</td>
-                         <td className="py-6 text-right font-black text-blue-600 text-lg">
-                           {a.average !== null ? a.average.toFixed(2) : '—'}
+                         <td className="py-4 font-bold text-slate-900">{a.subjectName}</td>
+                         <td className="py-4 text-right font-black text-blue-600">
+                           {a.average !== null ? a.average.toFixed(1) : '—'}
                          </td>
-                         <td className="py-6 text-right font-bold text-slate-500">
-                           {a.classAverage !== null ? a.classAverage.toFixed(2) : '—'}
+                         <td className="py-4 text-right font-bold text-slate-500">
+                           {a.classAverage !== null ? a.classAverage.toFixed(1) : '—'}
                          </td>
-                         <td className="py-6 text-right text-slate-400 italic text-sm">
+                         <td className="py-4 text-right text-slate-500 italic text-xs max-w-xs">
                            {a.comments || "—"}
                          </td>
                        </tr>
@@ -279,23 +279,23 @@ export default function ReportCardClient({ students, semesters, initialClasses =
                  </table>
               </section>
 
-              <section className="bg-slate-900 text-white p-8 rounded-3xl shadow-xl">
-                 <h3 className="text-[10px] font-black uppercase tracking-widest text-white/40 mb-4">Bilan de l&apos;établissement</h3>
-                 <p className="text-xl font-medium leading-relaxed">&quot;{appraisal}&quot;</p>
+              <section className="bg-slate-900 text-white p-6 rounded-2xl shadow-lg break-inside-avoid">
+                 <h3 className="text-[9px] font-black uppercase tracking-widest text-white/50 mb-2">Bilan de l&apos;établissement</h3>
+                 <p className="text-base font-medium leading-relaxed">&quot;{appraisal}&quot;</p>
                  {distinction && (
-                   <div className="mt-6 pt-6 border-t border-white/10">
-                     <p className="text-sm font-black uppercase tracking-[0.3em] text-blue-400">Mention : {distinction}</p>
+                   <div className="mt-4 pt-4 border-t border-white/10">
+                     <p className="text-xs font-black uppercase tracking-[0.2em] text-blue-400">Mention : {distinction}</p>
                    </div>
                  )}
               </section>
 
-              <footer className="pt-20 flex justify-between items-end border-t border-slate-100">
-                 <div className="text-xs text-slate-400">
+              <footer className="pt-8 flex justify-between items-end border-t border-slate-100">
+                 <div className="text-[10px] text-slate-400">
                    Document généré le {format(new Date(), 'dd MMMM yyyy HH:mm', { locale: fr })}
                  </div>
-                 <div className="text-center w-64">
-                   <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-12">Cachet et Signature</p>
-                   <div className="h-px w-full bg-slate-200"></div>
+                 <div className="text-center w-48">
+                   <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-8">Cachet et Signature</p>
+                   <div className="h-px w-full bg-slate-300"></div>
                  </div>
               </footer>
             </div>
