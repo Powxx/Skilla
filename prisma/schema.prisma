@@ -251,6 +251,7 @@ model Semester {
   endDate     DateTime
   grades      Grade[]
   reportCards ReportCard[]
+  evaluations Evaluation[]
 }
 
 // --- PLANNING & ÉMARGEMENT ---
@@ -369,13 +370,16 @@ model TeacherContract {
 
 // --- MODULES QUALIOPI ---
 model Evaluation {
-  id         String @id @default(cuid())
+  id         String   @id @default(cuid())
   competency String
   level      Int
   source     String
-  category   String @default("SCHOOL") // "SCHOOL" or "ENTERPRISE"
+  category   String   @default("SCHOOL") // "SCHOOL" or "ENTERPRISE"
   studentId  String
-  student    User   @relation(fields: [studentId], references: [id])
+  student    User     @relation(fields: [studentId], references: [id])
+  semesterId String?
+  semester   Semester? @relation(fields: [semesterId], references: [id])
+  updatedAt  DateTime @updatedAt
 }
 
 model ClassCompetency {
