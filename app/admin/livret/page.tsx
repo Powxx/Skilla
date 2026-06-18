@@ -30,7 +30,7 @@ export default async function AdminLivretPage() {
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900">
       <div className="mx-auto max-w-5xl">
-        <header className="mb-12">
+        <header className="mb-12 no-print">
           <h1 className="text-3xl font-black tracking-tight text-slate-900">Gestion des Livrets</h1>
           <p className="mt-2 text-slate-500 font-medium">Consultez et imprimez les livrets d'apprentissage par élève.</p>
         </header>
