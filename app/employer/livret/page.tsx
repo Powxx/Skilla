@@ -10,26 +10,29 @@ export const dynamic = 'force-dynamic';
 export default async function EmployerLivretPage({ 
   searchParams 
 }: { 
-  searchParams: Promise<{ studentId?: string }> 
+  searchParams: Promise<{ studentId?: string, semesterId?: string }> 
 }) {
   const session = await getServerSession(authOptions);
   if (!session?.user?.id || session.user.role !== "COMPANY_TUTOR") {
     redirect("/login");
   }
 
-  const { studentId: studentIdParam } = await searchParams;
+  const { studentId: studentIdParam, semesterId: semesterIdParam } = await searchParams;
 
   const studentId = await resolveTutorStudentId(session.user.id, studentIdParam);
   if (!studentId) redirect("/employer");
 
-  const [contracts, student, allTutorStudents] = await Promise.all([
+  const [contracts, student, allTutorStudents, semesters] = await Promise.all([
     prisma.companyContract.findMany({ where: { tutorId: session.user.id } }),
     prisma.user.findUnique({ where: { id: studentId }, include: { class: true } }),
     prisma.companyContract.findMany({
        where: { tutorId: session.user.id },
        include: { student: { include: { class: true } } }
-    })
+    }),
+    prisma.semester.findMany({ orderBy: { startDate: 'desc' } })
   ]);
+
+  const semesterId = semesterIdParam || semesters[0]?.id;
 
   // Check if student is in alternance
   const currentContract = contracts.find(c => c.studentId === studentId);
@@ -44,7 +47,7 @@ export default async function EmployerLivretPage({
   const classId = student?.classId;
   const [classComps, evaluations] = await Promise.all([
     classId ? prisma.classCompetency.findMany({ where: { classId, category: 'ENTERPRISE' } }) : [],
-    prisma.evaluation.findMany({ where: { studentId, category: 'ENTERPRISE' } })
+    studentId ? prisma.evaluation.findMany({ where: { studentId, category: 'ENTERPRISE', semesterId } }) : []
   ]);
 
   const mergedEvaluations = classComps.map(cc => {
@@ -68,6 +71,8 @@ export default async function EmployerLivretPage({
         students={allTutorStudents.map(c => ({ id: c.student.id, name: `${c.student.lastName} ${c.student.firstName}`, className: c.student.class?.name }))}
         initialEvaluations={mergedEvaluations}
         selectedStudentId={studentId}
+        selectedSemesterId={semesterId}
+        semesters={semesters}
         category="ENTERPRISE"
       />
     </div>

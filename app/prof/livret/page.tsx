@@ -6,7 +6,7 @@ import ProfLivretClient from "./prof-livret-client";
 
 export const dynamic = 'force-dynamic';
 
-export default async function ProfLivretPage({ searchParams }: { searchParams?: { studentId?: string } }) {
+export default async function ProfLivretPage({ searchParams }: { searchParams?: { studentId?: string, semesterId?: string } }) {
   const session = await getServerSession(authOptions);
   if (!session?.user?.id || session.user.role !== "TEACHER") {
     redirect("/login");
@@ -21,20 +21,24 @@ export default async function ProfLivretPage({ searchParams }: { searchParams?: 
     redirect("/prof?access=denied");
   }
 
-  // 1. Get my students (those in my classes)
+  // 1. Get my students (those in my classes) and semesters
   const teacherLessons = await prisma.lesson.findMany({
     where: { teacherId: session.user.id, isFreeLesson: false },
     select: { classId: true }
   });
   const classIds = [...new Set(teacherLessons.map(l => l.classId))];
 
-  const students = await prisma.user.findMany({
-    where: { classId: { in: classIds }, role: "STUDENT" },
-    select: { id: true, firstName: true, lastName: true, classId: true, class: { select: { name: true } } },
-    orderBy: { lastName: 'asc' }
-  });
+  const [students, semesters] = await Promise.all([
+    prisma.user.findMany({
+      where: { classId: { in: classIds }, role: "STUDENT" },
+      select: { id: true, firstName: true, lastName: true, classId: true, class: { select: { name: true } } },
+      orderBy: { lastName: 'asc' }
+    }),
+    prisma.semester.findMany({ orderBy: { startDate: 'desc' } })
+  ]);
 
   const studentId = searchParams?.studentId || students[0]?.id;
+  const semesterId = searchParams?.semesterId || semesters[0]?.id;
   
   // 2. Get the student's class competencies (SCHOOL only)
   const student = students.find(s => s.id === studentId);
@@ -42,7 +46,7 @@ export default async function ProfLivretPage({ searchParams }: { searchParams?: 
 
   const [classComps, evaluations] = await Promise.all([
     classId ? prisma.classCompetency.findMany({ where: { classId, category: 'SCHOOL' } }) : [],
-    studentId ? prisma.evaluation.findMany({ where: { studentId, category: 'SCHOOL' } }) : []
+    studentId ? prisma.evaluation.findMany({ where: { studentId, category: 'SCHOOL', semesterId } }) : []
   ]);
 
   // Combine: if evaluation exists, use its level. Otherwise use class competency name with level 1.
@@ -67,6 +71,8 @@ export default async function ProfLivretPage({ searchParams }: { searchParams?: 
         students={students.map(s => ({ id: s.id, name: `${s.lastName} ${s.firstName}`, className: s.class?.name }))}
         initialEvaluations={mergedEvaluations}
         selectedStudentId={studentId}
+        selectedSemesterId={semesterId}
+        semesters={semesters}
         category="SCHOOL"
       />
     </div>

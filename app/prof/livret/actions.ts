@@ -3,9 +3,9 @@
 import prisma from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 
-export async function updateSkillLevel(studentId: string, competencyName: string, level: number, category: string = "SCHOOL") {
+export async function updateSkillLevel(studentId: string, competencyName: string, level: number, category: string = "SCHOOL", semesterId: string) {
   const existing = await prisma.evaluation.findFirst({
-    where: { studentId, competency: competencyName, category },
+    where: { studentId, competency: competencyName, category, semesterId },
     select: { id: true }
   });
 
@@ -20,6 +20,7 @@ export async function updateSkillLevel(studentId: string, competencyName: string
         studentId,
         competency: competencyName,
         level,
+        semesterId,
         source: category === "SCHOOL" ? "TEACHER_EVAL" : "EMPLOYER_EVAL",
         category
       }
