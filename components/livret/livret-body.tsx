@@ -77,7 +77,10 @@ export default function LivretBody({ studentName, competencies, isEditable, onUp
 
       {/* Vue Impression */}
       <div className="hidden print:block print-only">
-        <h1 className="text-xl font-black text-slate-900 mb-6 break-avoid">LIVRET D'APPRENTISSAGE - {studentName}</h1>
+        <div className="flex items-center gap-4 mb-6">
+          <img src="/ECMA - Logo noir.png" alt="Logo Établissement" className="h-16 w-auto" />
+          <h1 className="text-xl font-black text-slate-900 break-avoid">LIVRET D'APPRENTISSAGE - {studentName}</h1>
+        </div>
         
         <table className="w-full border-collapse border border-slate-300 text-[10px] break-avoid">
           <thead>

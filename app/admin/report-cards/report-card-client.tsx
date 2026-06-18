@@ -277,9 +277,12 @@ export default function ReportCardClient({ students, semesters, initialClasses =
       <div className="print-only hidden print:block bg-white p-8">
         <div className="max-w-4xl mx-auto space-y-8">
           <header className="flex justify-between items-start border-b-2 border-slate-900 pb-6 break-inside-avoid">
-            <div>
-              <h1 className="text-3xl font-black text-slate-900">BULLETIN SCOLAIRE</h1>
-              <p className="text-lg text-slate-500 mt-1">{semesters.find((s) => s.id === selectedSemester)?.name}</p>
+            <div className="flex items-center gap-4">
+              <img src="/ECMA - Logo noir.png" alt="Logo Établissement" className="h-16 w-auto" />
+              <div>
+                <h1 className="text-3xl font-black text-slate-900">BULLETIN SCOLAIRE</h1>
+                <p className="text-lg text-slate-500 mt-1">{semesters.find((s) => s.id === selectedSemester)?.name}</p>
+              </div>
             </div>
             <div className="text-right">
               <p className="text-xl font-bold text-slate-900">ECM Academie</p>
