@@ -66,7 +66,7 @@ export default function ChatClient() {
   return (
     <div className="h-[calc(100vh-80px)] flex flex-col lg:flex-row bg-white rounded-3xl border border-slate-200 shadow-xl overflow-hidden">
       {/* Sidebar - Conversations list / Contacts selection */}
-      <div className={`w-full lg:w-1/3 border-b lg:border-b-0 lg:border-r border-slate-100 flex-shrink-0 ${selectedConversation && !showContacts ? 'hidden lg:flex' : 'flex flex-col'}`}>
+      <div className={`w-full lg:w-1/3 border-b lg:border-b-0 lg:border-r border-slate-100 flex-shrink-0 ${selectedConversation && !showContacts ? 'hidden lg:flex' : 'flex'} flex-col`}>
         <div className="p-6 border-b border-slate-100 flex justify-between items-center">
             <h2 className="font-bold text-lg">Discussions</h2>
             <button onClick={() => setShowContacts(!showContacts)} className="p-2 bg-slate-100 rounded-full hover:bg-slate-200">

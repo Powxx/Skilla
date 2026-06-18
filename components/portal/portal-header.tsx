@@ -80,7 +80,7 @@ export default function PortalHeader({ variant, parentChildren = [] }: Props) {
   };
 
   return (
-    <header className="sticky top-0 z-20 border-b border-slate-200 bg-white/80 backdrop-blur-md shadow-sm">
+    <header className="sticky top-0 z-20 border-b border-slate-200 bg-white/80 backdrop-blur-md shadow-sm no-print">
       {isImpersonated && (
         <div className="bg-orange-600 text-white text-[10px] font-bold px-4 py-2 flex items-center justify-between">
           <p className="tracking-wide">
