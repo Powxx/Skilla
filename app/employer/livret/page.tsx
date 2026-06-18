@@ -32,7 +32,15 @@ export default async function EmployerLivretPage({
     prisma.semester.findMany({ orderBy: { startDate: 'desc' } })
   ]);
 
-  const semesterId = semesterIdParam || semesters[0]?.id;
+  const semesterId = semesterIdParam || (semesters.length > 0 ? semesters[0].id : undefined);
+
+  if (!semesterId) {
+     return (
+        <div className="p-12 text-center text-slate-500 italic">
+          Aucun semestre disponible.
+        </div>
+     );
+  }
 
   // Check if student is in alternance
   const currentContract = contracts.find(c => c.studentId === studentId);

@@ -37,8 +37,16 @@ export default async function ProfLivretPage({ searchParams }: { searchParams?: 
     prisma.semester.findMany({ orderBy: { startDate: 'desc' } })
   ]);
 
-  const studentId = searchParams?.studentId || students[0]?.id;
-  const semesterId = searchParams?.semesterId || semesters[0]?.id;
+  const studentId = searchParams?.studentId || (students.length > 0 ? students[0].id : undefined);
+  const semesterId = searchParams?.semesterId || (semesters.length > 0 ? semesters[0].id : undefined);
+  
+  if (!studentId || !semesterId) {
+     return (
+        <div className="p-12 text-center text-slate-500 italic">
+          Aucun élève ou semestre disponible pour afficher le livret.
+        </div>
+     );
+  }
   
   // 2. Get the student's class competencies (SCHOOL only)
   const student = students.find(s => s.id === studentId);
