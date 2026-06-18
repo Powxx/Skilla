@@ -3,12 +3,11 @@
 import React from 'react';
 import { format } from 'date-fns';
 
-// Ajout du type catégorie pour le tableau
 type Competency = {
   id: string;
   name: string;
-  level: number; // 1, 2, 3
-  category: string; // Autoriser string pour éviter les conflits de types
+  level: number;
+  category: string;
   lastUpdated: string;
 };
 
@@ -28,7 +27,6 @@ const STATUS_MAP: Record<number, { label: string, color: string, bg: string }> =
 export default function LivretBody({ studentName, competencies, isEditable, onUpdate }: Props) {
   // Grouper les compétences par nom pour le tableau comparatif
   const competencyGroups = competencies.reduce((acc, c) => {
-    // Nettoyer le nom pour avoir une clé commune
     const baseName = c.name.replace(' (École)', '').replace(' (Entreprise)', '');
     if (!acc[baseName]) acc[baseName] = { id: baseName, SCHOOL: null, ENTERPRISE: null };
     (acc[baseName] as any)[c.category] = c.level;
@@ -44,25 +42,60 @@ export default function LivretBody({ studentName, competencies, isEditable, onUp
           @page { size: portrait; margin: 1cm; }
           body { font-size: 10px; overflow: hidden !important; }
           .break-avoid { break-inside: avoid; }
-          /* Masquer les barres de défilement */
           *::-webkit-scrollbar { display: none; }
           * { scrollbar-width: none; }
         }
       `}</style>
 
-      {/* ... (Header no-print) */}
+      {/* Header écran */}
       <header className="flex justify-between items-end no-print">
-        {/* ... */}
+        <div>
+          <h2 className="text-2xl font-black text-slate-900">Livret d'Apprentissage</h2>
+          <p className="text-sm text-slate-500 font-medium">Suivi des compétences pour {studentName}</p>
+        </div>
+        <button onClick={() => window.print()} className="bg-slate-900 text-white px-4 py-2 rounded-xl text-xs font-bold">Imprimer</button>
       </header>
 
-      {/* ... Vue écran */}
+      {/* Vue écran */}
+      <div className="grid gap-4 no-print">
+        {competencies.map((c) => {
+          const status = STATUS_MAP[c.level] || { label: "Inconnu", color: "text-slate-400", bg: "bg-slate-50 border-slate-100" };
+          return (
+            <div key={c.id} className="bg-white rounded-3xl border border-slate-200 p-6 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-6">
+              <div className="flex-1">
+                <h4 className="font-bold text-slate-900 text-lg">{c.name} <span className="text-[10px] text-slate-400">({c.category})</span></h4>
+                <div className="flex items-center gap-2 mt-2">
+                   <span className={`inline-flex items-center px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border ${status.bg} ${status.color}`}>
+                     {status.label}
+                   </span>
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
 
       {/* Vue Impression */}
       <div className="hidden print:block print-only">
-        <h1 className="text-xl font-black text-slate-900 mb-6">LIVRET D'APPRENTISSAGE - {studentName}</h1>
+        <h1 className="text-xl font-black text-slate-900 mb-6 break-avoid">LIVRET D'APPRENTISSAGE - {studentName}</h1>
         
         <table className="w-full border-collapse border border-slate-300 text-[10px] break-avoid">
-          {/* ... (Table content) */}
+          <thead>
+            <tr className="bg-slate-100">
+              <th className="border p-2 text-left">Compétence</th>
+              <th className="border p-2 text-center w-24">École</th>
+              <th className="border p-2 text-center w-24">Entreprise</th>
+            </tr>
+          </thead>
+          <tbody>
+            {Object.entries(competencyGroups).map(([name, data]) => (
+              <tr key={name}>
+                <td className="border p-2 font-bold">{name}</td>
+                <td className="border p-2 text-center">{data.SCHOOL ? STATUS_MAP[data.SCHOOL].label : 'NA'}</td>
+                <td className="border p-2 text-center">{data.ENTERPRISE ? STATUS_MAP[data.ENTERPRISE].label : 'NA'}</td>
+              </tr>
+            ))}
+          </tbody>
         </table>
         
         <div className="mt-8 pt-4 border-t text-right text-[9px] text-slate-400 break-avoid">

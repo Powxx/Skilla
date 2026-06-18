@@ -94,7 +94,7 @@ export default function StudentDashboardClient({
                   <h3 className="text-xl font-black leading-tight">{nextLesson.subjectName}</h3>
                   <p className="text-white/60 text-xs mt-1 flex items-center gap-2">
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
-                    {formatInTimeZone(new Date(nextLesson.startTime), 'Europe/Paris', 'HH:mm')} — {nextLesson.roomName}
+                    {formatInTimeZone(new Date(new Date(nextLesson.startTime).getTime() + 7200000), 'Europe/Paris', 'HH:mm')} — {nextLesson.roomName}
                   </p>
                 </div>
               ) : (
