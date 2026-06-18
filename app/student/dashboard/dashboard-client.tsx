@@ -94,7 +94,7 @@ export default function StudentDashboardClient({
                   <h3 className="text-xl font-black leading-tight">{nextLesson.subjectName}</h3>
                   <p className="text-white/60 text-xs mt-1 flex items-center gap-2">
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
-                    {new Date(nextLesson.startTime).toLocaleString('fr-FR', {
+                    {new Date(nextLesson.startTime.replace('Z', '')).toLocaleString('fr-FR', {
                       day: '2-digit',
                       month: '2-digit',
                       hour: '2-digit',
@@ -119,7 +119,7 @@ export default function StudentDashboardClient({
                 <div key={idx} className="p-3 rounded-xl border border-slate-50 bg-slate-50/50 hover:border-blue-100 transition">
                    <div className="flex justify-between items-start mb-1">
                      <p className="text-[9px] font-black text-blue-600 uppercase tracking-tighter">{hw.subjectName}</p>
-                     <p className="text-[9px] text-slate-400 font-bold">{new Date(hw.date).toLocaleDateString('fr-FR')}</p>
+                     <p className="text-[9px] text-slate-400 font-bold">{new Date(hw.date.replace('Z', '')).toLocaleDateString('fr-FR')}</p>
                    </div>
                    <p className="text-xs text-slate-700 leading-snug line-clamp-2">{hw.content}</p>
                 </div>
@@ -187,7 +187,7 @@ export default function StudentDashboardClient({
               <div className="flex items-center justify-between gap-3">
                 <div className="min-w-0">
                   <p className="text-xs font-black text-slate-800 truncate leading-tight">{lastGrade.subjectName}</p>
-                  <p className="text-[9px] text-slate-400 font-bold uppercase tracking-tighter mt-0.5">{new Date(lastGrade.date).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' })}</p>
+                  <p className="text-[9px] text-slate-400 font-bold uppercase tracking-tighter mt-0.5">{new Date(lastGrade.date.replace('Z', '')).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' })}</p>
                 </div>
                 <div className="h-10 w-10 shrink-0 rounded-xl bg-blue-50 flex items-center justify-center border border-blue-100">
                   <span className="text-xs font-black text-blue-700">{lastGrade.value}</span>

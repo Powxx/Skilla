@@ -99,8 +99,8 @@ export default function LivretBody({ studentName, competencies, isEditable, onUp
             {Object.entries(competencyGroups).map(([name, data]) => (
               <tr key={name}>
                 <td className="border p-2 font-bold">{name}</td>
-                <td className="border p-2 text-center">{data.SCHOOL ? STATUS_MAP[data.SCHOOL].label : '-'}</td>
-                <td className="border p-2 text-center">{data.ENTERPRISE ? STATUS_MAP[data.ENTERPRISE].label : '-'}</td>
+                <td className="border p-2 text-center">{data.SCHOOL ? STATUS_MAP[data.SCHOOL].label : 'NA'}</td>
+                <td className="border p-2 text-center">{data.ENTERPRISE ? STATUS_MAP[data.ENTERPRISE].label : 'NA'}</td>
               </tr>
             ))}
           </tbody>
