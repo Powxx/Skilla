@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth-options";
 import { loadTeacherDashboardPayload } from "@/lib/teacher-dashboard-data";
 import Link from "next/link";
 import { formatInTimeZone } from 'date-fns-tz';
+import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 
 export const dynamic = 'force-dynamic';

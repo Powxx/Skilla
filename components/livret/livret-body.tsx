@@ -20,7 +20,7 @@ type Props = {
 
 const STATUS_MAP: Record<number, { label: string, color: string, bg: string }> = {
   1: { label: "Non acquis", color: "text-red-700", bg: "bg-red-50 border-red-100" },
-  2: { label: "En cours", color: "text-amber-700", bg: "bg-amber-50 border-amber-100" },
+  2: { label: "En cours d'acquisition", color: "text-amber-700", bg: "bg-amber-50 border-amber-100" },
   3: { label: "Acquis", color: "text-emerald-700", bg: "bg-emerald-50 border-emerald-100" }
 };
 
