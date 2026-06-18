@@ -3,7 +3,7 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth-options";
 import { loadTeacherDashboardPayload } from "@/lib/teacher-dashboard-data";
 import Link from "next/link";
-import { format } from "date-fns";
+import { formatInTimeZone } from 'date-fns-tz';
 import { fr } from "date-fns/locale";
 
 export const dynamic = 'force-dynamic';
@@ -62,7 +62,7 @@ export default async function ProfHomePage() {
                     </div>
                     <div className="flex items-center gap-3 text-xs text-blue-700 font-black">
                       <span className="h-6 w-6 rounded-lg bg-white flex items-center justify-center shadow-sm">⏰</span>
-                      {format(new Date(data.nextLesson.start), 'dd/MM à HH:mm')}
+                      {formatInTimeZone(new Date(data.nextLesson.start), 'Europe/Paris', 'dd/MM à HH:mm')}
                     </div>
                   </div>
                 <Link 
