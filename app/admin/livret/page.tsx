@@ -12,7 +12,7 @@ export default async function AdminLivretPage() {
     redirect("/login");
   }
 
-  const [classes, students] = await Promise.all([
+  const [classes, students, semesters] = await Promise.all([
     prisma.class.findMany({
       orderBy: { name: 'asc' },
       include: { competencies: true }
@@ -24,6 +24,9 @@ export default async function AdminLivretPage() {
         class: true
       },
       orderBy: { lastName: 'asc' }
+    }),
+    prisma.semester.findMany({
+      orderBy: { startDate: 'desc' }
     })
   ]);
 
@@ -38,6 +41,7 @@ export default async function AdminLivretPage() {
         <AdminLivretManagerClient 
           classes={classes} 
           students={students} 
+          semesters={semesters}
         />
       </div>
     </div>
