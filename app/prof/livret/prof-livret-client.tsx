@@ -63,7 +63,6 @@ export default function ProfLivretClient({ students, initialEvaluations, selecte
           ))}
         </div>
       </div>
-//...
 
       <div className="lg:col-span-3 space-y-8">
         <LivretBody 
