@@ -94,12 +94,7 @@ export default function StudentDashboardClient({
                   <h3 className="text-xl font-black leading-tight">{nextLesson.subjectName}</h3>
                   <p className="text-white/60 text-xs mt-1 flex items-center gap-2">
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
-                    {new Date(nextLesson.startTime.replace('Z', '')).toLocaleString('fr-FR', {
-                      day: '2-digit',
-                      month: '2-digit',
-                      hour: '2-digit',
-                      minute: '2-digit'
-                    }).replace(',', ' à')} — {nextLesson.roomName}
+                    {nextLesson.startTime.substring(11, 16)} — {nextLesson.roomName}
                   </p>
                 </div>
               ) : (

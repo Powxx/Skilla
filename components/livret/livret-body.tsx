@@ -28,8 +28,10 @@ const STATUS_MAP: Record<number, { label: string, color: string, bg: string }> =
 export default function LivretBody({ studentName, competencies, isEditable, onUpdate }: Props) {
   // Grouper les compétences par nom pour le tableau comparatif
   const competencyGroups = competencies.reduce((acc, c) => {
-    if (!acc[c.name]) acc[c.name] = { id: c.name, SCHOOL: null, ENTERPRISE: null };
-    (acc[c.name] as any)[c.category] = c.level;
+    // Nettoyer le nom pour avoir une clé commune
+    const baseName = c.name.replace(' (École)', '').replace(' (Entreprise)', '');
+    if (!acc[baseName]) acc[baseName] = { id: baseName, SCHOOL: null, ENTERPRISE: null };
+    (acc[baseName] as any)[c.category] = c.level;
     return acc;
   }, {} as Record<string, { id: string, SCHOOL: number | null, ENTERPRISE: number | null }>);
 
