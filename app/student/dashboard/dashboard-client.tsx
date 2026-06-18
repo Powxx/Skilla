@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { format } from "date-fns";
+import { formatInTimeZone } from 'date-fns-tz';
 import { fr } from "date-fns/locale";
 import {
   CartesianGrid,
