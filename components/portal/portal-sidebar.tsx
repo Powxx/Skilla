@@ -45,7 +45,8 @@ export default function PortalSidebar({ variant, resolvedChildId, schoolName = "
   switch (variant) {
     case "admin":
       navItems.push(
-        { href: "/admin", label: "Accueil", icon: LayoutDashboard },
+        { href: "/admin/dashboard", label: "Tour de contrôle", icon: LayoutDashboard },
+        { href: "/admin", label: "Hub Admin", icon: BarChart },
         { href: "/admin/users", label: "Utilisateurs", icon: Users },
         { href: "/admin/planning", label: "Emploi du temps", icon: Calendar },
         { href: "/admin/report-cards", label: "Bulletins", icon: FileText },
@@ -53,6 +54,7 @@ export default function PortalSidebar({ variant, resolvedChildId, schoolName = "
         { href: "/admin/recap", label: "Récapitulatif", icon: BarChart },
         { href: "/admin/absences", label: "Absences", icon: Clock },
         { href: "/admin/sanctions", label: "Sanctions", icon: ShieldAlert },
+        { href: "/admin/qualiopi", label: "Qualiopi", icon: FileText },
         { href: "/admin/notifications", label: "Notifications", icon: FileText },
         { href: "/admin/connexion-docs", label: "Connexion Docs", icon: Key },
         { href: "/admin/settings", label: "Config", icon: Settings },

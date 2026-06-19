@@ -40,6 +40,7 @@ export default async function AdminHomePage() {
   const schoolName = globalSettings.find(s => s.key === "SCHOOL_NAME")?.value || "ECM Academie";
 
   const mainActions = [
+    { href: "/admin/dashboard", label: "Tour de Contrôle", sub: "KPIs & pilotage global", icon: LayoutDashboard, color: "text-violet-600", bg: "bg-violet-50" },
     { href: "/admin/settings", label: "Configuration", sub: "Core system & options", icon: Settings, color: "text-blue-600", bg: "bg-blue-50" },
     { href: "/admin/users", label: "Utilisateurs", sub: "Élèves, profs, admins", icon: Users, color: "text-indigo-600", bg: "bg-indigo-50" },
     { href: "/admin/planning", label: "Emploi du temps", sub: "Gérer le calendrier", icon: Calendar, color: "text-emerald-600", bg: "bg-emerald-50" },
@@ -63,6 +64,7 @@ export default async function AdminHomePage() {
     { href: "/admin/relations/families", label: "Familles", icon: Home, color: "text-cyan-600", bg: "bg-cyan-50" },
     { href: "/admin/relations/contracts", label: "Alternance", icon: HeartHandshake, color: "text-teal-600", bg: "bg-teal-50" },
     { href: "/admin/recap", label: "Récapitulatif", icon: LayoutDashboard, color: "text-slate-900", bg: "bg-slate-100" },
+    { href: "/admin/qualiopi", label: "Qualiopi", sub: "Satisfaction & réclamations", icon: HeartHandshake, color: "text-violet-600", bg: "bg-violet-50" },
   ];
 
   return (
