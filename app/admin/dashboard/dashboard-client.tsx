@@ -76,7 +76,7 @@ function KpiCard({
 export default function AdminDashboardClient({ payload }: Props) {
   const router = useRouter();
   const pathname = usePathname();
-  const { filterOptions, alerts, kpis, charts, miniTables, qualiopi, schoolName } = payload;
+  const { filterOptions, alerts, kpis, charts, miniTables, qualiopi, schoolName, qualiopiEnabled } = payload;
 
   const updateFilters = (key: string, value: string) => {
     const params = new URLSearchParams();
@@ -172,8 +172,12 @@ export default function AdminDashboardClient({ payload }: Props) {
         <KpiCard label="Heures réalisées" value={`${kpis.hrHoursRealized}h`} sub={`/ ${kpis.hrHoursProjected}h projetées`} href="/admin/hr" />
         <KpiCard label="Contrats actifs" value={`${kpis.contractCoveragePct}%`} href="/admin/relations/contracts" />
         <KpiCard label="Parents liés" value={`${kpis.parentLinkPct}%`} href="/admin/recap" />
-        <KpiCard label="Satisfaction" value={kpis.satisfactionAvg != null ? `${kpis.satisfactionAvg}/5` : "—"} color="text-violet-600" href="/admin/qualiopi" />
-        <KpiCard label="Réclamations ouvertes" value={kpis.openComplaints} color={kpis.openComplaints > 0 ? "text-amber-600" : "text-emerald-600"} href="/admin/qualiopi" />
+        {qualiopiEnabled && (
+          <>
+            <KpiCard label="Satisfaction" value={kpis.satisfactionAvg != null ? `${kpis.satisfactionAvg}/5` : "—"} color="text-violet-600" href="/admin/qualiopi" />
+            <KpiCard label="Réclamations ouvertes" value={kpis.openComplaints} color={kpis.openComplaints > 0 ? "text-amber-600" : "text-emerald-600"} href="/admin/qualiopi" />
+          </>
+        )}
       </section>
 
       <section className="grid gap-6 lg:grid-cols-2">
@@ -366,6 +370,7 @@ export default function AdminDashboardClient({ payload }: Props) {
         </div>
       </section>
 
+      {qualiopiEnabled && (
       <section className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
         <div className="px-5 py-4 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
           <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-900 flex items-center gap-2">
@@ -427,6 +432,7 @@ export default function AdminDashboardClient({ payload }: Props) {
           </div>
         </div>
       </section>
+      )}
 
       <section className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {[

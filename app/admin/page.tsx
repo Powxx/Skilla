@@ -2,6 +2,7 @@ import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import AdminMeetingsManager from "@/components/admin/admin-meetings-manager";
 import { getGlobalSettings } from "@/app/actions/settings";
+import { QUALIOPI_ENABLED_KEY } from "@/lib/qualiopi";
 import { 
   Users, 
   Settings, 
@@ -38,6 +39,7 @@ export default async function AdminHomePage() {
   ]);
 
   const schoolName = globalSettings.find(s => s.key === "SCHOOL_NAME")?.value || "ECM Academie";
+  const qualiopiEnabled = globalSettings.find(s => s.key === QUALIOPI_ENABLED_KEY)?.value !== "false";
 
   const mainActions = [
     { href: "/admin/dashboard", label: "Tour de Contrôle", sub: "KPIs & pilotage global", icon: LayoutDashboard, color: "text-violet-600", bg: "bg-violet-50" },
@@ -64,7 +66,9 @@ export default async function AdminHomePage() {
     { href: "/admin/relations/families", label: "Familles", icon: Home, color: "text-cyan-600", bg: "bg-cyan-50" },
     { href: "/admin/relations/contracts", label: "Alternance", icon: HeartHandshake, color: "text-teal-600", bg: "bg-teal-50" },
     { href: "/admin/recap", label: "Récapitulatif", icon: LayoutDashboard, color: "text-slate-900", bg: "bg-slate-100" },
-    { href: "/admin/qualiopi", label: "Qualiopi", sub: "Satisfaction & réclamations", icon: HeartHandshake, color: "text-violet-600", bg: "bg-violet-50" },
+    ...(qualiopiEnabled
+      ? [{ href: "/admin/qualiopi", label: "Qualiopi", sub: "Satisfaction & réclamations", icon: HeartHandshake, color: "text-violet-600", bg: "bg-violet-50" }]
+      : []),
   ];
 
   return (

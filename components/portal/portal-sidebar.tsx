@@ -34,9 +34,10 @@ type Props = {
   resolvedChildId?: string;
   schoolName?: string;
   arcadeEnabled?: boolean;
+  qualiopiEnabled?: boolean;
 };
 
-export default function PortalSidebar({ variant, resolvedChildId, schoolName = "Skilla", arcadeEnabled = true }: Props) {
+export default function PortalSidebar({ variant, resolvedChildId, schoolName = "Skilla", arcadeEnabled = true, qualiopiEnabled = true }: Props) {
   const pathname = usePathname() ?? "";
   const [isOpen, setIsOpen] = useState(false);
 
@@ -54,7 +55,7 @@ export default function PortalSidebar({ variant, resolvedChildId, schoolName = "
         { href: "/admin/recap", label: "Récapitulatif", icon: BarChart },
         { href: "/admin/absences", label: "Absences", icon: Clock },
         { href: "/admin/sanctions", label: "Sanctions", icon: ShieldAlert },
-        { href: "/admin/qualiopi", label: "Qualiopi", icon: FileText },
+        ...(qualiopiEnabled ? [{ href: "/admin/qualiopi", label: "Qualiopi", icon: FileText }] : []),
         { href: "/admin/notifications", label: "Notifications", icon: FileText },
         { href: "/admin/connexion-docs", label: "Connexion Docs", icon: Key },
         { href: "/admin/settings", label: "Config", icon: Settings },

@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth-options";
 import { getQualiopiData } from "@/app/actions/qualiopi";
+import { isQualiopiEnabled } from "@/lib/qualiopi";
 import QualiopiClient from "./qualiopi-client";
 
 export const dynamic = "force-dynamic";
@@ -17,7 +18,12 @@ export default async function QualiopiPage() {
     redirect("/login");
   }
 
-  const { complaints, surveys } = await getQualiopiData();
+  const enabled = await isQualiopiEnabled();
+  if (!enabled) {
+    redirect("/admin");
+  }
+
+  const { complaints, surveys, campaigns, classes } = await getQualiopiData();
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 font-sans">
@@ -34,10 +40,15 @@ export default async function QualiopiPage() {
             Qualiopi — Satisfaction & Réclamations
           </h1>
           <p className="mt-2 text-sm text-slate-500 font-medium">
-            Suivi des indicateurs qualité et traitement des réclamations.
+            Diffusez des enquêtes de satisfaction et suivez les indicateurs qualité.
           </p>
         </header>
-        <QualiopiClient complaints={complaints as any} surveys={surveys as any} />
+        <QualiopiClient
+          complaints={complaints as any}
+          surveys={surveys as any}
+          campaigns={campaigns as any}
+          classes={classes}
+        />
       </div>
     </div>
   );

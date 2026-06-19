@@ -1,5 +1,6 @@
 import prisma from "@/lib/prisma";
 import { getGlobalSettings } from "@/app/actions/settings";
+import { QUALIOPI_ENABLED_KEY } from "@/lib/qualiopi";
 import {
   subDays,
   startOfWeek,
@@ -48,6 +49,7 @@ export type AdminAlert = {
 
 export type AdminDashboardPayload = {
   schoolName: string;
+  qualiopiEnabled: boolean;
   filterOptions: {
     semesters: { id: string; name: string }[];
     classes: { id: string; name: string }[];
@@ -151,6 +153,9 @@ export async function loadAdminDashboardPayload(
 
   const schoolName =
     globalSettings.find((s) => s.key === "SCHOOL_NAME")?.value ?? "ECM Académie";
+
+  const qualiopiEnabled =
+    globalSettings.find((s) => s.key === QUALIOPI_ENABLED_KEY)?.value !== "false";
 
   const studentWhere = {
     role: "STUDENT" as const,
@@ -272,18 +277,20 @@ export async function loadAdminDashboardPayload(
         student: { select: { firstName: true, lastName: true } },
       },
     }),
-    prisma.complaint.findMany({
-      include: {
-        sender: { select: { firstName: true, lastName: true } },
-      },
-      orderBy: { createdAt: "desc" },
-      take: 50,
-    }),
-    prisma.satisfactionSurvey.findMany({
-      include: {
-        student: { select: { firstName: true, lastName: true } },
-      },
-    }),
+    qualiopiEnabled
+      ? prisma.complaint.findMany({
+          include: {
+            sender: { select: { firstName: true, lastName: true } },
+          },
+          orderBy: { createdAt: "desc" },
+          take: 50,
+        })
+      : Promise.resolve([]),
+    qualiopiEnabled
+      ? prisma.satisfactionSurvey.findMany({
+          select: { rating: true, createdAt: true },
+        })
+      : Promise.resolve([]),
     prisma.meetingRequest.count({ where: { status: "PENDING" } }),
     prisma.substitutionRequest.count({ where: { status: "PENDING" } }),
     prisma.lesson.count({
@@ -571,7 +578,7 @@ export async function loadAdminDashboardPayload(
       href: "/admin/relations/contracts",
     });
   }
-  if (openComplaintsList.length > 0) {
+  if (qualiopiEnabled && openComplaintsList.length > 0) {
     alerts.push({
       id: "complaints",
       severity: "warning",
@@ -583,6 +590,7 @@ export async function loadAdminDashboardPayload(
 
   return {
     schoolName,
+    qualiopiEnabled,
     filterOptions: {
       semesters: semesters.map((s) => ({ id: s.id, name: s.name })),
       classes,
@@ -604,8 +612,8 @@ export async function loadAdminDashboardPayload(
       hrHoursProjected: Math.round(hrHoursProjected * 10) / 10,
       contractCoveragePct: Math.round(contractCoveragePct),
       parentLinkPct: Math.round(parentLinkPct),
-      satisfactionAvg: satisfactionAvg != null ? Math.round(satisfactionAvg * 10) / 10 : null,
-      openComplaints: openComplaintsList.length,
+      satisfactionAvg: qualiopiEnabled && satisfactionAvg != null ? Math.round(satisfactionAvg * 10) / 10 : null,
+      openComplaints: qualiopiEnabled ? openComplaintsList.length : 0,
       pendingRollCalls,
     },
     charts: {
@@ -613,7 +621,7 @@ export async function loadAdminDashboardPayload(
       classAverages,
       sanctionsByType,
       hrHoursWeekly,
-      satisfactionMonthly,
+      satisfactionMonthly: qualiopiEnabled ? satisfactionMonthly : [],
     },
     miniTables: {
       topClasses,
@@ -628,20 +636,29 @@ export async function loadAdminDashboardPayload(
       })),
       expiringContracts,
     },
-    qualiopi: {
-      openComplaints: openComplaintsList.length,
-      closedComplaints,
-      satisfactionAvg,
-      satisfactionCount: surveys.length,
-      recentComplaints: complaints.slice(0, 6).map((c) => ({
-        id: c.id,
-        subject: c.subject,
-        status: c.status,
-        createdAt: c.createdAt.toISOString(),
-        senderName: `${c.sender.lastName ?? ""} ${c.sender.firstName ?? ""}`.trim(),
-      })),
-      ratingDistribution,
-    },
+    qualiopi: qualiopiEnabled
+      ? {
+          openComplaints: openComplaintsList.length,
+          closedComplaints,
+          satisfactionAvg,
+          satisfactionCount: surveys.length,
+          recentComplaints: complaints.slice(0, 6).map((c) => ({
+            id: c.id,
+            subject: c.subject,
+            status: c.status,
+            createdAt: c.createdAt.toISOString(),
+            senderName: `${c.sender.lastName ?? ""} ${c.sender.firstName ?? ""}`.trim(),
+          })),
+          ratingDistribution,
+        }
+      : {
+          openComplaints: 0,
+          closedComplaints: 0,
+          satisfactionAvg: null,
+          satisfactionCount: 0,
+          recentComplaints: [],
+          ratingDistribution: [1, 2, 3, 4, 5].map((rating) => ({ rating, count: 0 })),
+        },
     pendingActions: {
       pendingMeetings,
       pendingSubstitutions,

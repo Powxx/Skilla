@@ -140,6 +140,7 @@ model User {
   givenSanctions     Sanction[]            @relation("GivenSanctions")
   sanctionComments   SanctionComment[]     @relation("SanctionCommentAuthor")
   sanctionEvents     SanctionActionEvent[] @relation("SanctionEventStudent")
+  surveyCampaigns    SatisfactionSurveyCampaign[] @relation("SurveyCampaignCreator")
 
   @@index([role])
   @@index([lastName, firstName])
@@ -221,6 +222,7 @@ model Class {
   competencies     ClassCompetency[]
   notifications    ClassNotificationLog[]
   requirements     ClassSubjectRequirement[]
+  surveyCampaigns  SatisfactionSurveyCampaign[]
 }
 
 model ClassSubjectRequirement {
@@ -446,11 +448,44 @@ model MeetingRequest {
   adminNotes  String?
 }
 
+model SatisfactionSurveyCampaign {
+  id          String                   @id @default(cuid())
+  title       String
+  description String?                  @db.Text
+  targetType  SatisfactionSurveyTarget
+  classId     String?
+  class       Class?                   @relation(fields: [classId], references: [id], onDelete: SetNull)
+  isActive    Boolean                  @default(true)
+  createdAt   DateTime                 @default(now())
+  createdById String
+  createdBy   User                     @relation("SurveyCampaignCreator", fields: [createdById], references: [id], onDelete: Cascade)
+  responses   SatisfactionSurvey[]
+
+  @@index([createdAt])
+  @@index([isActive])
+}
+
+enum SatisfactionSurveyTarget {
+  STUDENT
+  TEACHER
+  RESPONSIBLE
+  COMPANY_TUTOR
+  CLASS
+}
+
 model SatisfactionSurvey {
-  id        String @id @default(cuid())
-  rating    Int
-  studentId String
-  student   User   @relation(fields: [studentId], references: [id])
+  id         String                      @id @default(cuid())
+  rating     Int
+  comment    String?                     @db.Text
+  userId     String
+  user       User                        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  campaignId String?
+  campaign   SatisfactionSurveyCampaign? @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+  createdAt  DateTime                    @default(now())
+
+  @@unique([userId, campaignId])
+  @@index([userId])
+  @@index([campaignId])
 }
 
 model Notification {

@@ -48,6 +48,7 @@ export default function CoreSettingsClient({
   const [chatRetentionDays, setChatRetentionDays] = useState(parseInt(globalSettings.CHAT_RETENTION_DAYS || "7", 10));
   const [enableSanctionPoints, setEnableSanctionPoints] = useState(globalSettings.SANCTIONS_POINTS_ENABLED === "true");
   const [enableSanctionComments, setEnableSanctionComments] = useState(globalSettings.SANCTIONS_COMMENTS_ENABLED === "true");
+  const [enableQualiopi, setEnableQualiopi] = useState(globalSettings.QUALIOPI_ENABLED !== "false");
 
   // Sync with props
   useEffect(() => {
@@ -57,6 +58,7 @@ export default function CoreSettingsClient({
     setChatRetentionDays(parseInt(globalSettings.CHAT_RETENTION_DAYS || "7", 10));
     setEnableSanctionPoints(globalSettings.SANCTIONS_POINTS_ENABLED === "true");
     setEnableSanctionComments(globalSettings.SANCTIONS_COMMENTS_ENABLED === "true");
+    setEnableQualiopi(globalSettings.QUALIOPI_ENABLED !== "false");
   }, [teachers, globalSettings]);
 
   const handleUpdateOptions = async (key: string, value: string) => {
@@ -724,6 +726,36 @@ export default function CoreSettingsClient({
                   }`}
                 >
                   {enableSanctionComments ? 'Activé' : 'Désactivé'}
+                </button>
+              </div>
+
+              {/* Qualiopi — Module satisfaction & réclamations */}
+              <div className="p-6 rounded-2xl border border-slate-200 bg-white shadow-sm flex items-center justify-between group hover:border-violet-100 transition">
+                <div className="flex items-center gap-4">
+                  <div className="h-12 w-12 rounded-xl bg-violet-50 flex items-center justify-center text-violet-600">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-6 h-6">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M11.48 3.499a.562.562 0 0 1 1.04 0l2.125 5.111a.563.563 0 0 0 .475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 0 0-.182.557l1.285 5.385a.562.562 0 0 1-.84.61l-4.725-2.885a.562.562 0 0 0-.586 0L6.982 20.54a.562.562 0 0 1-.84-.61l1.285-5.386a.562.562 0 0 0-.182-.557l-4.204-3.602a.563.563 0 0 1 .321-.988l5.518-.442a.563.563 0 0 0 .475-.345L11.48 3.5Z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-black text-slate-900 uppercase tracking-widest">Module Qualiopi</h4>
+                    <p className="text-xs text-slate-500 font-medium">Affiche le menu Qualiopi, les enquêtes de satisfaction et les indicateurs dans le tour de contrôle.</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => {
+                    const newValue = !enableQualiopi;
+                    setEnableQualiopi(newValue);
+                    handleUpdateOptions("QUALIOPI_ENABLED", String(newValue));
+                  }}
+                  disabled={loading}
+                  className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition shadow-sm ${
+                    enableQualiopi
+                      ? 'bg-violet-500 text-white hover:bg-violet-600 shadow-violet-500/20'
+                      : 'bg-slate-200 text-slate-500 hover:bg-slate-300'
+                  }`}
+                >
+                  {enableQualiopi ? 'Activé' : 'Désactivé'}
                 </button>
               </div>
             </div>
