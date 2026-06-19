@@ -128,13 +128,18 @@ model User {
   isActive          Boolean @default(true)
   deletionRequested Boolean @default(false)
 
+  // Système de points de conduite (activable par l'admin)
+  conductPoints     Int     @default(100)
+
   // Chat system
   conversationsAs1 Conversation[] @relation("Participant1")
   conversationsAs2 Conversation[] @relation("Participant2")
   sentMessages     ChatMessage[]  @relation("SentMessages")
 
-  studentSanctions Sanction[]     @relation("StudentSanctions")
-  givenSanctions   Sanction[]     @relation("GivenSanctions")
+  studentSanctions   Sanction[]            @relation("StudentSanctions")
+  givenSanctions     Sanction[]            @relation("GivenSanctions")
+  sanctionComments   SanctionComment[]     @relation("SanctionCommentAuthor")
+  sanctionEvents     SanctionActionEvent[] @relation("SanctionEventStudent")
 
   @@index([role])
   @@index([lastName, firstName])
@@ -521,16 +526,58 @@ model SanctionType {
   createdAt    DateTime   @default(now())
 }
 
+enum SanctionStatus {
+  PLANIFIE
+  REALISE
+  NON_PRESENT
+  EXCUSE
+}
+
 model Sanction {
-  id             String       @id @default(cuid())
+  id             String         @id @default(cuid())
   studentId      String
-  student        User         @relation("StudentSanctions", fields: [studentId], references: [id], onDelete: Cascade)
+  student        User           @relation("StudentSanctions", fields: [studentId], references: [id], onDelete: Cascade)
   sanctionTypeId String
-  sanctionType   SanctionType @relation(fields: [sanctionTypeId], references: [id], onDelete: Cascade)
-  reason         String       @db.Text
+  sanctionType   SanctionType   @relation(fields: [sanctionTypeId], references: [id], onDelete: Cascade)
+  reason         String         @db.Text
   givenById      String
-  givenBy        User         @relation("GivenSanctions", fields: [givenById], references: [id], onDelete: Cascade)
-  createdAt      DateTime     @default(now())
-  date           DateTime     @default(now())
-  duration       String?      // e.g. "2 heures", "3 jours" (optionnel)
+  givenBy        User           @relation("GivenSanctions", fields: [givenById], references: [id], onDelete: Cascade)
+  createdAt      DateTime       @default(now())
+  date           DateTime       @default(now())
+  duration       String?        // e.g. "2 heures", "3 jours" (optionnel)
+  status         SanctionStatus @default(PLANIFIE)
+  pointsCost     Int            @default(0) // Points de conduite retirés (si système activé)
+  comments       SanctionComment[]
+  actionEvents   SanctionActionEvent[]
+
+  @@index([studentId])
+  @@index([givenById])
+  @@index([date])
+}
+
+// Commentaires sur une sanction (activable par toggle admin)
+model SanctionComment {
+  id         String   @id @default(cuid())
+  sanctionId String
+  sanction   Sanction @relation(fields: [sanctionId], references: [id], onDelete: Cascade)
+  authorId   String
+  author     User     @relation("SanctionCommentAuthor", fields: [authorId], references: [id], onDelete: Cascade)
+  body       String   @db.Text
+  createdAt  DateTime @default(now())
+
+  @@index([sanctionId])
+}
+
+// Événements générés automatiquement par le système de points
+model SanctionActionEvent {
+  id          String   @id @default(cuid())
+  studentId   String
+  student     User     @relation("SanctionEventStudent", fields: [studentId], references: [id], onDelete: Cascade)
+  sanctionId  String?
+  sanction    Sanction? @relation(fields: [sanctionId], references: [id], onDelete: SetNull)
+  type        String   // e.g. "POINTS_DEDUCTED", "THRESHOLD_50", "THRESHOLD_20"
+  description String
+  createdAt   DateTime @default(now())
+
+  @@index([studentId])
 }

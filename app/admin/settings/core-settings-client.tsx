@@ -44,8 +44,10 @@ export default function CoreSettingsClient({
 
   // Platform Options
   const [enableArcade, setEnableArcade] = useState(globalSettings.ENABLE_ARCADE !== "false");
-  const [enableChat, setEnableChat] = useState(globalSettings.CHAT_ENABLED !== "false"); // Chat activé par défaut
-  const [chatRetentionDays, setChatRetentionDays] = useState(parseInt(globalSettings.CHAT_RETENTION_DAYS || "7", 10)); // 7 jours par défaut
+  const [enableChat, setEnableChat] = useState(globalSettings.CHAT_ENABLED !== "false");
+  const [chatRetentionDays, setChatRetentionDays] = useState(parseInt(globalSettings.CHAT_RETENTION_DAYS || "7", 10));
+  const [enableSanctionPoints, setEnableSanctionPoints] = useState(globalSettings.SANCTIONS_POINTS_ENABLED === "true");
+  const [enableSanctionComments, setEnableSanctionComments] = useState(globalSettings.SANCTIONS_COMMENTS_ENABLED === "true");
 
   // Sync with props
   useEffect(() => {
@@ -53,6 +55,8 @@ export default function CoreSettingsClient({
     setEnableArcade(globalSettings.ENABLE_ARCADE !== "false");
     setEnableChat(globalSettings.CHAT_ENABLED !== "false");
     setChatRetentionDays(parseInt(globalSettings.CHAT_RETENTION_DAYS || "7", 10));
+    setEnableSanctionPoints(globalSettings.SANCTIONS_POINTS_ENABLED === "true");
+    setEnableSanctionComments(globalSettings.SANCTIONS_COMMENTS_ENABLED === "true");
   }, [teachers, globalSettings]);
 
   const handleUpdateOptions = async (key: string, value: string) => {
@@ -661,6 +665,66 @@ export default function CoreSettingsClient({
                   disabled={loading || !enableChat}
                   className="w-20 p-2 rounded-xl border-slate-200 text-sm focus:ring-blue-500/20 text-right disabled:opacity-50"
                 />
+              </div>
+
+              {/* Sanctions — Points de conduite */}
+              <div className="p-6 rounded-2xl border border-slate-200 bg-white shadow-sm flex items-center justify-between group hover:border-red-100 transition">
+                <div className="flex items-center gap-4">
+                  <div className="h-12 w-12 rounded-xl bg-red-50 flex items-center justify-center text-red-600">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-6 h-6">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75 11.25 15 15 9.75m-3-7.036A11.959 11.959 0 0 1 3.598 6 11.99 11.99 0 0 0 3 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285Z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-black text-slate-900 uppercase tracking-widest">Points de Conduite</h4>
+                    <p className="text-xs text-slate-500 font-medium">Système de capital disciplinaire (100 pts/élève). Des alertes automatiques sont générées aux paliers 50 et 20 pts.</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => {
+                    const newValue = !enableSanctionPoints;
+                    setEnableSanctionPoints(newValue);
+                    handleUpdateOptions("SANCTIONS_POINTS_ENABLED", String(newValue));
+                  }}
+                  disabled={loading}
+                  className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition shadow-sm ${
+                    enableSanctionPoints
+                      ? 'bg-red-500 text-white hover:bg-red-600 shadow-red-500/20'
+                      : 'bg-slate-200 text-slate-500 hover:bg-slate-300'
+                  }`}
+                >
+                  {enableSanctionPoints ? 'Activé' : 'Désactivé'}
+                </button>
+              </div>
+
+              {/* Sanctions — Commentaires */}
+              <div className="p-6 rounded-2xl border border-slate-200 bg-white shadow-sm flex items-center justify-between group hover:border-red-100 transition">
+                <div className="flex items-center gap-4">
+                  <div className="h-12 w-12 rounded-xl bg-orange-50 flex items-center justify-center text-orange-600">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-6 h-6">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 8.25h9m-9 3H12m-9.75 1.51c0 1.6 1.123 2.994 2.707 3.227 1.129.166 2.27.293 3.423.379.35.026.67.21.865.501L12 21l2.755-4.133a1.14 1.14 0 0 1 .865-.501 48.172 48.172 0 0 0 3.423-.379c1.584-.233 2.707-1.626 2.707-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0 0 12 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018Z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-black text-slate-900 uppercase tracking-widest">Commentaires Disciplinaires</h4>
+                    <p className="text-xs text-slate-500 font-medium">Permet aux parents, élèves et tuteurs d'entreprise d'ajouter un commentaire de justification sur une sanction.</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => {
+                    const newValue = !enableSanctionComments;
+                    setEnableSanctionComments(newValue);
+                    handleUpdateOptions("SANCTIONS_COMMENTS_ENABLED", String(newValue));
+                  }}
+                  disabled={loading}
+                  className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition shadow-sm ${
+                    enableSanctionComments
+                      ? 'bg-orange-500 text-white hover:bg-orange-600 shadow-orange-500/20'
+                      : 'bg-slate-200 text-slate-500 hover:bg-slate-300'
+                  }`}
+                >
+                  {enableSanctionComments ? 'Activé' : 'Désactivé'}
+                </button>
               </div>
             </div>
           </div>
