@@ -78,7 +78,7 @@ export default function SanctionsProfClient({
     return (
       studentName.includes(query) ||
       reason.includes(query) ||
-      typeName.includes(query);
+      typeName.includes(query)
     );
   });
 
