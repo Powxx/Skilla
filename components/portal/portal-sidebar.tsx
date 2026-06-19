@@ -18,7 +18,8 @@ import {
   X,
   Key,
   Gamepad2,
-  MessageSquare
+  MessageSquare,
+  ShieldAlert
 } from "lucide-react";
 
 type NavItem = {
@@ -51,6 +52,7 @@ export default function PortalSidebar({ variant, resolvedChildId, schoolName = "
         { href: "/admin/livret", label: "Livret", icon: BookOpen },
         { href: "/admin/recap", label: "Récapitulatif", icon: BarChart },
         { href: "/admin/absences", label: "Absences", icon: Clock },
+        { href: "/admin/sanctions", label: "Sanctions", icon: ShieldAlert },
         { href: "/admin/notifications", label: "Notifications", icon: FileText },
         { href: "/admin/connexion-docs", label: "Connexion Docs", icon: Key },
         { href: "/admin/settings", label: "Config", icon: Settings },
@@ -66,6 +68,7 @@ export default function PortalSidebar({ variant, resolvedChildId, schoolName = "
         { href: "/prof/notes", label: "Notes", icon: GraduationCap },
         { href: "/prof/livret", label: "Livret", icon: BookOpen },
         { href: "/prof/notifications", label: "Notifications", icon: FileText },
+        { href: "/prof/sanctions", label: "Sanctions", icon: ShieldAlert },
         { href: "/messages", label: "Messages", icon: MessageSquare },
         { href: "/settings/password", label: "Mot de passe", icon: Key }
       );
@@ -82,6 +85,7 @@ export default function PortalSidebar({ variant, resolvedChildId, schoolName = "
       navItems.push(
         { href: "/student/livret", label: "Livret", icon: BookOpen },
         { href: "/student/absences", label: "Absences", icon: Clock },
+        { href: "/student/sanctions", label: "Sanctions", icon: ShieldAlert },
         { href: "/messages", label: "Messages", icon: MessageSquare },
         { href: "/settings/password", label: "Mot de passe", icon: Key }
       );
@@ -96,6 +100,7 @@ export default function PortalSidebar({ variant, resolvedChildId, schoolName = "
         { href: `${prefix}/grades${suffix}`, label: "Notes", icon: GraduationCap },
         { href: `${prefix}/livret${suffix}`, label: "Livret", icon: BookOpen },
         { href: `${prefix}/absences${suffix}`, label: "Absences", icon: Clock },
+        { href: `${prefix}/sanctions${suffix}`, label: "Sanctions", icon: ShieldAlert },
         { href: "/messages", label: "Messages", icon: MessageSquare },
         { href: "/settings/password", label: "Mot de passe", icon: Key }
       );

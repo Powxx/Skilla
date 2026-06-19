@@ -9,6 +9,7 @@ import {
   Calendar, 
   FileWarning, 
   ShieldCheck, 
+  ShieldAlert,
   HeartHandshake, 
   Home, 
   ArrowRight,
@@ -54,6 +55,7 @@ export default async function AdminHomePage() {
     { href: "/admin/dispenses", label: "Dispenses", icon: ShieldCheck, color: "text-red-600", bg: "bg-red-50" },
     { href: "/admin/report-cards", label: "Bulletins", icon: GraduationCap, color: "text-violet-600", bg: "bg-violet-50" },
     { href: "/admin/teachers/subjects", label: "Habilitations", sub: "Profs & Matières", icon: ShieldCheck, color: "text-amber-600", bg: "bg-amber-50" },
+    { href: "/admin/sanctions", label: "Sanctions", sub: "Suivi disciplinaire", icon: ShieldAlert, color: "text-red-600", bg: "bg-red-50" },
   ];
 
   const relationsActions = [
