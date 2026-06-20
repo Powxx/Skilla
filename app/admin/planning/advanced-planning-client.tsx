@@ -123,10 +123,12 @@ export default function AdvancedPlanningClient({ classes, teachers, subjects, ro
   }, [currentDate]);
 
   // Conflict Checking logic
-  const checkConflicts = (start: Date, end: Date, teacherId: string, classId: string, roomId: string, excludeEventId?: string) => {
+  const checkConflicts = (start: Date, end: Date, teacherId: string, classId: string, roomId: string, excludeEventId?: string, ignoreHoliday = false) => {
     // Check holidays
-    const isHoliday = holidays.some(h => isSameDay(typeof h.date === 'string' ? parseISO(h.date) : new Date(h.date), start));
-    if (isHoliday) return "Impossible de planifier un cours un jour férié.";
+    if (!ignoreHoliday) {
+      const isHoliday = holidays.some(h => isSameDay(typeof h.date === 'string' ? parseISO(h.date) : new Date(h.date), start));
+      if (isHoliday) return "Impossible de planifier un cours un jour férié.";
+    }
 
     // Check lunch break (12:00 - 13:00)
     const lunchStart = setMinutes(setHours(new Date(start), 12), 0);
@@ -222,17 +224,26 @@ export default function AdvancedPlanningClient({ classes, teachers, subjects, ro
       const recurrenceId = occurrences > 1 ? `rec_${crypto.randomUUID()}` : null;
 
       const creations = [];
+      let weeksAdded = 0;
       
-      for (let i = 0; i < occurrences; i++) {
+      while (creations.length < occurrences) {
         const nextStart = new Date(start);
-        nextStart.setDate(start.getDate() + (i * intervalWeeks * 7));
+        nextStart.setDate(start.getDate() + (weeksAdded * intervalWeeks * 7));
         const nextEnd = new Date(end);
-        nextEnd.setDate(end.getDate() + (i * intervalWeeks * 7));
+        nextEnd.setDate(end.getDate() + (weeksAdded * intervalWeeks * 7));
 
-        const conflictError = checkConflicts(nextStart, nextEnd, props.teacherId, props.classId, props.roomId);
+        if (occurrences > 1) {
+           const isHoliday = holidays.some(h => isSameDay(typeof h.date === 'string' ? parseISO(h.date) : new Date(h.date), nextStart));
+           if (isHoliday) {
+               weeksAdded++;
+               continue;
+           }
+        }
+
+        const conflictError = checkConflicts(nextStart, nextEnd, props.teacherId, props.classId, props.roomId, undefined, occurrences > 1);
         if (conflictError) {
           info.revert();
-          setErrorMsg(`Conflit à l'occurrence ${i+1} (${format(nextStart, 'dd/MM')}): ${conflictError}`);
+          setErrorMsg(`Conflit à l'occurrence ${creations.length + 1} (${format(nextStart, 'dd/MM')}): ${conflictError}`);
           setTimeout(() => setErrorMsg(""), 5000);
           setLoading(false);
           return;
@@ -250,6 +261,8 @@ export default function AdvancedPlanningClient({ classes, teachers, subjects, ro
           customTeacher: props.customTeacher || null,
           recurrenceId: recurrenceId
         });
+        
+        weeksAdded++;
       }
 
       // We could batch this, but for now let's just loop or update API to handle multiple
