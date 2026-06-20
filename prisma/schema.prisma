@@ -58,6 +58,7 @@ model Dispensation {
 model User {
   id            String  @id @default(cuid())
   email         String? @unique
+  username      String? @unique
   password      String?
   role          Role    @default(STUDENT)
   calendarToken String? @unique @default(cuid())

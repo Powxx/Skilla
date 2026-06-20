@@ -66,6 +66,7 @@ export default async function UsersDataFetcher({
       select: {
         id: true,
         email: true,
+        username: true,
         firstName: true,
         lastName: true,
         role: true,
@@ -97,6 +98,7 @@ export default async function UsersDataFetcher({
     return {
       id: u.id,
       email: u.email || "", 
+      username: u.username,
       firstName: u.firstName || "",
       lastName: u.lastName || "",
       role: u.role,

@@ -20,23 +20,29 @@ export const authOptions: NextAuthOptions = {
     CredentialsProvider({
       name: "Identifiants",
       credentials: {
-        email: { label: "E-mail", type: "email" },
+        username: { label: "Identifiant", type: "text" },
         password: { label: "Mot de passe", type: "password" },
       },
       async authorize(credentials) {
         try {
-          const emailRaw = credentials?.email?.trim();
+          const usernameRaw = credentials?.username?.trim();
           const password = credentials?.password;
 
-          if (!emailRaw || !password) return null;
+          if (!usernameRaw || !password) return null;
 
-          const email = emailRaw.toLowerCase();
+          const loginIdentifier = usernameRaw.toLowerCase();
           
-          const user = await prisma.user.findUnique({ 
-            where: { email },
+          const user = await prisma.user.findFirst({ 
+            where: {
+              OR: [
+                { username: loginIdentifier },
+                { email: loginIdentifier }
+              ]
+            },
             select: { 
               id: true, 
               email: true, 
+              username: true,
               password: true, 
               role: true, 
               firstName: true, 

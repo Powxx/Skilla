@@ -69,9 +69,27 @@ export type MutationResult<T = unknown> =
   | { ok: true; data?: T }
   | { ok: false; error: string };
 
+export async function generateUniqueUsername(firstName: string, lastName: string): Promise<string> {
+  const initial = firstName.trim().charAt(0).toLowerCase();
+  const cleanLastName = lastName.trim().toLowerCase()
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]/g, "");
+  const base = `${initial}-${cleanLastName}`;
+  
+  let username = base;
+  let counter = 1;
+  while (true) {
+    const existing = await prisma.user.findUnique({ where: { username } });
+    if (!existing) break;
+    username = `${base}${counter}`;
+    counter++;
+  }
+  return username;
+}
+
 export async function createUser(input: {
-  email: string;
-  password: string;
+  email?: string;
+  password?: string;
   firstName: string;
   lastName: string;
   role: Role;
@@ -80,13 +98,13 @@ export async function createUser(input: {
   const session = await requireAdmin();
   if (!session) return { ok: false, error: "Accès réservé aux administrateurs." };
 
-  const email = input.email.trim().toLowerCase();
+  const email = input.email?.trim() ? input.email.trim().toLowerCase() : null;
   const password = input.password;
   const firstName = input.firstName.trim();
   const lastName = input.lastName.trim();
   const role = input.role;
 
-  if (!email || !password || !firstName || !lastName) {
+  if (!password || !firstName || !lastName) {
     return { ok: false, error: "Champs obligatoires manquants." };
   }
   if (!ADMIN_ROLES.includes(role)) {
@@ -98,6 +116,7 @@ export async function createUser(input: {
 
   const passwordHash = await bcrypt.hash(password, 10);
   const fullName = `${firstName} ${lastName}`;
+  const username = await generateUniqueUsername(firstName, lastName);
 
   try {
     if (role === Role.STUDENT) {
@@ -109,6 +128,7 @@ export async function createUser(input: {
       await prisma.user.create({
         data: {
           email,
+          username,
           password: passwordHash,
           role,
           firstName,
@@ -122,6 +142,7 @@ export async function createUser(input: {
       await prisma.user.create({
         data: {
           email,
+          username,
           password: passwordHash,
           role,
           firstName,
@@ -139,6 +160,7 @@ export async function createUser(input: {
       await prisma.user.create({
         data: {
           email,
+          username,
           password: passwordHash,
           role,
           firstName,
@@ -149,7 +171,7 @@ export async function createUser(input: {
     }
   } catch (e: unknown) {
     if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002") {
-      return { ok: false, error: "Un compte existe déjà avec cet e-mail." };
+      return { ok: false, error: "Un compte existe déjà avec cet e-mail ou cet identifiant." };
     }
     return { ok: false, error: "Impossible de créer l’utilisateur." };
   }
@@ -160,7 +182,7 @@ export async function createUser(input: {
 
 export async function updateUser(input: {
   userId: string;
-  email: string;
+  email?: string;
   firstName: string;
   lastName: string;
   role: Role;
@@ -182,11 +204,11 @@ export async function updateUser(input: {
     studentClassId,
   } = input;
 
-  const email = emailRaw.trim().toLowerCase();
+  const email = emailRaw?.trim() ? emailRaw.trim().toLowerCase() : null;
   const firstName = fnRaw.trim();
   const lastName = lnRaw.trim();
 
-  if (!userId || !email || !firstName || !lastName) {
+  if (!userId || !firstName || !lastName) {
     return { ok: false, error: "Champs obligatoires manquants." };
   }
   if (!ADMIN_ROLES.includes(newRole)) {
@@ -203,6 +225,11 @@ export async function updateUser(input: {
 
   if (!existing) {
     return { ok: false, error: "Utilisateur introuvable." };
+  }
+
+  let username = existing.username;
+  if (!username || existing.firstName !== firstName || existing.lastName !== lastName) {
+    username = await generateUniqueUsername(firstName, lastName);
   }
 
   const adminCount = await prisma.user.count({ where: { role: Role.ADMIN } });
@@ -256,6 +283,7 @@ export async function updateUser(input: {
 
   const data: Prisma.UserUpdateInput = {
     email,
+    username,
     firstName,
     lastName,
     name: fullName,
@@ -388,7 +416,7 @@ export async function deleteUserSafe(userId: string): Promise<MutationResult> {
 }
 
 export async function importUsersAction(users: Array<{
-  email: string;
+  email?: string;
   firstName: string;
   lastName: string;
   role: Role;
@@ -400,71 +428,115 @@ export async function importUsersAction(users: Array<{
 
   let count = 0;
   for (const user of users) {
-    const email = user.email.trim().toLowerCase();
+    const email = user.email?.trim() ? user.email.trim().toLowerCase() : null;
     const firstName = user.firstName.trim();
     const lastName = user.lastName.trim();
     const fullName = `${firstName} ${lastName}`;
     const role = user.role;
-    const password = user.password || "Skilla2026!"; // Default password if none provided
+    const password = user.password || "Skilla2026!";
 
-    if (!email || !firstName || !lastName || !role) continue;
+    if (!firstName || !lastName || !role) continue;
 
     const passwordHash = await bcrypt.hash(password, 10);
+    const generatedUsername = await generateUniqueUsername(firstName, lastName);
 
     try {
-      if (role === Role.STUDENT && user.classId) {
-        // Find class first to be sure
-        const targetClass = await prisma.class.findFirst({
-           where: { OR: [{ id: user.classId }, { name: user.classId }] }
+      let existingUser = null;
+      if (email) {
+        existingUser = await prisma.user.findFirst({
+          where: {
+            OR: [
+              { email },
+              { username: generatedUsername }
+            ]
+          }
         });
+      } else {
+        existingUser = await prisma.user.findUnique({
+          where: { username: generatedUsername }
+        });
+      }
 
-        if (targetClass) {
-          await prisma.user.upsert({
-            where: { email },
-            update: { firstName, lastName, name: fullName, role, class: { connect: { id: targetClass.id } } },
-            create: {
+      if (existingUser) {
+        if (role === Role.STUDENT && user.classId) {
+          const targetClass = await prisma.class.findFirst({
+            where: { OR: [{ id: user.classId }, { name: user.classId }] }
+          });
+          const classConnect = targetClass ? { connect: { id: targetClass.id } } : undefined;
+
+          await prisma.user.update({
+            where: { id: existingUser.id },
+            data: {
+              firstName,
+              lastName,
+              name: fullName,
+              role,
+              email: email || existingUser.email,
+              class: classConnect
+            }
+          });
+        } else {
+          await prisma.user.update({
+            where: { id: existingUser.id },
+            data: {
+              firstName,
+              lastName,
+              name: fullName,
+              role,
+              email: email || existingUser.email
+            }
+          });
+        }
+      } else {
+        if (role === Role.STUDENT && user.classId) {
+          const targetClass = await prisma.class.findFirst({
+            where: { OR: [{ id: user.classId }, { name: user.classId }] }
+          });
+          if (targetClass) {
+            await prisma.user.create({
+              data: {
+                email,
+                username: generatedUsername,
+                password: passwordHash,
+                role,
+                firstName,
+                lastName,
+                name: fullName,
+                class: { connect: { id: targetClass.id } },
+                studentProfile: { create: { classId: targetClass.id } }
+              }
+            });
+          }
+        } else if (role === Role.TEACHER) {
+          await prisma.user.create({
+            data: {
               email,
+              username: generatedUsername,
               password: passwordHash,
               role,
               firstName,
               lastName,
               name: fullName,
-              class: { connect: { id: targetClass.id } },
-              studentProfile: { create: { classId: targetClass.id } }
+              contract: { create: { hourlyRate: 0, monthlyHours: 0 } }
+            }
+          });
+        } else {
+          await prisma.user.create({
+            data: {
+              email,
+              username: generatedUsername,
+              password: passwordHash,
+              role,
+              firstName,
+              lastName,
+              name: fullName
             }
           });
         }
-      } else if (role === Role.TEACHER) {
-        await prisma.user.upsert({
-          where: { email },
-          update: { firstName, lastName, name: fullName, role },
-          create: {
-            email,
-            password: passwordHash,
-            role,
-            firstName,
-            lastName,
-            name: fullName,
-            contract: { create: { hourlyRate: 0, monthlyHours: 0 } }
-          }
-        });
-      } else {
-        await prisma.user.upsert({
-          where: { email },
-          update: { firstName, lastName, name: fullName, role },
-          create: {
-            email,
-            password: passwordHash,
-            role,
-            firstName,
-            lastName,
-            name: fullName
-          }
-        });
       }
       count++;
     } catch (e) {
-      console.error("Error importing user:", email, e);
+      console.error("Error importing user:", email || generatedUsername, e);
     }
   }
 

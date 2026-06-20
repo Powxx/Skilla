@@ -26,7 +26,7 @@ function pathAfterLogin(role: string): string {
 export default function LoginForm() {
   const router = useRouter();
   const { status, data: session } = useSession();
-  const [email, setEmail] = useState("");
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
@@ -56,12 +56,12 @@ export default function LoginForm() {
       // 1. Connexion via NextAuth
       const result = await signIn("credentials", {
         redirect: false,
-        email: email.trim().toLowerCase(),
+        username: username.trim().toLowerCase(),
         password,
       });
 
       if (result?.error) {
-        setError("E-mail ou mot de passe incorrect.");
+        setError("Identifiant ou mot de passe incorrect.");
         setPending(false);
         return;
       }
@@ -114,14 +114,14 @@ export default function LoginForm() {
           )}
 
           <label className="block">
-            <span className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-500">E-mail</span>
+            <span className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-500">Identifiant</span>
             <input
-              type="email"
+              type="text"
               required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
               className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-sky-500 focus:ring-4 focus:ring-sky-500/15"
-              placeholder="vous@ecole.fr"
+              placeholder="p-nom"
             />
           </label>
 

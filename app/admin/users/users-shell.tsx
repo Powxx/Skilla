@@ -32,6 +32,7 @@ export type ListedUserRow = {
   canManageRH: boolean;
   canImpersonate: boolean;
   isActive: boolean;
+  username: string | null;
 };
 
 type ClassOption = { id: string; name: string };
@@ -136,7 +137,7 @@ export default function UsersShell(props: Props) {
           email: row.Email || row.email || "",
           role: (row.Rôle || row.role || "STUDENT") as Role,
           classId: row.Classe || row.classId || ""
-        })).filter((u: any) => u.email && u.firstName);
+        })).filter((u: any) => u.firstName && u.lastName);
 
         if (payload.length === 0) {
           setFlash({ type: "err", msg: "Aucune donnée valide trouvée dans le CSV." });
@@ -246,6 +247,7 @@ export default function UsersShell(props: Props) {
                   <tr key={u.id} className="hover:bg-slate-50 transition group">
                     <td className="px-5 py-3">
                       <div className="font-black text-slate-900 uppercase tracking-tight">{u.lastName} {u.firstName}</div>
+                      <div className="text-[9px] text-slate-400 font-medium mb-1">ID: {u.username}</div>
                       {u.hasStudentProfile && <span className="text-[8px] font-bold text-blue-500 uppercase tracking-tighter">Élève</span>}
                     </td>
                     <td className="px-5 py-3 text-slate-500 font-medium">{u.email}</td>
@@ -415,8 +417,8 @@ export default function UsersShell(props: Props) {
 }
 
 type CreateUserPayload = {
-  email: string;
-  password: string;
+  email?: string;
+  password?: string;
   firstName: string;
   lastName: string;
   role: Role;
@@ -447,7 +449,7 @@ function CreateUserModal({
           const fd = new FormData(e.currentTarget);
           const classIdRaw = String(fd.get("classId") ?? "");
           onSubmitRecord({
-            email: String(fd.get("email") ?? ""),
+            email: String(fd.get("email") ?? "").trim() || undefined,
             password: String(fd.get("password") ?? ""),
             firstName: String(fd.get("firstName") ?? ""),
             lastName: String(fd.get("lastName") ?? ""),
@@ -490,8 +492,8 @@ function CreateUserModal({
         <Field label="Nom *">
           <input name="lastName" required className={inputClass} />
         </Field>
-        <Field label="E-mail *">
-          <input name="email" type="email" required className={inputClass} />
+        <Field label="E-mail (optionnel)">
+          <input name="email" type="email" className={inputClass} />
         </Field>
         <Field label="Mot de passe *">
           <input
@@ -645,11 +647,10 @@ function EditUserModal({
         <Field label="Nom *">
           <input name="lastName" required defaultValue={user.lastName} className={inputClass} />
         </Field>
-        <Field label="E-mail *">
+        <Field label="E-mail (optionnel)">
           <input
             name="email"
             type="email"
-            required
             defaultValue={user.email}
             className={inputClass}
           />
