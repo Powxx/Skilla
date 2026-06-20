@@ -116,7 +116,9 @@ export async function GET(request: Request) {
         substituteId: lesson.substituteId,
         substitute: lesson.substitute ? `${lesson.substitute.firstName} ${lesson.substitute.lastName}` : null,
         summary: lesson.summary,
-        homework: lesson.homework
+        homework: lesson.homework,
+        groupId: lesson.groupId,
+        recurrenceId: lesson.recurrenceId
       }
     };
   });
@@ -178,6 +180,7 @@ export async function POST(request: Request) {
         teacherId: data.isFreeLesson ? null : data.teacherId,
         roomId: data.roomId || null,
         groupId: data.groupId || null,
+        recurrenceId: data.recurrenceId || null,
         isFreeLesson: data.isFreeLesson || false,
         customSubject: data.customSubject || null,
         customTeacher: data.customTeacher || null
@@ -197,7 +200,7 @@ export async function PUT(request: Request) {
 
   try {
     const data = await request.json();
-    const { id, ...updateData } = data;
+    const { id, updateSeries, updateGroup, ...updateData } = data;
     
     // Check ownership if teacher
     if (session.user.role === "TEACHER") {
@@ -231,20 +234,47 @@ export async function PUT(request: Request) {
       include: { class: { include: { students: true } }, subject: true }
     });
 
-    const updatedLesson = await prisma.lesson.update({
-      where: { id },
-      data: updateData,
+    if (!oldLesson) {
+      return NextResponse.json({ error: "Cours non trouvé" }, { status: 404 });
+    }
+
+    // Determine target lessons for update
+    let targetLessonIds = [id];
+    if (updateSeries && oldLesson.recurrenceId) {
+      const lessonsInSeries = await prisma.lesson.findMany({
+        where: { recurrenceId: oldLesson.recurrenceId },
+        select: { id: true }
+      });
+      targetLessonIds = lessonsInSeries.map(l => l.id);
+    } else if (updateGroup && oldLesson.groupId) {
+      const lessonsInGroup = await prisma.lesson.findMany({
+        where: { groupId: oldLesson.groupId, startTime: oldLesson.startTime },
+        select: { id: true }
+      });
+      targetLessonIds = lessonsInGroup.map(l => l.id);
+    }
+
+    // Update target lessons
+    const lessonsToNotify = await prisma.lesson.findMany({
+      where: { id: { in: targetLessonIds } },
+      include: { class: { include: { students: true } }, subject: true }
     });
 
-    // Handle Notifications
-    if (oldLesson) {
-      // 1. Room Change
-      if (updateData.roomId !== undefined && updateData.roomId !== oldLesson.roomId) {
+    for (const lesson of lessonsToNotify) {
+      const isRoomChanged = updateData.roomId !== undefined && updateData.roomId !== lesson.roomId;
+      const isCancelledNow = updateData.isCancelled === true && !lesson.isCancelled;
+
+      await prisma.lesson.update({
+        where: { id: lesson.id },
+        data: updateData
+      });
+
+      if (isRoomChanged) {
         const isEnabled = await checkEventEnabled("ROOM_CHANGE");
         if (isEnabled) {
           const room = updateData.roomId ? await prisma.room.findUnique({ where: { id: updateData.roomId } }) : null;
-          const subjectName = oldLesson.isFreeLesson ? (oldLesson.customSubject || "Cours libre") : (oldLesson.subject?.name || "Sans matière");
-          for (const student of oldLesson.class.students) {
+          const subjectName = lesson.isFreeLesson ? (lesson.customSubject || "Cours libre") : (lesson.subject?.name || "Sans matière");
+          for (const student of lesson.class.students) {
             createNotification({
               userId: student.id,
               title: "Changement de salle",
@@ -256,16 +286,15 @@ export async function PUT(request: Request) {
         }
       }
 
-      // 2. Cancellation
-      if (updateData.isCancelled === true && !oldLesson.isCancelled) {
+      if (isCancelledNow) {
         const isEnabled = await checkEventEnabled("LESSON_CANCELLED");
         if (isEnabled) {
-          const subjectName = oldLesson.isFreeLesson ? (oldLesson.customSubject || "Cours libre") : (oldLesson.subject?.name || "Sans matière");
-          for (const student of oldLesson.class.students) {
+          const subjectName = lesson.isFreeLesson ? (lesson.customSubject || "Cours libre") : (lesson.subject?.name || "Sans matière");
+          for (const student of lesson.class.students) {
             createNotification({
               userId: student.id,
               title: "Cours annulé",
-              message: `Le cours de ${subjectName} du ${oldLesson.startTime.toLocaleDateString('fr-FR')} a été annulé.`,
+              message: `Le cours de ${subjectName} du ${lesson.startTime.toLocaleDateString('fr-FR')} a été annulé.`,
               type: "ERROR",
               link: "/student/planning"
             }).catch(e => console.error(e));
@@ -273,6 +302,17 @@ export async function PUT(request: Request) {
         }
       }
     }
+
+    const updatedLesson = await prisma.lesson.findUnique({
+      where: { id },
+      include: {
+        subject: { select: { id: true, name: true } },
+        teacher: { select: { id: true, firstName: true, lastName: true } },
+        class: { select: { id: true, name: true } },
+        room: { select: { id: true, name: true } },
+        substitute: { select: { id: true, firstName: true, lastName: true } }
+      }
+    });
 
     return NextResponse.json(updatedLesson);
   } catch (error: any) {
@@ -291,8 +331,43 @@ export async function DELETE(request: Request) {
     const id = searchParams.get("id");
     if (!id) throw new Error("Missing ID");
 
-    await prisma.lesson.delete({ where: { id } });
-    return NextResponse.json({ success: true });
+    const deleteSeries = searchParams.get("deleteSeries") === "true";
+    const deleteGroup = searchParams.get("deleteGroup") === "true";
+
+    const lesson = await prisma.lesson.findUnique({
+      where: { id },
+      select: { recurrenceId: true, groupId: true, startTime: true }
+    });
+
+    if (!lesson) {
+      return NextResponse.json({ error: "Cours non trouvé" }, { status: 404 });
+    }
+
+    let targetIds = [id];
+    if (deleteSeries && lesson.recurrenceId) {
+      const series = await prisma.lesson.findMany({
+        where: { recurrenceId: lesson.recurrenceId },
+        select: { id: true }
+      });
+      targetIds = series.map(l => l.id);
+    } else if (deleteGroup && lesson.groupId) {
+      const group = await prisma.lesson.findMany({
+        where: { groupId: lesson.groupId, startTime: lesson.startTime },
+        select: { id: true }
+      });
+      targetIds = group.map(l => l.id);
+    }
+
+    // Delete related substitution requests first
+    await prisma.substitutionRequest.deleteMany({
+      where: { lessonId: { in: targetIds } }
+    });
+
+    await prisma.lesson.deleteMany({
+      where: { id: { in: targetIds } }
+    });
+
+    return NextResponse.json({ success: true, deletedIds: targetIds });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 400 });
   }

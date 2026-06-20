@@ -291,6 +291,7 @@ model Lesson {
   roomId  String?
   room    Room?   @relation(fields: [roomId], references: [id])
   groupId String?
+  recurrenceId String?
 
   attendances Attendance[]
 
@@ -302,6 +303,7 @@ model Lesson {
   homework String? @db.Text
 
   @@index([startTime, endTime])
+  @@index([recurrenceId])
 }
 
 model AttendanceSheet {

@@ -51,7 +51,10 @@ export default function AdvancedPlanningClient({ classes, teachers, subjects, ro
   const [eventFormData, setEventFormData] = useState({
     isCancelled: false,
     substituteId: "",
-    subjectId: ""
+    subjectId: "",
+    roomId: "",
+    updateSeries: false,
+    updateGroup: false
   });
 
   const fetchHolidays = async () => {
@@ -216,6 +219,7 @@ export default function AdvancedPlanningClient({ classes, teachers, subjects, ro
     try {
       const occurrences = config.periodicity === "none" ? 1 : config.occurrences;
       const intervalWeeks = config.periodicity === "weekly" ? 1 : (config.periodicity === "1/4" ? 4 : 1);
+      const recurrenceId = occurrences > 1 ? `rec_${crypto.randomUUID()}` : null;
 
       const creations = [];
       
@@ -243,7 +247,8 @@ export default function AdvancedPlanningClient({ classes, teachers, subjects, ro
           roomId: props.roomId || null,
           isFreeLesson: props.isFreeLesson || false,
           customSubject: props.customSubject || null,
-          customTeacher: props.customTeacher || null
+          customTeacher: props.customTeacher || null,
+          recurrenceId: recurrenceId
         });
       }
 
@@ -315,7 +320,10 @@ export default function AdvancedPlanningClient({ classes, teachers, subjects, ro
     setEventFormData({
       isCancelled: props.isCancelled || false,
       substituteId: props.substituteId || "",
-      subjectId: props.subjectId || ""
+      subjectId: props.subjectId || "",
+      roomId: props.roomId || "",
+      updateSeries: false,
+      updateGroup: false
     });
   };
 
@@ -328,7 +336,10 @@ export default function AdvancedPlanningClient({ classes, teachers, subjects, ro
         id: selectedEvent.id,
         isCancelled: eventFormData.isCancelled,
         substituteId: eventFormData.substituteId || null,
-        subjectId: eventFormData.subjectId || null
+        subjectId: eventFormData.subjectId || null,
+        roomId: eventFormData.roomId || null,
+        updateSeries: eventFormData.updateSeries,
+        updateGroup: eventFormData.updateGroup
       };
 
       const res = await fetch("/api/lessons", {
@@ -372,20 +383,50 @@ export default function AdvancedPlanningClient({ classes, teachers, subjects, ro
 
   const handleDeleteSelectedEvent = async () => {
     if (!selectedEvent) return;
-    if (confirm(`Voulez-vous vraiment supprimer ce cours ?`)) {
-      setLoading(true);
-      try {
-        const res = await fetch(`/api/lessons?id=${selectedEvent.id}`, { method: 'DELETE' });
-        if (res.ok) {
-          selectedEvent.remove();
-          setEvents(events.filter(e => e.id !== selectedEvent.id));
-          setSelectedEvent(null);
+    
+    let deleteSeries = false;
+    let deleteGroup = false;
+    
+    if (selectedEvent.extendedProps.recurrenceId) {
+      const choice = confirm("Voulez-vous supprimer TOUS les cours de cette série récurrente ?\n\nOK = Supprimer toute la série\nAnnuler = Supprimer uniquement ce cours (ou annuler la suppression)");
+      if (choice) {
+        deleteSeries = true;
+      } else {
+        if (!confirm("Voulez-vous vraiment supprimer uniquement ce cours ?")) {
+          return;
         }
-      } catch (err) {
-        alert("Erreur de suppression");
-      } finally {
-        setLoading(false);
       }
+    } else if (selectedEvent.extendedProps.groupId) {
+      const choice = confirm("Voulez-vous supprimer ce cours pour TOUTES les classes de ce groupe ?\n\nOK = Supprimer pour tout le groupe\nAnnuler = Supprimer uniquement pour cette classe (ou annuler la suppression)");
+      if (choice) {
+        deleteGroup = true;
+      } else {
+        if (!confirm("Voulez-vous vraiment supprimer uniquement ce cours ?")) {
+          return;
+        }
+      }
+    } else {
+      if (!confirm("Voulez-vous vraiment supprimer ce cours ?")) return;
+    }
+
+    setLoading(true);
+    try {
+      const params = new URLSearchParams();
+      params.set('id', selectedEvent.id);
+      if (deleteSeries) params.set('deleteSeries', 'true');
+      if (deleteGroup) params.set('deleteGroup', 'true');
+
+      const res = await fetch(`/api/lessons?${params.toString()}`, { method: 'DELETE' });
+      if (res.ok) {
+        fetchLessons(currentDate);
+        setSelectedEvent(null);
+      } else {
+        alert("Erreur lors de la suppression.");
+      }
+    } catch (err) {
+      alert("Erreur de suppression");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -592,38 +633,60 @@ export default function AdvancedPlanningClient({ classes, teachers, subjects, ro
           </div>
         )}
         
-        <div className="px-4 py-3 border-b border-slate-100 bg-slate-50 flex items-center gap-3 shrink-0">
-          <span className="text-[10px] font-black text-slate-900 uppercase tracking-widest">Affichage :</span>
-          <div className="flex gap-1">
-             <select 
-               className="text-[10px] font-black uppercase tracking-widest rounded-xl border-slate-200 py-1.5 focus:ring-blue-500/20 bg-white"
-               value={viewFilter.type}
-               onChange={(e) => setViewFilter({ type: e.target.value, id: "" })}
-             >
-               <option value="class">Classe</option>
-               <option value="teacher">Prof</option>
-               <option value="room">Salle</option>
-               <option value="all">Tout</option>
-             </select>
+        <div className="px-4 py-3 border-b border-slate-100 bg-slate-50 flex flex-wrap items-center justify-between gap-3 shrink-0">
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] font-black text-slate-900 uppercase tracking-widest">Affichage :</span>
+            <div className="flex gap-1">
+               <select 
+                 className="text-[10px] font-black uppercase tracking-widest rounded-xl border-slate-200 py-1.5 focus:ring-blue-500/20 bg-white"
+                 value={viewFilter.type}
+                 onChange={(e) => setViewFilter({ type: e.target.value, id: "" })}
+               >
+                 <option value="class">Classe</option>
+                 <option value="teacher">Prof</option>
+                 <option value="room">Salle</option>
+                 <option value="all">Tout</option>
+               </select>
+  
+               {viewFilter.type === 'class' && (
+                 <select className="text-[10px] font-black uppercase tracking-widest rounded-xl border-slate-200 py-1.5 focus:ring-blue-500/20 bg-white" value={viewFilter.id} onChange={e => setViewFilter({...viewFilter, id: e.target.value})}>
+                   <option value="">Choisir...</option>
+                   {classes.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                 </select>
+               )}
+               {viewFilter.type === 'teacher' && (
+                 <select className="text-[10px] font-black uppercase tracking-widest rounded-xl border-slate-200 py-1.5 focus:ring-blue-500/20 bg-white" value={viewFilter.id} onChange={e => setViewFilter({...viewFilter, id: e.target.value})}>
+                   <option value="">Choisir...</option>
+                   {teachers.map(t => <option key={t.id} value={t.id}>{t.lastName}</option>)}
+                 </select>
+               )}
+               {viewFilter.type === 'room' && (
+                 <select className="text-[10px] font-black uppercase tracking-widest rounded-xl border-slate-200 py-1.5 focus:ring-blue-500/20 bg-white" value={viewFilter.id} onChange={e => setViewFilter({...viewFilter, id: e.target.value})}>
+                   <option value="">Choisir...</option>
+                   {rooms.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
+                 </select>
+               )}
+            </div>
+          </div>
 
-             {viewFilter.type === 'class' && (
-               <select className="text-[10px] font-black uppercase tracking-widest rounded-xl border-slate-200 py-1.5 focus:ring-blue-500/20 bg-white" value={viewFilter.id} onChange={e => setViewFilter({...viewFilter, id: e.target.value})}>
-                 <option value="">Choisir...</option>
-                 {classes.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-               </select>
-             )}
-             {viewFilter.type === 'teacher' && (
-               <select className="text-[10px] font-black uppercase tracking-widest rounded-xl border-slate-200 py-1.5 focus:ring-blue-500/20 bg-white" value={viewFilter.id} onChange={e => setViewFilter({...viewFilter, id: e.target.value})}>
-                 <option value="">Choisir...</option>
-                 {teachers.map(t => <option key={t.id} value={t.id}>{t.lastName}</option>)}
-               </select>
-             )}
-             {viewFilter.type === 'room' && (
-               <select className="text-[10px] font-black uppercase tracking-widest rounded-xl border-slate-200 py-1.5 focus:ring-blue-500/20 bg-white" value={viewFilter.id} onChange={e => setViewFilter({...viewFilter, id: e.target.value})}>
-                 <option value="">Choisir...</option>
-                 {rooms.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
-               </select>
-             )}
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] font-black text-slate-900 uppercase tracking-widest">Aller à la date :</span>
+            <input 
+              type="date"
+              className="text-[10px] font-black uppercase tracking-widest rounded-xl border-slate-200 py-1 px-2 focus:ring-blue-500/20 bg-white border"
+              value={format(currentDate, 'yyyy-MM-dd')}
+              onChange={(e) => {
+                const val = e.target.value;
+                if (val) {
+                  const date = parseISO(val);
+                  setCurrentDate(date);
+                  const calendarApi = calendarRef.current?.getApi();
+                  if (calendarApi) {
+                    calendarApi.gotoDate(date);
+                  }
+                }
+              }}
+            />
           </div>
         </div>
 
@@ -784,6 +847,19 @@ export default function AdvancedPlanningClient({ classes, teachers, subjects, ro
                     </select>
                   </div>
                   <div>
+                    <label className="block text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Salle</label>
+                    <select 
+                      className="w-full text-xs rounded-xl border-slate-200 py-2 focus:ring-blue-500/20"
+                      value={eventFormData.roomId}
+                      onChange={(e) => setEventFormData({...eventFormData, roomId: e.target.value})}
+                    >
+                      <option value="">-- Aucune --</option>
+                      {rooms.map(r => (
+                        <option key={r.id} value={r.id}>{r.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
                     <label className="block text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Remplaçant</label>
                     <select 
                       className="w-full text-xs rounded-xl border-slate-200 py-2 focus:ring-blue-500/20"
@@ -797,6 +873,36 @@ export default function AdvancedPlanningClient({ classes, teachers, subjects, ro
                     </select>
                   </div>
                   </>
+                )}
+
+                {selectedEvent.extendedProps.recurrenceId && (
+                  <label className="flex items-center gap-3 p-3 rounded-2xl border border-slate-100 cursor-pointer hover:bg-slate-50 transition group">
+                    <input 
+                      type="checkbox" 
+                      className="h-4 w-4 rounded-lg border-slate-300 text-blue-600 focus:ring-blue-500"
+                      checked={eventFormData.updateSeries}
+                      onChange={(e) => setEventFormData({...eventFormData, updateSeries: e.target.checked})}
+                    />
+                    <div>
+                      <div className="text-[11px] font-black text-slate-900 uppercase tracking-tight">Mise à jour en série</div>
+                      <div className="text-[9px] font-bold text-slate-400 uppercase tracking-tighter">Appliquer à toutes les occurrences de cette série</div>
+                    </div>
+                  </label>
+                )}
+
+                {selectedEvent.extendedProps.groupId && (
+                  <label className="flex items-center gap-3 p-3 rounded-2xl border border-slate-100 cursor-pointer hover:bg-slate-50 transition group">
+                    <input 
+                      type="checkbox" 
+                      className="h-4 w-4 rounded-lg border-slate-300 text-blue-600 focus:ring-blue-500"
+                      checked={eventFormData.updateGroup}
+                      onChange={(e) => setEventFormData({...eventFormData, updateGroup: e.target.checked})}
+                    />
+                    <div>
+                      <div className="text-[11px] font-black text-slate-900 uppercase tracking-tight">Mise à jour du groupe</div>
+                      <div className="text-[9px] font-bold text-slate-400 uppercase tracking-tighter">Appliquer à toutes les classes de ce groupe</div>
+                    </div>
+                  </label>
                 )}
 
                 <div className="pt-4 flex flex-col gap-2">
