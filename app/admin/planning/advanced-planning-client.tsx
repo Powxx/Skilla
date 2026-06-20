@@ -206,8 +206,10 @@ export default function AdvancedPlanningClient({ classes, teachers, subjects, ro
       }
     }
 
+    const occurrences = config.periodicity === "none" ? 1 : config.occurrences;
+
     // Vérification de conflits standard
-    const conflictError = checkConflicts(start, end, props.teacherId, props.classId, props.roomId);
+    const conflictError = checkConflicts(start, end, props.teacherId, props.classId, props.roomId, undefined, occurrences > 1);
 
     if (conflictError) {
       info.revert();
@@ -219,7 +221,6 @@ export default function AdvancedPlanningClient({ classes, teachers, subjects, ro
 
     setLoading(true);
     try {
-      const occurrences = config.periodicity === "none" ? 1 : config.occurrences;
       const intervalWeeks = config.periodicity === "weekly" ? 1 : (config.periodicity === "1/4" ? 4 : 1);
       const recurrenceId = occurrences > 1 ? `rec_${crypto.randomUUID()}` : null;
 
