@@ -10,6 +10,7 @@ export const metadata = {
 
 import { resolveTutorStudentId, listTutorStudentsSerialized } from "@/lib/employer-access";
 import StudentSelector from "@/components/student/student-selector";
+import { prisma } from "@/lib/prisma";
 
 export default async function EmployerDashboardPage({
   searchParams,
@@ -48,7 +49,10 @@ export default async function EmployerDashboardPage({
     redirect("/employer/dashboard");
   }
 
+  const globalSettings = await prisma.globalSetting.findMany({ where: { key: "MEETINGS_ENABLED" } });
+  const meetingsEnabled = globalSettings[0]?.value !== "false";
+
   return (
-    <EmployerDashboardClient students={[selectedStudentData]} />
+    <EmployerDashboardClient students={[selectedStudentData]} enableMeetings={meetingsEnabled} />
   );
 }

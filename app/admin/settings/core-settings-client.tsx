@@ -49,6 +49,7 @@ export default function CoreSettingsClient({
   const [enableSanctionPoints, setEnableSanctionPoints] = useState(globalSettings.SANCTIONS_POINTS_ENABLED === "true");
   const [enableSanctionComments, setEnableSanctionComments] = useState(globalSettings.SANCTIONS_COMMENTS_ENABLED === "true");
   const [enableQualiopi, setEnableQualiopi] = useState(globalSettings.QUALIOPI_ENABLED !== "false");
+  const [enableMeetings, setEnableMeetings] = useState(globalSettings.MEETINGS_ENABLED !== "false");
 
   // Sync with props
   useEffect(() => {
@@ -59,6 +60,7 @@ export default function CoreSettingsClient({
     setEnableSanctionPoints(globalSettings.SANCTIONS_POINTS_ENABLED === "true");
     setEnableSanctionComments(globalSettings.SANCTIONS_COMMENTS_ENABLED === "true");
     setEnableQualiopi(globalSettings.QUALIOPI_ENABLED !== "false");
+    setEnableMeetings(globalSettings.MEETINGS_ENABLED !== "false");
   }, [teachers, globalSettings]);
 
   const handleUpdateOptions = async (key: string, value: string) => {
@@ -756,6 +758,36 @@ export default function CoreSettingsClient({
                   }`}
                 >
                   {enableQualiopi ? 'Activé' : 'Désactivé'}
+                </button>
+              </div>
+
+              {/* Rendez-vous */}
+              <div className="p-6 rounded-2xl border border-slate-200 bg-white shadow-sm flex items-center justify-between group hover:border-sky-100 transition">
+                <div className="flex items-center gap-4">
+                  <div className="h-12 w-12 rounded-xl bg-sky-50 flex items-center justify-center text-sky-600">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-6 h-6">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5m-9-6h.008v.008H12v-.008ZM12 15h.008v.008H12V15Zm0 2.25h.008v.008H12v-.008ZM9.75 15h.008v.008H9.75V15Zm0 2.25h.008v.008H9.75v-.008ZM7.5 15h.008v.008H7.5V15Zm0 2.25h.008v.008H7.5v-.008Zm6.75-4.5h.008v.008h-.008v-.008Zm0 2.25h.008v.008h-.008V15Zm0 2.25h.008v.008h-.008v-.008Zm2.25-4.5h.008v.008H16.5v-.008Zm0 2.25h.008v.008H16.5V15Z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-black text-slate-900 uppercase tracking-widest">Demandes de Rendez-vous</h4>
+                    <p className="text-xs text-slate-500 font-medium">Permet aux élèves, parents et tuteurs de solliciter un entretien avec l'administration.</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => {
+                    const newValue = !enableMeetings;
+                    setEnableMeetings(newValue);
+                    handleUpdateOptions("MEETINGS_ENABLED", String(newValue));
+                  }}
+                  disabled={loading}
+                  className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition shadow-sm ${
+                    enableMeetings
+                      ? 'bg-sky-500 text-white hover:bg-sky-600 shadow-sky-500/20'
+                      : 'bg-slate-200 text-slate-500 hover:bg-slate-300'
+                  }`}
+                >
+                  {enableMeetings ? 'Activé' : 'Désactivé'}
                 </button>
               </div>
             </div>

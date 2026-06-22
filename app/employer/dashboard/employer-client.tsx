@@ -5,7 +5,7 @@ import { fr } from "date-fns/locale";
 import Link from "next/link";
 import MeetingRequestForm from "@/components/meetings/meeting-request-form";
 
-export default function EmployerDashboardClient({ students }: { students: any[] }) {
+export default function EmployerDashboardClient({ students, enableMeetings = true }: { students: any[], enableMeetings?: boolean }) {
   return (
     <div className="h-full flex flex-col gap-6 font-sans text-slate-900">
       <header className="flex items-center justify-between shrink-0">
@@ -87,9 +87,11 @@ export default function EmployerDashboardClient({ students }: { students: any[] 
         ))}
       </div>
 
-      <div className="shrink-0 max-w-sm">
-        <MeetingRequestForm />
-      </div>
+      {enableMeetings && (
+        <div className="shrink-0 max-w-sm">
+          <MeetingRequestForm />
+        </div>
+      )}
     </div>
   );
 }

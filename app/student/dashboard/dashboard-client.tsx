@@ -35,8 +35,8 @@ export type DashboardClientProps = {
   classSize?: number;
   lastGrade?: { value: number; subjectName: string; date: string } | null;
   nextLesson?: { subjectName: string; startTime: string; roomName: string } | null;
-  upcomingHomework?: { subjectName: string; content: string; date: string }[];
   absencesDetailHref: string;
+  enableMeetings?: boolean;
 };
 
 function formatAvg(n: number) {
@@ -124,7 +124,7 @@ export default function StudentDashboardClient({
             </div>
           </section>
 
-          <MeetingRequestForm />
+          {enableMeetings && <MeetingRequestForm />}
         </div>
 
         {/* Middle Col: Chart (5 cols) */}

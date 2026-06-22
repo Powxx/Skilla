@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { authOptions } from "@/lib/auth-options";
 import { listParentChildrenSerialized } from "@/lib/parent-access";
 import MeetingRequestForm from "@/components/meetings/meeting-request-form";
+import { prisma } from "@/lib/prisma";
 
 export const metadata = {
   title: "Espace famille",
@@ -22,6 +23,9 @@ export default async function ParentHomePage() {
   const children = await listParentChildrenSerialized(session.user.id);
   const firstId = children[0]?.id;
   const q = firstId ? `?studentId=${firstId}` : "";
+
+  const globalSettings = await prisma.globalSetting.findMany({ where: { key: "MEETINGS_ENABLED" } });
+  const meetingsEnabled = globalSettings[0]?.value !== "false";
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-12">
@@ -71,9 +75,11 @@ export default async function ParentHomePage() {
               </Link>
             </li>
           </ul>
-          <div className="mt-12">
-             <MeetingRequestForm />
-          </div>
+          {meetingsEnabled && (
+            <div className="mt-12">
+               <MeetingRequestForm />
+            </div>
+          )}
         </>
       )}
     </div>

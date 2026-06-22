@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth-options";
 import { loadStudentDashboardPayload } from "@/lib/student-dashboard-data";
 import StudentDashboardClient from "./dashboard-client";
+import { prisma } from "@/lib/prisma";
 
 export const metadata = {
   title: "Tableau de bord — Élève",
@@ -30,7 +31,10 @@ export default async function StudentDashboardPage() {
     );
   }
 
+  const globalSettings = await prisma.globalSetting.findMany({ where: { key: "MEETINGS_ENABLED" } });
+  const meetingsEnabled = globalSettings[0]?.value !== "false";
+
   return (
-    <StudentDashboardClient {...data} absencesDetailHref="/student/absences" />
+    <StudentDashboardClient {...data} absencesDetailHref="/student/absences" enableMeetings={meetingsEnabled} />
   );
 }

@@ -1,17 +1,40 @@
 "use client";
 
-import React, { useTransition } from 'react';
+import React, { useState, useTransition } from 'react';
 import { updateMeetingStatus } from '@/app/actions/meetings';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 
 export default function AdminMeetingsManager({ initialMeetings }: { initialMeetings: any[] }) {
   const [isPending, startTransition] = useTransition();
+  const [schedulingId, setSchedulingId] = useState<string | null>(null);
+  const [scheduledDate, setScheduledDate] = useState<string>('');
+  const [scheduledTime, setScheduledTime] = useState<string>('');
+  const [adminNotes, setAdminNotes] = useState<string>('');
 
-  const handleStatusUpdate = (id: string, status: string) => {
+  const handleStatusUpdate = (id: string, status: string, dateObj?: Date, notes?: string) => {
     startTransition(async () => {
-      await updateMeetingStatus(id, status);
+      await updateMeetingStatus(id, status, dateObj, notes);
+      if (schedulingId === id) {
+        setSchedulingId(null);
+      }
     });
+  };
+
+  const openScheduleForm = (id: string) => {
+    setSchedulingId(id);
+    setScheduledDate('');
+    setScheduledTime('');
+    setAdminNotes('');
+  };
+
+  const submitSchedule = (id: string) => {
+    if (!scheduledDate || !scheduledTime) {
+      alert("Veuillez choisir une date et une heure.");
+      return;
+    }
+    const dateObj = new Date(`${scheduledDate}T${scheduledTime}`);
+    handleStatusUpdate(id, 'SCHEDULED', dateObj, adminNotes);
   };
 
   return (
@@ -43,25 +66,79 @@ export default function AdminMeetingsManager({ initialMeetings }: { initialMeeti
                   </p>
                 </div>
                 <div className="flex gap-1 shrink-0">
-                   <button 
-                     onClick={() => handleStatusUpdate(m.id, 'SCHEDULED')}
-                     className="h-6 w-6 flex items-center justify-center bg-emerald-50 text-emerald-600 rounded-lg hover:bg-emerald-500 hover:text-white transition shadow-sm"
-                     title="Accepter"
-                   >
-                     ✓
-                   </button>
-                   <button 
-                     onClick={() => handleStatusUpdate(m.id, 'REJECTED')}
-                     className="h-6 w-6 flex items-center justify-center bg-red-50 text-red-600 rounded-lg hover:bg-red-500 hover:text-white transition shadow-sm"
-                     title="Refuser"
-                   >
-                     ✕
-                   </button>
+                   {schedulingId === m.id ? (
+                     <button 
+                       onClick={() => setSchedulingId(null)}
+                       className="h-6 w-6 flex items-center justify-center bg-slate-100 text-slate-500 rounded-lg hover:bg-slate-200 transition shadow-sm text-xs"
+                       title="Annuler"
+                     >
+                       ✕
+                     </button>
+                   ) : (
+                     <>
+                       <button 
+                         onClick={() => openScheduleForm(m.id)}
+                         className="h-6 w-6 flex items-center justify-center bg-emerald-50 text-emerald-600 rounded-lg hover:bg-emerald-500 hover:text-white transition shadow-sm"
+                         title="Accepter & Proposer Date"
+                       >
+                         ✓
+                       </button>
+                       <button 
+                         onClick={() => handleStatusUpdate(m.id, 'REJECTED')}
+                         className="h-6 w-6 flex items-center justify-center bg-red-50 text-red-600 rounded-lg hover:bg-red-500 hover:text-white transition shadow-sm"
+                         title="Refuser"
+                       >
+                         ✕
+                       </button>
+                     </>
+                   )}
                 </div>
               </div>
-              <p className="text-[10px] text-slate-600 bg-slate-50 p-2 rounded-lg border border-slate-100 leading-tight italic line-clamp-2 relative z-10">
+              <p className="text-[10px] text-slate-600 bg-slate-50 p-2 rounded-lg border border-slate-100 leading-tight italic line-clamp-2 relative z-10 mb-2">
                 "{m.reason}"
               </p>
+
+              {schedulingId === m.id && (
+                <div className="mt-2 p-3 bg-white border border-emerald-100 rounded-xl relative z-10 space-y-2">
+                  <div className="flex gap-2">
+                    <div className="flex-1">
+                      <label className="block text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Date</label>
+                      <input 
+                        type="date" 
+                        className="w-full rounded-lg border-slate-200 text-xs py-1.5 focus:ring-emerald-500/20 focus:border-emerald-500/50"
+                        value={scheduledDate}
+                        onChange={e => setScheduledDate(e.target.value)}
+                      />
+                    </div>
+                    <div className="flex-1">
+                      <label className="block text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Heure</label>
+                      <input 
+                        type="time" 
+                        className="w-full rounded-lg border-slate-200 text-xs py-1.5 focus:ring-emerald-500/20 focus:border-emerald-500/50"
+                        value={scheduledTime}
+                        onChange={e => setScheduledTime(e.target.value)}
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Note de l'administration (optionnel)</label>
+                    <input 
+                      type="text"
+                      placeholder="Ex: Bureau 12, venir avec le livret..."
+                      className="w-full rounded-lg border-slate-200 text-xs py-1.5 focus:ring-emerald-500/20 focus:border-emerald-500/50"
+                      value={adminNotes}
+                      onChange={e => setAdminNotes(e.target.value)}
+                    />
+                  </div>
+                  <button 
+                    disabled={isPending}
+                    onClick={() => submitSchedule(m.id)}
+                    className="w-full bg-emerald-500 text-white py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest hover:bg-emerald-600 transition"
+                  >
+                    {isPending ? "Validation..." : "Confirmer le RDV"}
+                  </button>
+                </div>
+              )}
               <div className="absolute top-0 left-0 w-1 h-full bg-blue-500 opacity-20 group-hover:opacity-100 transition"></div>
             </div>
           ))
