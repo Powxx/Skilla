@@ -7,6 +7,7 @@ import interactionPlugin, { Draggable } from '@fullcalendar/interaction';
 import frLocale from '@fullcalendar/core/locales/fr';
 import { startOfWeek, format, isWithinInterval, parseISO, endOfWeek, addWeeks, setHours, setMinutes, isSameDay } from 'date-fns';
 import { fr } from 'date-fns/locale';
+import { massDeleteLessons, massDuplicateLessons } from '@/app/actions/planning-mass-actions';
 
 interface AdvancedPlanningClientProps {
   classes: { id: string; name: string }[];
@@ -56,6 +57,21 @@ export default function AdvancedPlanningClient({ classes, teachers, subjects, ro
     updateSeries: false,
     updateGroup: false
   });
+
+  // Mass Actions Modal state
+  const [showMassActions, setShowMassActions] = useState(false);
+  const [massActionTab, setMassActionTab] = useState<'delete' | 'duplicate'>('delete');
+  const [massDeleteDate, setMassDeleteDate] = useState('');
+  const [massDeleteConfirm, setMassDeleteConfirm] = useState('');
+  
+  const [massDupStart, setMassDupStart] = useState('');
+  const [massDupEnd, setMassDupEnd] = useState('');
+  const [massDupClass, setMassDupClass] = useState('');
+  const [massDupTeacher, setMassDupTeacher] = useState('');
+  const [massDupRoom, setMassDupRoom] = useState('');
+  const [massDupOccurrences, setMassDupOccurrences] = useState(5);
+  const [massDupInterval, setMassDupInterval] = useState(1);
+  const [isMassActionPending, setIsMassActionPending] = useState(false);
 
   const fetchHolidays = async () => {
     try {
@@ -115,6 +131,60 @@ export default function AdvancedPlanningClient({ classes, teachers, subjects, ro
       console.error("Erreur emploi du temps:", error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleMassDelete = async () => {
+    if (massDeleteConfirm !== "OUI") {
+      alert("Veuillez taper OUI pour confirmer la suppression.");
+      return;
+    }
+    if (!massDeleteDate) return;
+    
+    setIsMassActionPending(true);
+    try {
+      const res = await massDeleteLessons(massDeleteDate);
+      if (res.success) {
+        alert(`${res.count} cours supprimés avec succès.`);
+        setShowMassActions(false);
+        setMassDeleteConfirm('');
+        fetchLessons(currentDate);
+      }
+    } catch (err: any) {
+      alert("Erreur lors de la suppression : " + err.message);
+    } finally {
+      setIsMassActionPending(false);
+    }
+  };
+
+  const handleMassDuplicate = async () => {
+    if (!massDupStart || !massDupEnd) {
+      alert("Veuillez sélectionner une date de début et de fin pour la période source.");
+      return;
+    }
+    setIsMassActionPending(true);
+    try {
+      const filters = {
+        classId: massDupClass || undefined,
+        teacherId: massDupTeacher || undefined,
+        roomId: massDupRoom || undefined,
+      };
+      const res = await massDuplicateLessons(
+        massDupStart, 
+        massDupEnd, 
+        filters, 
+        massDupOccurrences, 
+        massDupInterval
+      );
+      if (res.success) {
+        alert(`${res.duplicatedLessons} itérations de cours générées avec succès.`);
+        setShowMassActions(false);
+        fetchLessons(currentDate);
+      }
+    } catch (err: any) {
+      alert("Erreur lors de la duplication : " + err.message);
+    } finally {
+      setIsMassActionPending(false);
     }
   };
 
@@ -777,13 +847,17 @@ export default function AdvancedPlanningClient({ classes, teachers, subjects, ro
       </div>
 
       {/* RIGHT COLUMN: Stats */}
-      <div className="w-full lg:w-56 shrink-0 bg-white border border-slate-200 rounded-2xl shadow-sm flex flex-col min-h-0 overflow-hidden">
-        <div className="p-4 border-b border-slate-100 bg-slate-50 shrink-0">
-          <h2 className="text-[10px] font-black text-slate-900 uppercase tracking-widest">3. Indicateurs</h2>
-          <p className="text-[9px] text-slate-400 font-bold uppercase tracking-tighter mt-0.5">Semaine en cours</p>
+      <div className="w-80 flex flex-col gap-4 bg-slate-50 border-l border-slate-200 overflow-hidden">
+        <div className="p-5 bg-white border-b border-slate-100 shrink-0">
+          <button 
+            onClick={() => setShowMassActions(true)}
+            className="w-full bg-slate-900 text-white rounded-2xl py-3 text-[10px] font-black uppercase tracking-widest hover:bg-slate-800 transition shadow-lg shadow-slate-900/20 flex items-center justify-center gap-2"
+          >
+            ⚡ Actions en masse
+          </button>
         </div>
         
-        <div className="p-4 flex-1 overflow-y-auto space-y-6 custom-scrollbar">
+        <div className="p-5 flex-1 overflow-y-auto custom-scrollbar space-y-6">
           <div>
             <h3 className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] mb-4">Par Classe</h3>
             <ul className="space-y-2">
@@ -793,7 +867,6 @@ export default function AdvancedPlanningClient({ classes, teachers, subjects, ro
                   <span className="font-black text-slate-900 bg-slate-100 px-1.5 py-0.5 rounded-md text-[10px] tabular-nums">{hours}h</span>
                 </li>
               ))}
-              {Object.keys(stats.classes).length === 0 && <li className="text-[10px] text-slate-400 font-bold uppercase italic">Aucun</li>}
             </ul>
           </div>
           
@@ -806,7 +879,6 @@ export default function AdvancedPlanningClient({ classes, teachers, subjects, ro
                   <span className="font-black text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded-md text-[10px] tabular-nums">{hours}h</span>
                 </li>
               ))}
-              {Object.keys(stats.teachers).length === 0 && <li className="text-[10px] text-slate-400 font-bold uppercase italic">Aucun</li>}
             </ul>
           </div>
         </div>
@@ -934,6 +1006,169 @@ export default function AdvancedPlanningClient({ classes, teachers, subjects, ro
         </div>
       )}
 
+      {/* Mass Actions Modal */}
+      {showMassActions && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh]">
+            <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+              <div>
+                <h3 className="text-lg font-black text-slate-900 uppercase tracking-widest">⚡ Actions en masse</h3>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Opérations globales sur le planning</p>
+              </div>
+              <button onClick={() => setShowMassActions(false)} className="h-8 w-8 bg-white border border-slate-200 rounded-full flex items-center justify-center text-slate-400 hover:text-slate-900 transition">✕</button>
+            </div>
+
+            <div className="flex border-b border-slate-100">
+              <button 
+                onClick={() => setMassActionTab('delete')}
+                className={`flex-1 py-3 text-[10px] font-black uppercase tracking-widest transition ${massActionTab === 'delete' ? 'text-red-600 border-b-2 border-red-600 bg-red-50' : 'text-slate-400 hover:text-slate-600'}`}
+              >
+                🗑️ Purge Massive
+              </button>
+              <button 
+                onClick={() => setMassActionTab('duplicate')}
+                className={`flex-1 py-3 text-[10px] font-black uppercase tracking-widest transition ${massActionTab === 'duplicate' ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50' : 'text-slate-400 hover:text-slate-600'}`}
+              >
+                📋 Duplication Massive
+              </button>
+            </div>
+
+            <div className="p-6 overflow-y-auto custom-scrollbar">
+              {massActionTab === 'delete' && (
+                <div className="space-y-6">
+                  <div className="bg-red-50 text-red-700 p-4 rounded-2xl border border-red-100">
+                    <p className="text-xs font-bold leading-relaxed">
+                      ⚠️ ATTENTION : Cette action est irréversible. Elle supprimera **définitivement** tous les cours (et leurs demandes de remplacement) planifiés après la date que vous allez sélectionner.
+                    </p>
+                  </div>
+                  
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Date de début de purge</label>
+                      <input 
+                        type="date"
+                        value={massDeleteDate}
+                        onChange={e => setMassDeleteDate(e.target.value)}
+                        className="w-full rounded-2xl border-slate-200 text-sm focus:ring-red-500/20 focus:border-red-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Tapez "OUI" pour confirmer</label>
+                      <input 
+                        type="text"
+                        placeholder="OUI"
+                        value={massDeleteConfirm}
+                        onChange={e => setMassDeleteConfirm(e.target.value.toUpperCase())}
+                        className="w-full rounded-2xl border-slate-200 text-sm focus:ring-red-500/20 focus:border-red-500 font-black uppercase"
+                      />
+                    </div>
+                    <button 
+                      onClick={handleMassDelete}
+                      disabled={isMassActionPending || massDeleteConfirm !== "OUI" || !massDeleteDate}
+                      className="w-full py-4 bg-red-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-red-700 transition disabled:opacity-50"
+                    >
+                      {isMassActionPending ? "Suppression en cours..." : "Supprimer définitivement"}
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {massActionTab === 'duplicate' && (
+                <div className="space-y-6">
+                  <div className="bg-blue-50 text-blue-700 p-4 rounded-2xl border border-blue-100">
+                    <p className="text-xs font-bold leading-relaxed">
+                      Sélectionnez une période source (ex: une semaine). Le système copiera **tous les cours** de cette période, avec le même rythme, vers le futur. Les jours fériés seront automatiquement enjambés.
+                    </p>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Période Source : Du</label>
+                      <input 
+                        type="date"
+                        value={massDupStart}
+                        onChange={e => setMassDupStart(e.target.value)}
+                        className="w-full rounded-2xl border-slate-200 text-sm focus:ring-blue-500/20"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Au (inclus)</label>
+                      <input 
+                        type="date"
+                        value={massDupEnd}
+                        onChange={e => setMassDupEnd(e.target.value)}
+                        className="w-full rounded-2xl border-slate-200 text-sm focus:ring-blue-500/20"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-4 pt-4 border-t border-slate-100">
+                    <h4 className="text-[10px] font-black text-slate-900 uppercase tracking-widest">Filtres (Optionnels)</h4>
+                    <p className="text-[9px] text-slate-400 font-bold -mt-2">Laissez vide pour tout copier</p>
+                    
+                    <div className="grid grid-cols-3 gap-4">
+                      <div>
+                        <label className="block text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Classe</label>
+                        <select value={massDupClass} onChange={e => setMassDupClass(e.target.value)} className="w-full rounded-xl border-slate-200 text-xs py-2">
+                          <option value="">Toutes</option>
+                          {classes.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Professeur</label>
+                        <select value={massDupTeacher} onChange={e => setMassDupTeacher(e.target.value)} className="w-full rounded-xl border-slate-200 text-xs py-2">
+                          <option value="">Tous</option>
+                          {teachers.map(t => <option key={t.id} value={t.id}>{t.firstName} {t.lastName}</option>)}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Salle</label>
+                        <select value={massDupRoom} onChange={e => setMassDupRoom(e.target.value)} className="w-full rounded-xl border-slate-200 text-xs py-2">
+                          <option value="">Toutes</option>
+                          {rooms.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="space-y-4 pt-4 border-t border-slate-100">
+                    <h4 className="text-[10px] font-black text-slate-900 uppercase tracking-widest">Récurrence</h4>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Rythme</label>
+                        <select value={massDupInterval} onChange={e => setMassDupInterval(Number(e.target.value))} className="w-full rounded-2xl border-slate-200 text-sm focus:ring-blue-500/20">
+                          <option value={1}>Toutes les semaines (1/1)</option>
+                          <option value={2}>Une semaine sur deux (1/2)</option>
+                          <option value={3}>Une semaine sur trois (1/3)</option>
+                          <option value={4}>Une semaine sur quatre (1/4)</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Nombre de copies (Occurrences)</label>
+                        <input 
+                          type="number"
+                          min="1" max="52"
+                          value={massDupOccurrences}
+                          onChange={e => setMassDupOccurrences(Number(e.target.value))}
+                          className="w-full rounded-2xl border-slate-200 text-sm focus:ring-blue-500/20"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <button 
+                    onClick={handleMassDuplicate}
+                    disabled={isMassActionPending || !massDupStart || !massDupEnd}
+                    className="w-full py-4 bg-blue-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-blue-700 transition shadow-lg shadow-blue-500/20 disabled:opacity-50 mt-4"
+                  >
+                    {isMassActionPending ? "Génération en cours..." : "Lancer la duplication"}
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
