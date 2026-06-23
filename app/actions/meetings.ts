@@ -39,13 +39,33 @@ export async function updateMeetingStatus(id: string, status: any, scheduledAt?:
 
   const isEnabled = await checkEventEnabled("MEETING_UPDATE");
   if (isEnabled) {
+    let message: string;
+    if (status === "SCHEDULED" && scheduledAt) {
+      const dateStr = scheduledAt.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
+      const timeStr = scheduledAt.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+      message = `✅ Votre rendez-vous a été confirmé le ${dateStr} à ${timeStr}.${adminNotes ? ` Note : ${adminNotes}` : ''}`;
+    } else if (status === "REJECTED") {
+      message = "❌ Votre demande de rendez-vous a été refusée par l'administration.";
+    } else if (status === "COMPLETED") {
+      message = "Le rendez-vous a été marqué comme terminé.";
+    } else {
+      message = `Le statut de votre demande a été mis à jour : ${status}.`;
+    }
+
     await createNotification({
       userId: meeting.senderId,
-      title: "Mise à jour de votre demande de rendez-vous",
-      message: `Le statut de votre demande est passé à : ${status}${scheduledAt ? ` (Prévu le ${scheduledAt.toLocaleDateString('fr-FR')})` : ''}`,
+      title: status === "SCHEDULED" ? "📅 Rendez-vous confirmé !" : "Mise à jour de votre demande de RDV",
+      message,
       type: status === "SCHEDULED" ? "SUCCESS" : status === "REJECTED" ? "ERROR" : "INFO",
+      link: "/meetings",
     });
   }
 
   revalidatePath("/admin");
+  revalidatePath("/student");
+  revalidatePath("/student/dashboard");
+  revalidatePath("/parent");
+  revalidatePath("/employer");
+  revalidatePath("/employer/dashboard");
+  revalidatePath("/meetings");
 }

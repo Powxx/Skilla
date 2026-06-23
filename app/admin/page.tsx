@@ -24,12 +24,17 @@ import {
 export const dynamic = 'force-dynamic';
 
 export default async function AdminHomePage() {
-  const [pendingSubsCount, pendingMeetings, pendingSubs, globalSettings] = await Promise.all([
+  const [pendingSubsCount, pendingMeetings, scheduledMeetings, pendingSubs, globalSettings] = await Promise.all([
     prisma.substitutionRequest.count({ where: { status: "PENDING" } }),
     prisma.meetingRequest.findMany({
       where: { status: "PENDING" },
       include: { sender: { select: { firstName: true, lastName: true, role: true } } },
       orderBy: { requestedAt: 'asc' }
+    }),
+    prisma.meetingRequest.findMany({
+      where: { status: "SCHEDULED" },
+      include: { sender: { select: { firstName: true, lastName: true, role: true } } },
+      orderBy: { scheduledAt: 'asc' }
     }),
     prisma.substitutionRequest.findMany({
         where: { status: "PENDING" },
@@ -159,7 +164,7 @@ export default async function AdminHomePage() {
            
            <div className="space-y-6">
               <div className="bg-white/5 backdrop-blur-xl rounded-3xl p-1 border border-white/10">
-                 <AdminMeetingsManager initialMeetings={pendingMeetings} />
+                 <AdminMeetingsManager initialMeetings={pendingMeetings} scheduledMeetings={scheduledMeetings} />
               </div>
               
               {pendingSubs.length > 0 && (

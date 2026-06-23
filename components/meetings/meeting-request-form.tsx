@@ -2,6 +2,7 @@
 
 import React, { useState, useTransition } from 'react';
 import { createMeetingRequest } from '@/app/actions/meetings';
+import Link from 'next/link';
 
 export default function MeetingRequestForm() {
   const [reason, setReason] = useState('');
@@ -22,8 +23,8 @@ export default function MeetingRequestForm() {
 
   return (
     <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm">
-      <h3 className="text-lg font-bold text-slate-900 mb-2">Solliciter un rendez-vous</h3>
-      <p className="text-xs text-slate-500 mb-6">Expliquez brièvement le motif de votre demande. L'administration reviendra vers vous rapidement.</p>
+      <h3 className="text-lg font-bold text-slate-900 mb-1">Solliciter un rendez-vous</h3>
+      <p className="text-xs text-slate-500 mb-4">Expliquez brièvement le motif de votre demande. L'administration reviendra vers vous rapidement.</p>
       
       {sent ? (
         <div className="bg-emerald-50 border border-emerald-100 text-emerald-700 p-4 rounded-2xl text-sm font-medium animate-in fade-in zoom-in duration-300">
@@ -46,6 +47,13 @@ export default function MeetingRequestForm() {
           </button>
         </form>
       )}
+
+      <Link
+        href="/meetings"
+        className="mt-4 flex items-center justify-center gap-1.5 text-[10px] font-black text-slate-400 uppercase tracking-widest hover:text-emerald-600 transition"
+      >
+        📅 Voir mes rendez-vous confirmés →
+      </Link>
     </div>
   );
 }
