@@ -187,17 +187,6 @@ export default async function AdminHomePage() {
                   </div>
                 </div>
               )}
-
-              {/* Quick Info Card */}
-              <div className="bg-blue-600 rounded-[2rem] p-6 text-white overflow-hidden relative group cursor-help">
-                 <div className="absolute -right-4 -top-4 h-24 w-24 bg-blue-400/20 rounded-full blur-2xl group-hover:scale-150 transition-transform duration-700"></div>
-                 <h4 className="text-[10px] font-black uppercase tracking-[0.2em] opacity-60 mb-2">Statut Serveur</h4>
-                 <div className="flex items-center gap-2">
-                    <div className="h-1.5 w-1.5 rounded-full bg-emerald-400"></div>
-                    <p className="text-sm font-black uppercase">Système Nominal</p>
-                 </div>
-                 <p className="text-[9px] font-bold opacity-60 mt-3 uppercase leading-relaxed tracking-wider">Toutes les synchronisations sont à jour.</p>
-              </div>
            </div>
         </div>
       </div>
