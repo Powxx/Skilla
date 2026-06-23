@@ -69,3 +69,54 @@ export async function updateMeetingStatus(id: string, status: any, scheduledAt?:
   revalidatePath("/employer/dashboard");
   revalidatePath("/meetings");
 }
+
+/**
+ * Admin creates a meeting directly as SCHEDULED.
+ * If targetUserId is provided, the meeting is created on behalf of that user and they get notified.
+ * If null, it's an internal admin reminder (no notification sent).
+ */
+export async function createAdminScheduledMeeting(data: {
+  targetUserId: string | null;
+  reason: string;
+  scheduledAt: string;  // ISO string
+  adminNotes?: string;
+}) {
+  const session = await getServerSession(authOptions);
+  if (String(session?.user?.role) !== "ADMIN" && String(session?.user?.role) !== "SUPER_ADMIN") {
+    throw new Error("Unauthorized");
+  }
+
+  const senderId = data.targetUserId ?? session!.user!.id!;
+  const scheduledAt = new Date(data.scheduledAt);
+
+  const meeting = await prisma.meetingRequest.create({
+    data: {
+      senderId,
+      reason: data.reason,
+      status: "SCHEDULED",
+      scheduledAt,
+      adminNotes: data.adminNotes ?? null,
+    },
+    include: { sender: { select: { firstName: true, lastName: true } } },
+  });
+
+  // Notify the target user (only if it's not an internal self-reminder)
+  if (data.targetUserId) {
+    const isEnabled = await checkEventEnabled("MEETING_UPDATE");
+    if (isEnabled) {
+      const dateStr = scheduledAt.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
+      const timeStr = scheduledAt.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+      await createNotification({
+        userId: data.targetUserId,
+        title: "📅 Rendez-vous planifié par l'administration",
+        message: `Un entretien a été programmé pour vous le ${dateStr} à ${timeStr}.${data.adminNotes ? ` Note : ${data.adminNotes}` : ''}`,
+        type: "SUCCESS",
+        link: "/meetings",
+      });
+    }
+  }
+
+  revalidatePath("/admin");
+  revalidatePath("/meetings");
+  return meeting;
+}
