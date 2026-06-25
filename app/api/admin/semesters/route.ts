@@ -6,7 +6,10 @@ import { authOptions } from "@/lib/auth-options";
 export async function GET() {
   const session = await getServerSession(authOptions);
   if (!session?.user || (session.user.role !== "ADMIN" && session.user.role !== "SUPER_ADMIN")) return NextResponse.json({ error: "Non autorisé" }, { status: 403 });
-  const semesters = await prisma.semester.findMany({ orderBy: { startDate: 'asc' } });
+  const semesters = await prisma.semester.findMany({
+    orderBy: { startDate: 'asc' },
+    include: { schoolYear: true }
+  });
   return NextResponse.json(semesters);
 }
 
@@ -14,15 +17,32 @@ export async function POST(request: Request) {
   const session = await getServerSession(authOptions);
   if (!session?.user || (session.user.role !== "ADMIN" && session.user.role !== "SUPER_ADMIN")) return NextResponse.json({ error: "Non autorisé" }, { status: 403 });
   try {
-    const { name, startDate, endDate } = await request.json();
-    const newSemester = await prisma.semester.create({ 
-      data: { 
-        name, 
-        startDate: new Date(startDate), 
-        endDate: new Date(endDate) 
-      } 
+    const { name, startDate, endDate, schoolYearId } = await request.json();
+    const newSemester = await prisma.semester.create({
+      data: {
+        name,
+        startDate: new Date(startDate),
+        endDate: new Date(endDate),
+        schoolYearId: schoolYearId || null
+      }
     });
     return NextResponse.json(newSemester);
+  } catch (error: any) {
+    return NextResponse.json({ error: error.message }, { status: 400 });
+  }
+}
+
+export async function PUT(request: Request) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user || (session.user.role !== "ADMIN" && session.user.role !== "SUPER_ADMIN")) return NextResponse.json({ error: "Non autorisé" }, { status: 403 });
+  try {
+    const { id, schoolYearId } = await request.json();
+    if (!id) return NextResponse.json({ error: "ID manquant" }, { status: 400 });
+    const updated = await prisma.semester.update({
+      where: { id },
+      data: { schoolYearId: schoolYearId || null }
+    });
+    return NextResponse.json(updated);
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 400 });
   }
@@ -41,3 +61,4 @@ export async function DELETE(request: Request) {
     return NextResponse.json({ error: error.message }, { status: 400 });
   }
 }
+

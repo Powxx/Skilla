@@ -16,10 +16,10 @@ export default async function AdminSettingsPage() {
     redirect("/login");
   }
 
-  const [classes, subjects, semesters, notificationConfigs, holidays, globalSettings, teachers] = await Promise.all([
+  const [classes, subjects, semesters, notificationConfigs, holidays, globalSettings, teachers, schoolYears] = await Promise.all([
     prisma.class.findMany({ orderBy: { name: 'asc' } }),
     prisma.subject.findMany({ orderBy: { name: 'asc' } }),
-    prisma.semester.findMany({ orderBy: { startDate: 'asc' } }),
+    prisma.semester.findMany({ orderBy: { startDate: 'asc' }, include: { schoolYear: true } }),
     getNotificationConfigs(),
     prisma.holiday.findMany({ orderBy: { date: 'asc' } }),
     getGlobalSettings(),
@@ -28,6 +28,7 @@ export default async function AdminSettingsPage() {
       orderBy: { lastName: 'asc' },
       select: { id: true, firstName: true, lastName: true, canAccessLivrets: true }
     }),
+    prisma.schoolYear.findMany({ orderBy: { startDate: 'desc' }, include: { semesters: true } }),
   ]);
 
   const settingsMap = (globalSettings || []).reduce((acc: any, curr: any) => {
@@ -63,6 +64,7 @@ export default async function AdminSettingsPage() {
           initialHolidays={holidays}
           globalSettings={settingsMap}
           teachers={teachers}
+          initialSchoolYears={schoolYears}
         />
       </div>
     </div>

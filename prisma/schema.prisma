@@ -255,14 +255,26 @@ model Subject {
   classSubjectRequirements ClassSubjectRequirement[]
 }
 
+model SchoolYear {
+  id        String     @id @default(cuid())
+  name      String     @unique  // ex: "2025-2026"
+  startDate DateTime
+  endDate   DateTime
+  semesters Semester[]
+}
+
 model Semester {
-  id          String       @id @default(cuid())
-  name        String
-  startDate   DateTime
-  endDate     DateTime
-  grades      Grade[]
-  reportCards ReportCard[]
-  evaluations Evaluation[]
+  id           String       @id @default(cuid())
+  name         String
+  startDate    DateTime
+  endDate      DateTime
+  schoolYearId String?
+  schoolYear   SchoolYear?  @relation(fields: [schoolYearId], references: [id])
+  grades       Grade[]
+  reportCards  ReportCard[]
+  evaluations  Evaluation[]
+
+  @@index([schoolYearId])
 }
 
 // --- PLANNING & ÉMARGEMENT ---
@@ -376,7 +388,7 @@ model CompanyContract {
 model TeacherContract {
   id           String @id @default(cuid())
   hourlyRate   Float
-  monthlyHours Float
+  annualHours  Float
   teacherId    String @unique
   teacher      User   @relation(fields: [teacherId], references: [id])
 }

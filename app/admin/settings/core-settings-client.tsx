@@ -17,7 +17,8 @@ export default function CoreSettingsClient({
   initialNotificationConfigs = [],
   initialHolidays = [],
   globalSettings = {},
-  teachers = []
+  teachers = [],
+  initialSchoolYears = []
 }: any) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
@@ -27,6 +28,8 @@ export default function CoreSettingsClient({
   const [newName, setNewName] = useState('');
   const [newSemester, setNewSemester] = useState({ name: '', start: '', end: '' });
   const [newHoliday, setNewHoliday] = useState({ name: '', date: '' });
+  const [newSchoolYear, setNewSchoolYear] = useState({ name: '', start: '', end: '' });
+  const [semesterSchoolYearLinks, setSemesterSchoolYearLinks] = useState<Record<string, string>>({});
 
   // Planning settings
   const [lunchStart, setLunchStart] = useState(globalSettings.LUNCH_START || "12:00");
@@ -114,6 +117,27 @@ export default function CoreSettingsClient({
       setTeacherLoadingMap(prev => ({ ...prev, [userId]: false }));
       router.refresh();
     }
+  };
+
+  const handleAddSchoolYear = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    await fetch('/api/admin/school-years', {
+      method: 'POST',
+      body: JSON.stringify({ name: newSchoolYear.name, startDate: newSchoolYear.start, endDate: newSchoolYear.end }),
+    });
+    setNewSchoolYear({ name: '', start: '', end: '' });
+    setLoading(false);
+    router.refresh();
+  };
+
+  const handleLinkSemesterToSchoolYear = async (semesterId: string, schoolYearId: string) => {
+    setSemesterSchoolYearLinks(prev => ({ ...prev, [semesterId]: schoolYearId }));
+    await fetch('/api/admin/semesters', {
+      method: 'PUT',
+      body: JSON.stringify({ id: semesterId, schoolYearId }),
+    });
+    router.refresh();
   };
 
   const handleManualCleanup = async () => {
@@ -227,6 +251,12 @@ export default function CoreSettingsClient({
           className={`px-5 py-3 text-[10px] font-black uppercase tracking-widest transition whitespace-nowrap ${activeTab === 'semesters' ? 'text-blue-600 border-b-2 border-blue-600 bg-white' : 'text-slate-400 hover:text-slate-600'}`}
         >
           Semestres ({initialSemesters.length})
+        </button>
+        <button 
+          onClick={() => setActiveTab('school-years')}
+          className={`px-5 py-3 text-[10px] font-black uppercase tracking-widest transition whitespace-nowrap ${activeTab === 'school-years' ? 'text-blue-600 border-b-2 border-blue-600 bg-white' : 'text-slate-400 hover:text-slate-600'}`}
+        >
+          Années scolaires ({initialSchoolYears.length})
         </button>
         <button 
           onClick={() => setActiveTab('holidays')}
@@ -442,14 +472,102 @@ export default function CoreSettingsClient({
             </form>
             <div className="grid gap-2 sm:grid-cols-2">
               {initialSemesters.map((s: any) => (
-                <div key={s.id} className="flex justify-between items-center p-3 rounded-xl border border-slate-100 bg-slate-50 group hover:border-blue-100 transition">
-                  <div>
+                <div key={s.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-3 rounded-xl border border-slate-100 bg-slate-50 group hover:border-blue-100 transition gap-2">
+                  <div className="flex-1">
                     <div className="text-[11px] font-black text-slate-700 uppercase tracking-tight">{s.name}</div>
                     <div className="text-[9px] font-bold text-slate-400 uppercase">
                       {format(new Date(s.startDate), 'dd/MM/yy')} — {format(new Date(s.endDate), 'dd/MM/yy')}
                     </div>
+                    {s.schoolYear && (
+                      <div className="text-[8px] font-bold text-blue-500 uppercase mt-1">
+                        {s.schoolYear.name}
+                      </div>
+                    )}
                   </div>
-                  <button onClick={() => handleDelete('semesters', s.id)} className="text-red-400 hover:text-red-600 opacity-0 group-hover:opacity-100 transition text-[10px] font-black uppercase">Supprimer</button>
+                  <div className="flex items-center gap-2">
+                    <select
+                      className="text-[9px] rounded-lg border-slate-200 py-1 px-2"
+                      value={s.schoolYearId || ''}
+                      onChange={(e) => handleLinkSemesterToSchoolYear(s.id, e.target.value)}
+                    >
+                      <option value="">— Année scolaire —</option>
+                      {initialSchoolYears.map((sy: any) => (
+                        <option key={sy.id} value={sy.id}>{sy.name}</option>
+                      ))}
+                    </select>
+                    <button onClick={() => handleDelete('semesters', s.id)} className="text-red-400 hover:text-red-600 opacity-0 group-hover:opacity-100 transition text-[10px] font-black uppercase shrink-0">Supprimer</button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'school-years' && (
+          <div className="space-y-5">
+            <form onSubmit={handleAddSchoolYear} className="grid gap-2 sm:grid-cols-4 items-end shrink-0 sticky top-0 bg-white pb-4 z-10">
+              <div className="sm:col-span-1">
+                <label className="text-[9px] uppercase font-black text-slate-400 mb-1 block">Nom</label>
+                <input 
+                  type="text" 
+                  placeholder="Ex: 2025-2026" 
+                  className="w-full rounded-xl border-slate-200 text-xs py-2"
+                  value={newSchoolYear.name}
+                  onChange={e => setNewSchoolYear({...newSchoolYear, name: e.target.value})}
+                  required
+                />
+              </div>
+              <div>
+                <label className="text-[9px] uppercase font-black text-slate-400 mb-1 block">Début</label>
+                <input 
+                  type="date" 
+                  className="w-full rounded-xl border-slate-200 text-xs py-2"
+                  value={newSchoolYear.start}
+                  onChange={e => setNewSchoolYear({...newSchoolYear, start: e.target.value})}
+                  required
+                />
+              </div>
+              <div>
+                <label className="text-[9px] uppercase font-black text-slate-400 mb-1 block">Fin</label>
+                <input 
+                  type="date" 
+                  className="w-full rounded-xl border-slate-200 text-xs py-2"
+                  value={newSchoolYear.end}
+                  onChange={e => setNewSchoolYear({...newSchoolYear, end: e.target.value})}
+                  required
+                />
+              </div>
+              <button disabled={loading} className="bg-blue-600 text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-blue-700 transition shadow-sm">Créer</button>
+            </form>
+            <div className="grid gap-3 sm:grid-cols-2">
+              {initialSchoolYears.length === 0 && (
+                <div className="sm:col-span-2 text-center py-8 text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                  Aucune année scolaire définie. Créez-en une pour commencer.
+                </div>
+              )}
+              {initialSchoolYears.map((sy: any) => (
+                <div key={sy.id} className="p-4 rounded-xl border border-slate-200 bg-white shadow-sm hover:border-blue-100 transition">
+                  <div className="flex justify-between items-start mb-2">
+                    <div>
+                      <div className="text-xs font-black text-slate-900 uppercase tracking-widest">{sy.name}</div>
+                      <div className="text-[9px] font-bold text-slate-400 mt-0.5">
+                        {format(new Date(sy.startDate), 'dd MMMM yyyy', { locale: fr })} — {format(new Date(sy.endDate), 'dd MMMM yyyy', { locale: fr })}
+                      </div>
+                    </div>
+                    <button onClick={() => handleDelete('school-years', sy.id)} className="text-red-400 hover:text-red-600 text-[10px] font-black uppercase">Supprimer</button>
+                  </div>
+                  {sy.semesters && sy.semesters.length > 0 && (
+                    <div className="mt-3 pt-3 border-t border-slate-100">
+                      <div className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-2">Semestres rattachés</div>
+                      <div className="flex flex-wrap gap-1.5">
+                        {sy.semesters.map((sem: any) => (
+                          <span key={sem.id} className="inline-block px-2 py-0.5 rounded-md bg-blue-50 text-blue-700 text-[9px] font-bold uppercase">
+                            {sem.name}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>

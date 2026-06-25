@@ -11,7 +11,7 @@ export async function POST(request: Request) {
 
   try {
     const data = await request.json();
-    const { teacherId, monthlyHours } = data;
+    const { teacherId, annualHours } = data;
 
     if (!teacherId) {
       throw new Error("ID du professeur manquant");
@@ -20,12 +20,12 @@ export async function POST(request: Request) {
     const contract = await prisma.teacherContract.upsert({
       where: { teacherId },
       update: {
-        monthlyHours: parseFloat(monthlyHours),
+        annualHours: parseFloat(annualHours),
       },
       create: {
         teacherId,
         hourlyRate: 0, // Champ requis dans le schéma, on met 0 par défaut
-        monthlyHours: parseFloat(monthlyHours),
+        annualHours: parseFloat(annualHours),
       },
     });
 
