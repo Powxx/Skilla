@@ -13,14 +13,14 @@ export default function HRTeachersClient({ initialTeachers }: { initialTeachers:
 
   const selectedTeacher = initialTeachers.find(t => t.id === selectedTeacherId);
   const [contractForm, setContractForm] = useState({
-    monthlyHours: selectedTeacher?.contract?.monthlyHours || 0
+    annualHours: selectedTeacher?.contract?.annualHours || 0
   });
 
   const handleTeacherChange = (id: string) => {
     setSelectedTeacherId(id);
     const teacher = initialTeachers.find(t => t.id === id);
     setContractForm({
-      monthlyHours: teacher?.contract?.monthlyHours || 0
+      annualHours: teacher?.contract?.annualHours || 0
     });
     setIsEditingContract(false);
   };
@@ -67,7 +67,7 @@ export default function HRTeachersClient({ initialTeachers }: { initialTeachers:
   }, 0);
 
   const totalMonthHours = realizedHours + plannedHours;
-  const expectedMonthlyHours = selectedTeacher.contract?.monthlyHours || 0;
+  const expectedAnnualHours = selectedTeacher.contract?.annualHours || 0;
 
   // Weekly breakdown for graph
   const weekStart = startOfWeek(now, { weekStartsOn: 1 });
@@ -121,8 +121,8 @@ export default function HRTeachersClient({ initialTeachers }: { initialTeachers:
                 <input 
                   type="number" 
                   className="w-full rounded-lg border-slate-300 text-sm"
-                  value={contractForm.monthlyHours}
-                  onChange={e => setContractForm({...contractForm, monthlyHours: parseFloat(e.target.value)})}
+                  value={contractForm.annualHours}
+                  onChange={e => setContractForm({...contractForm, annualHours: parseFloat(e.target.value)})}
                 />
               </div>
               <button 
@@ -137,7 +137,7 @@ export default function HRTeachersClient({ initialTeachers }: { initialTeachers:
             <div className="space-y-3">
               <div className="flex justify-between">
                 <span className="text-sm text-slate-500">Heures prévues</span>
-                <span className="text-sm font-medium text-slate-900">{expectedMonthlyHours}h/mois</span>
+                <span className="text-sm font-medium text-slate-900">{expectedAnnualHours}h/an</span>
               </div>
             </div>
           )}
@@ -157,14 +157,14 @@ export default function HRTeachersClient({ initialTeachers }: { initialTeachers:
             <div className="text-sm font-medium text-slate-500">Total projeté (fin de mois)</div>
             <div className="mt-2 text-3xl font-semibold text-slate-900">{totalMonthHours.toFixed(1)}h</div>
             <div className="mt-1 flex items-center gap-1.5">
-              <div className={`h-1.5 w-1.5 rounded-full ${totalMonthHours > expectedMonthlyHours ? 'bg-orange-500' : 'bg-green-500'}`}></div>
-              <span className="text-xs text-slate-500">Contrat : {expectedMonthlyHours}h</span>
+              <div className={`h-1.5 w-1.5 rounded-full ${totalMonthHours > expectedAnnualHours ? 'bg-orange-500' : 'bg-green-500'}`}></div>
+              <span className="text-xs text-slate-500">Contrat : {expectedAnnualHours}h/an</span>
             </div>
           </div>
           <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm ring-1 ring-slate-900/[0.04] bg-blue-50/30">
             <div className="text-sm font-medium text-blue-600">Statut du contrat</div>
             <div className="mt-2 text-2xl font-semibold text-blue-700">
-              {totalMonthHours >= expectedMonthlyHours ? 'Objectif atteint' : `${(expectedMonthlyHours - totalMonthHours).toFixed(1)}h restantes`}
+              {totalMonthHours >= expectedAnnualHours ? 'Objectif atteint' : `${(expectedAnnualHours - totalMonthHours).toFixed(1)}h restantes`}
             </div>
             <div className="mt-1 text-xs text-blue-400">Basé sur le total projeté</div>
           </div>

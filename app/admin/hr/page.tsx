@@ -6,7 +6,7 @@ import prisma from "@/lib/prisma";
 
 export const dynamic = 'force-dynamic';
 
-function getCurrentSchoolYear(schoolYears: { startDate: Date; endDate: Date }[]) {
+function getCurrentSchoolYear(schoolYears: { name: string; startDate: Date; endDate: Date }[]) {
   const now = new Date();
   return schoolYears.find(sy => now >= sy.startDate && now <= sy.endDate) || schoolYears[0] || null;
 }

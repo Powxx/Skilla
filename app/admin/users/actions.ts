@@ -151,7 +151,7 @@ export async function createUser(input: {
           contract: { 
             create: { 
               hourlyRate: 0,
-              monthlyHours: 0
+              annualHours: 0
             } 
           },
         },
