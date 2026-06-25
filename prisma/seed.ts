@@ -73,21 +73,21 @@ await prisma.room.deleteMany()
     data: { 
       firstName: "Jean", lastName: "Dupon", name: "Jean Dupon", email: "jean@skilla.edu", password: hashPassword("teacher"), role: Role.TEACHER,
       subjects: { connect: [{ id: math.id }] },
-      contract: { create: { hourlyRate: 45, monthlyHours: 80 } }
+      contract: { create: { hourlyRate: 45, annualHours: 80 } }
     } 
   })
   const t2 = await prisma.user.create({ 
     data: { 
       firstName: "Marie", lastName: "Curie", name: "Marie Curie", email: "marie@skilla.edu", password: hashPassword("teacher"), role: Role.TEACHER,
       subjects: { connect: [{ id: dev.id }] },
-      contract: { create: { hourlyRate: 60, monthlyHours: 120 } }
+      contract: { create: { hourlyRate: 60, annualHours: 120 } }
     } 
   })
   const t3 = await prisma.user.create({ 
     data: { 
       firstName: "Paul", lastName: "Gauguin", name: "Paul Gauguin", email: "paul@skilla.edu", password: hashPassword("teacher"), role: Role.TEACHER,
       subjects: { connect: [{ id: ux.id }] },
-      contract: { create: { hourlyRate: 55, monthlyHours: 60 } }
+      contract: { create: { hourlyRate: 55, annualHours: 60 } }
     } 
   })
 

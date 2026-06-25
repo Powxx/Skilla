@@ -300,7 +300,7 @@ export async function updateUser(input: {
     data.contract = { 
       create: { 
         hourlyRate: 0, 
-        monthlyHours: 0 
+        annualHours: 0 
       } 
     };
   }
@@ -517,7 +517,7 @@ export async function importUsersAction(users: Array<{
               firstName,
               lastName,
               name: fullName,
-              contract: { create: { hourlyRate: 0, monthlyHours: 0 } }
+              contract: { create: { hourlyRate: 0, annualHours: 0 } }
             }
           });
         } else {
