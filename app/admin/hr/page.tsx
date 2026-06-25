@@ -4,11 +4,11 @@ import { authOptions } from "@/lib/auth-options";
 import { redirect } from "next/navigation";
 import prisma from "@/lib/prisma";
 
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 function getCurrentSchoolYear(schoolYears: { name: string; startDate: Date; endDate: Date }[]) {
   const now = new Date();
-  return schoolYears.find(sy => now >= sy.startDate && now <= sy.endDate) || schoolYears[0] || null;
+  return schoolYears.find((sy) => now >= sy.startDate && now <= sy.endDate) || schoolYears[0] || null;
 }
 
 export default async function HRDashboardPage() {
@@ -18,10 +18,9 @@ export default async function HRDashboardPage() {
     redirect("/login");
   }
 
-  const schoolYears = await prisma.schoolYear.findMany({ orderBy: { startDate: 'desc' } });
+  const schoolYears = await prisma.schoolYear.findMany({ orderBy: { startDate: "desc" } });
   const currentSchoolYear = getCurrentSchoolYear(schoolYears);
 
-  // Stats for the current school year (or all time if none defined)
   const teachersCount = await prisma.user.count({ where: { role: "TEACHER" } });
 
   let lessonsFilter: any = { isCancelled: false };
@@ -36,7 +35,7 @@ export default async function HRDashboardPage() {
       startTime: true,
       endTime: true,
       teacherId: true,
-    }
+    },
   });
 
   const totalHours = lessonsThisYear.reduce((acc, lesson) => {
@@ -44,24 +43,32 @@ export default async function HRDashboardPage() {
     return acc + duration;
   }, 0);
 
-  // Hours already realized (past lessons)
   const now = new Date();
   const realizedHours = lessonsThisYear
-    .filter(l => new Date(l.endTime) < now)
+    .filter((l) => new Date(l.endTime) < now)
     .reduce((acc, l) => acc + (l.endTime.getTime() - l.startTime.getTime()) / (1000 * 60 * 60), 0);
 
-  // Total annual hours planned (sum of all teacher contracts)
   const contracts = await prisma.teacherContract.findMany({ select: { annualHours: true } });
   const totalAnnualHours = contracts.reduce((acc, c) => acc + c.annualHours, 0);
+
+  const rate = totalAnnualHours > 0 ? Math.min(100, Math.round((realizedHours / totalAnnualHours) * 100)) : null;
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900">
       <div className="mx-auto max-w-5xl">
         <nav className="mb-8 text-sm text-slate-500">
-          <Link href="/" className="font-medium hover:text-slate-700">Accueil</Link>
-          <span aria-hidden className="mx-2 text-slate-300">/</span>
-          <Link href="/admin" className="font-medium hover:text-slate-700">Admin</Link>
-          <span aria-hidden className="mx-2 text-slate-300">/</span>
+          <Link href="/" className="font-medium hover:text-slate-700">
+            Accueil
+          </Link>
+          <span aria-hidden className="mx-2 text-slate-300">
+            /
+          </span>
+          <Link href="/admin" className="font-medium hover:text-slate-700">
+            Admin
+          </Link>
+          <span aria-hidden className="mx-2 text-slate-300">
+            /
+          </span>
           <span className="text-slate-900">RH</span>
         </nav>
 
@@ -85,32 +92,42 @@ export default async function HRDashboardPage() {
             <div className="mt-2 text-3xl font-semibold text-slate-900">{teachersCount}</div>
           </div>
           <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm ring-1 ring-slate-900/[0.04]">
-            <div className="text-sm font-medium text-slate-500">Heures réalisées{currentSchoolYear ? ' cette année' : ''}</div>
+            <div className="text-sm font-medium text-slate-500">
+              Heures réalisées{currentSchoolYear ? " cette année" : ""}
+            </div>
             <div className="mt-2 text-3xl font-semibold text-slate-900">
               {realizedHours.toFixed(1)}h
             </div>
           </div>
           <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm ring-1 ring-slate-900/[0.04]">
             <div className="text-sm font-medium text-slate-500">Total annualisé prévu</div>
-            <div className="mt-2 text-3xl font-semibold text-blue-600">{totalAnnualHours > 0 ? totalAnnualHours.toFixed(0) : '—'}h</div>
+            <div className="mt-2 text-3xl font-semibold text-blue-600">
+              {totalAnnualHours > 0 ? totalAnnualHours.toFixed(0) : "—"}h
+            </div>
             <div className="mt-1 text-xs text-slate-400">Somme des contrats</div>
           </div>
           <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm ring-1 ring-slate-900/[0.04]">
             <div className="text-sm font-medium text-slate-500">Taux de réalisation</div>
             <div className="mt-2 text-3xl font-semibold text-emerald-600">
-              {totalAnnualHours > 0 ? `${Math.min(100, Math.round((realizedHours / totalAnnualHours) * 100))}%` : '—'}
+              {rate !== null ? `${rate}%` : "—"}
             </div>
           </div>
         </div>
 
         <div className="grid gap-6 md:grid-cols-2">
-          <Link href="/admin/hr/teachers" className="group rounded-2xl border border-slate-200 bg-white p-6 shadow-sm ring-1 ring-slate-900/[0.04] transition hover:border-blue-300 hover:ring-blue-500/10">
-            <h2 className="text-lg font-semibold text-slate-900 group-hover:text-blue-600">Suivi des Professeurs →</h2>
+          <Link
+            href="/admin/hr/teachers"
+            className="group rounded-2xl border border-slate-200 bg-white p-6 shadow-sm ring-1 ring-slate-900/[0.04] transition hover:border-blue-300 hover:ring-blue-500/10"
+          >
+            <h2 className="text-lg font-semibold text-slate-900 group-hover:text-blue-600">
+              Suivi des Professeurs
+              {" →"}
+            </h2>
             <p className="mt-2 text-sm text-slate-600">
               Consultez les contrats, les heures annualisées et gérez les taux horaires individuels.
             </p>
           </Link>
-          
+
           <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-6 flex items-center justify-center text-center">
             <p className="text-sm text-slate-400 italic">
               D'autres modules RH (congés, formations Qualiopi) seront bientôt disponibles.
