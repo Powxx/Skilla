@@ -9,7 +9,7 @@ export const metadata = {
   title: "Mes notes",
 };
 
-export default async function StudentGradesPage() {
+export default async function StudentGradesPage({ searchParams }: { searchParams: Promise<{ semesterId?: string }> }) {
   const session = await getServerSession(authOptions);
 
   if (!session?.user?.id) {

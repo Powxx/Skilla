@@ -1,3 +1,8 @@
+"use client";
+
+import { useState } from "react";
+import type { User, Class, Grade } from "@prisma/client";
+
 type GradeLite = {
   value: number;
   coefficient: number;
@@ -88,13 +93,13 @@ export default function GradesBody({
 
   // Filter grades and report cards by selected semester
   const grades = selectedSemesterId
-    ? student.grades.filter((g) => g.semesterId === selectedSemesterId)
+    ? student.grades.filter((g: Grade) => g.semesterId === selectedSemesterId)
     : student.grades;
   const filteredReportCards = selectedSemesterId
-    ? student.reportCards.filter((rc) => rc.semesterId === selectedSemesterId)
+    ? student.reportCards.filter((rc: ReportCardLite) => rc.semesterId === selectedSemesterId)
     : student.reportCards;
 
-  const generalAvg = weightedAverage(grades.map((g) => g));
+  const generalAvg = weightedAverage(grades.map((g: Grade) => g));
 
   const bySubjectLabel = new Map<string, typeof grades>();
   for (const g of grades) {
@@ -106,7 +111,7 @@ export default function GradesBody({
 
   const summaryBySubject = [...bySubjectLabel.entries()]
     .map(([subjectLabel, list]) => {
-      const avg = weightedAverage(list.map((x) => x));
+      const avg = weightedAverage(list.map((x: Grade) => x));
       const linkedSubject = subjectByExactName.get(subjectLabel);
       return {
         subjectLabel,
@@ -310,7 +315,7 @@ export default function GradesBody({
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
-                    {grades.map((g) => (
+                    {grades.map((g: Grade) => (
                       <tr key={g.id} className="hover:bg-slate-50/80">
                         <td className="whitespace-nowrap px-5 py-3.5 tabular-nums text-slate-600">
                           {new Date(g.createdAt).toLocaleDateString("fr-FR", {
