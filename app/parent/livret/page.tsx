@@ -17,7 +17,7 @@ export default async function ParentLivretPage({
     redirect("/login");
   }
 
-  const { studentId: studentIdParam } = await searchParams;
+  const { studentId: studentIdParam, semester: semesterParam } = await searchParams;
 
   const studentId = await resolveParentStudentId(
     session.user.id,
@@ -27,6 +27,8 @@ export default async function ParentLivretPage({
     redirect("/parent");
   }
 
+  const semesterId = Array.isArray(semesterParam) ? semesterParam[0] : semesterParam;
+
   const student = await prisma.user.findUnique({ 
     where: { id: studentId },
     include: { class: { include: { competencies: true } } } 
@@ -35,7 +37,7 @@ export default async function ParentLivretPage({
   if (!student) redirect("/parent");
 
   const evaluations = await prisma.evaluation.findMany({
-    where: { studentId: student.id }
+    where: { studentId: student.id, ...(semesterId ? { semesterId } : {}) }
   });
 
   const classComps = student.class?.competencies || [];

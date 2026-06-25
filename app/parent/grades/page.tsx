@@ -29,14 +29,14 @@ export default async function ParentGradesPage({
     redirect("/parent");
   }
 
-  const [student, subjectsFromDb] = await Promise.all([
+  const [student, subjectsFromDb, semesters] = await Promise.all([
     prisma.user.findUnique({
       where: { id: studentId },
       include: {
         class: true,
-        grades: { 
+        grades: {
           orderBy: { createdAt: "desc" },
-          include: { 
+          include: {
             subject: true,
             semester: true
           },
@@ -51,6 +51,10 @@ export default async function ParentGradesPage({
       select: { id: true, name: true },
       orderBy: { name: "asc" },
     }),
+    prisma.semester.findMany({
+      orderBy: { startDate: "desc" },
+      select: { id: true, name: true },
+    }),
   ]);
   
   if (!student) {
@@ -61,6 +65,7 @@ export default async function ParentGradesPage({
     <GradesBody
       student={student as any}
       subjectsFromDb={subjectsFromDb}
+      semesters={semesters as any}
       reportCardsVisible={student.class?.reportCardsVisible ?? true}
       contextNote="Vue famille : données en lecture seule pour l’élève sélectionné."
     />

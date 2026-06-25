@@ -1,5 +1,3 @@
-import type { Grade, User, Class } from "@prisma/client";
-
 type GradeLite = {
   value: number;
   coefficient: number;
@@ -49,18 +47,25 @@ interface ReportCardLite {
   id: string;
   generalAppraisal: string | null;
   distinction: string | null;
+  semesterId: string;
   semester: {
     name: string;
   };
 }
 
+type SemesterLite = {
+  id: string;
+  name: string;
+};
+
 type Props = {
   student: User & {
     class: Class | null;
-    grades: Grade[];
+    grades: (Grade & { semester?: { name: string } | null })[];
     reportCards: ReportCardLite[];
   };
   subjectsFromDb: SubjectLite[];
+  semesters: SemesterLite[];
   /** Bandeau informatif (ex. consultation parent). */
   contextNote?: string;
   reportCardsVisible?: boolean;
@@ -69,14 +74,26 @@ type Props = {
 export default function GradesBody({
   student,
   subjectsFromDb,
+  semesters,
   contextNote,
   reportCardsVisible = true,
 }: Props) {
+  const [selectedSemesterId, setSelectedSemesterId] = useState(
+    semesters[0]?.id || ""
+  );
+
   const subjectByExactName = new Map(
     subjectsFromDb.map((s) => [s.name.trim(), s] as const),
   );
 
-  const grades = student.grades;
+  // Filter grades and report cards by selected semester
+  const grades = selectedSemesterId
+    ? student.grades.filter((g) => g.semesterId === selectedSemesterId)
+    : student.grades;
+  const filteredReportCards = selectedSemesterId
+    ? student.reportCards.filter((rc) => rc.semesterId === selectedSemesterId)
+    : student.reportCards;
+
   const generalAvg = weightedAverage(grades.map((g) => g));
 
   const bySubjectLabel = new Map<string, typeof grades>();
@@ -124,19 +141,39 @@ export default function GradesBody({
             Classe : {student.class?.name ?? "Non assignée"}
           </span>
         </p>
+
+        {/* Semester selector */}
+        {semesters.length > 1 && (
+          <div className="mt-4 flex items-center gap-2">
+            <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+              Semestre :
+            </label>
+            <select
+              className="rounded-xl border-slate-200 text-sm font-bold focus:ring-slate-900 focus:border-slate-900 h-10"
+              value={selectedSemesterId}
+              onChange={(e) => setSelectedSemesterId(e.target.value)}
+            >
+              {semesters.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.name}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
       </header>
 
       {grades.length === 0 ? (
         <p className="rounded-2xl border border-slate-200 bg-white px-5 py-12 text-center text-sm text-slate-500 shadow-sm ring-1 ring-slate-900/[0.04]">
-          Aucune note enregistrée pour cet élève.
+          Aucune note enregistrée pour ce semestre.
         </p>
       ) : (
         <>
-          {reportCardsVisible && student.reportCards && student.reportCards.length > 0 && (
+          {reportCardsVisible && filteredReportCards.length > 0 && (
             <section className="mb-10 animate-in fade-in slide-in-from-top-4 duration-700">
                <h2 className="mb-4 text-lg font-bold tracking-tight text-slate-900 flex items-center gap-2">
                  <span className="h-2 w-2 rounded-full bg-blue-600"></span>
-                 Bilan du dernier bulletin
+                 Bulletin du semestre
                </h2>
                <div className="relative overflow-hidden rounded-3xl border border-blue-100 bg-white p-8 shadow-xl ring-1 ring-blue-900/5">
                  <div className="absolute top-0 right-0 p-4">
@@ -144,13 +181,13 @@ export default function GradesBody({
                  </div>
                  <div className="relative z-10">
                    <p className="text-slate-700 leading-relaxed italic text-lg font-medium">
-                     &quot;{student.reportCards[0].generalAppraisal}&quot;
+                     &quot;{filteredReportCards[0].generalAppraisal}&quot;
                    </p>
-                   {student.reportCards[0].distinction && (
+                   {filteredReportCards[0].distinction && (
                      <div className="mt-6 flex items-center gap-3">
                        <span className="h-px w-8 bg-blue-200"></span>
                        <span className="text-xs font-black uppercase tracking-[0.2em] text-blue-600">
-                         Mention : {student.reportCards[0].distinction}
+                         Mention : {filteredReportCards[0].distinction}
                        </span>
                        <span className="h-px w-8 bg-blue-200"></span>
                      </div>
@@ -188,6 +225,9 @@ export default function GradesBody({
                     {summaryBySubject.length}
                   </span>{" "}
                   matière(s)
+                </li>
+                <li>
+                  Semestre : <span className="font-medium text-slate-800">{semesters.find((s) => s.id === selectedSemesterId)?.name || "Tous"}</span>
                 </li>
               </ul>
             </div>
@@ -230,7 +270,7 @@ export default function GradesBody({
 
           <section>
             <h2 className="mb-4 text-lg font-semibold tracking-tight text-slate-900">
-              Détail des notes
+              Détail des notes{selectedSemesterId && ` — ${semesters.find((s) => s.id === selectedSemesterId)?.name || ""}`}
             </h2>
             <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm ring-1 ring-slate-900/[0.04]">
               <div className="overflow-x-auto">

@@ -6,11 +6,18 @@ import LivretBody from "@/components/livret/livret-body";
 
 export const dynamic = 'force-dynamic';
 
-export default async function StudentLivretPage() {
+export default async function StudentLivretPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
   const session = await getServerSession(authOptions);
   if (!session?.user?.id || session.user.role !== "STUDENT") {
     redirect("/login");
   }
+
+  const { semester: semesterParam } = await searchParams;
+  const semesterId = Array.isArray(semesterParam) ? semesterParam[0] : semesterParam;
 
   const user = await prisma.user.findUnique({ 
     where: { id: session.user.id },
@@ -20,7 +27,10 @@ export default async function StudentLivretPage() {
   if (!user) redirect("/login");
 
   const evaluations = await prisma.evaluation.findMany({
-    where: { studentId: session.user.id }
+    where: {
+      studentId: session.user.id,
+      ...(semesterId ? { semesterId } : {})
+    }
   });
 
   const classComps = user.class?.competencies || [];

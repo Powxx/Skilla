@@ -29,19 +29,16 @@ export default async function EmployerGradesPage({
     redirect("/employer");
   }
 
-  const [student, subjectsFromDb] = await Promise.all([
+  const [student, subjectsFromDb, semesters] = await Promise.all([
     prisma.user.findUnique({
       where: { id: studentId },
       include: {
         class: true,
-        // 1. La relation est directe avec User
-        // 2. On utilise 'Grade' (nom du modèle) car Prisma le met souvent au singulier
-        // Si 'Grade' échoue, essaie 'grades' au pluriel ici.
-        grades: { 
+        grades: {
           orderBy: { createdAt: "desc" },
-          include: { 
+          include: {
             subject: true,
-            semester: true // On profite du fait qu'ils sont dans ton modèle
+            semester: true
           },
         },
         reportCards: {
@@ -54,6 +51,10 @@ export default async function EmployerGradesPage({
       select: { id: true, name: true },
       orderBy: { name: "asc" },
     }),
+    prisma.semester.findMany({
+      orderBy: { startDate: "desc" },
+      select: { id: true, name: true },
+    }),
   ]);
   
   if (!student) {
@@ -64,6 +65,7 @@ export default async function EmployerGradesPage({
     <GradesBody
       student={student as any}
       subjectsFromDb={subjectsFromDb}
+      semesters={semesters as any}
       reportCardsVisible={student.class?.reportCardsVisible ?? true}
       contextNote="Vue entreprise : suivi pédagogique de l'alternant."
     />

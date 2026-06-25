@@ -17,18 +17,16 @@ export default async function StudentGradesPage() {
   }
 
   // Utilisation de Promise.all pour charger les données en parallèle
-  const [student, subjectsFromDb] = await Promise.all([
+  const [student, subjectsFromDb, semesters] = await Promise.all([
     prisma.user.findUnique({
-      // Correction : La clé primaire dans ton schéma pour User est 'id'
       where: { id: session.user.id },
       include: {
-        class: true, // Relation directe dans User
+        class: true,
         grades: {
-          // Correction : Dans ton schéma, le champ s'appelle 'createdAt' et non 'date'
           orderBy: [{ createdAt: "desc" }],
           include: {
-            subject: true, // Inclus pour afficher le nom de la matière par note
-            semester: true, // Inclus pour filtrer par semestre
+            subject: true,
+            semester: true,
           }
         },
         reportCards: {
@@ -40,6 +38,10 @@ export default async function StudentGradesPage() {
     prisma.subject.findMany({
       select: { id: true, name: true },
       orderBy: { name: "asc" },
+    }),
+    prisma.semester.findMany({
+      orderBy: { startDate: "desc" },
+      select: { id: true, name: true },
     }),
   ]);
 
@@ -63,6 +65,7 @@ export default async function StudentGradesPage() {
     <GradesBody 
       student={student as any} 
       subjectsFromDb={subjectsFromDb} 
+      semesters={semesters as any}
       reportCardsVisible={student.class?.reportCardsVisible ?? true}
     />
   );
