@@ -388,7 +388,7 @@ model CompanyContract {
 model TeacherContract {
   id           String @id @default(cuid())
   hourlyRate   Float
-  annualHours  Float
+  annualHours  Float  @default(0)
   teacherId    String @unique
   teacher      User   @relation(fields: [teacherId], references: [id])
 }
