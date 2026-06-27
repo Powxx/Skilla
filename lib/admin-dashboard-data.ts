@@ -51,7 +51,7 @@ export type AdminDashboardPayload = {
   schoolName: string;
   qualiopiEnabled: boolean;
   filterOptions: {
-    semesters: { id: string; name: string }[];
+    semesters: { id: string; name: string; schoolYear: string | null }[];
     classes: { id: string; name: string }[];
     selectedSemesterId: string | null;
     selectedClassId: string | null;
@@ -69,18 +69,21 @@ export type AdminDashboardPayload = {
     competencyAcquiredPct: number;
     hrHoursRealized: number;
     hrHoursProjected: number;
+    hrRealizationRate: number;
     contractCoveragePct: number;
     parentLinkPct: number;
     satisfactionAvg: number | null;
     openComplaints: number;
     pendingRollCalls: number;
+    teacherAttendanceRate: number;
   };
   charts: {
     attendanceWeekly: { week: string; rate: number }[];
     classAverages: { className: string; average: number }[];
     sanctionsByType: { type: string; count: number }[];
-    hrHoursWeekly: { week: string; planned: number; realized: number }[];
+    hrHoursWeekly: { week: string; planned: number; realized: number; gap: number }[];
     satisfactionMonthly: { month: string; avg: number; count: number }[];
+    teacherWorkloadByTeacher: { teacherName: string; realized: number; planned: number }[];
   };
   miniTables: {
     topClasses: { classId: string; className: string; average: number }[];
@@ -135,16 +138,23 @@ export async function loadAdminDashboardPayload(
   const now = new Date();
   const period = filters.period ?? "30d";
 
-  const [semesters, classes, globalSettings] = await Promise.all([
-    prisma.semester.findMany({ orderBy: { startDate: "desc" } }),
+  const [semesters, classes, globalSettings, schoolYears] = await Promise.all([
+    prisma.semester.findMany({
+      orderBy: { startDate: "desc" },
+      include: { schoolYear: { select: { name: true } } },
+    }),
     prisma.class.findMany({ orderBy: { name: "asc" }, select: { id: true, name: true } }),
     getGlobalSettings(),
+    prisma.schoolYear.findMany({ orderBy: { startDate: "desc" } }),
   ]);
 
   const currentSemester =
     semesters.find((s) => isWithinInterval(now, { start: s.startDate, end: s.endDate })) ??
     semesters[0] ??
     null;
+
+  const currentSchoolYear =
+    schoolYears.find((sy) => now >= sy.startDate && now <= sy.endDate) ?? schoolYears[0] ?? null;
 
   const selectedSemesterId = filters.semesterId ?? currentSemester?.id ?? null;
   const selectedSemester = semesters.find((s) => s.id === selectedSemesterId) ?? currentSemester;
@@ -166,6 +176,10 @@ export async function loadAdminDashboardPayload(
   const monthStart = startOfMonth(now);
   const monthEnd = endOfMonth(now);
 
+  // Annual school year date range for teacher workload
+  const schoolYearStart = currentSchoolYear?.startDate ?? subDays(now, 365);
+  const schoolYearEnd = currentSchoolYear?.endDate ?? now;
+
   const [
     studentsCount,
     teachersCount,
@@ -186,6 +200,7 @@ export async function loadAdminDashboardPayload(
     pendingSubstitutions,
     pendingRollCalls,
     conductAtRisk,
+    annualLessonsForTeachers,
   ] = await Promise.all([
     prisma.user.count({ where: studentWhere }),
     prisma.user.count({ where: { role: "TEACHER", isActive: true } }),
@@ -304,6 +319,20 @@ export async function loadAdminDashboardPayload(
       where: {
         ...studentWhere,
         conductPoints: { lte: 50 },
+      },
+    }),
+    // Annual lessons per teacher for workload chart
+    prisma.lesson.findMany({
+      where: {
+        startTime: { gte: schoolYearStart },
+        endTime: { lte: schoolYearEnd },
+      },
+      select: {
+        startTime: true,
+        endTime: true,
+        isCancelled: true,
+        teacherId: true,
+        teacher: { select: { firstName: true, lastName: true } },
       },
     }),
   ]);
@@ -447,7 +476,7 @@ export async function loadAdminDashboardPayload(
     }))
     .sort((a, b) => b.average - a.average);
 
-  const hrHoursWeekly: { week: string; planned: number; realized: number }[] = [];
+  const hrHoursWeekly: { week: string; planned: number; realized: number; gap: number }[] = [];
   const allRecentLessons = await prisma.lesson.findMany({
     where: {
       startTime: { gte: subDays(now, 84) },
@@ -469,8 +498,41 @@ export async function loadAdminDashboardPayload(
       week: format(weekStart, "d MMM", { locale: fr }),
       planned: Math.round(planned * 10) / 10,
       realized: Math.round(realized * 10) / 10,
+      gap: Math.round((planned - realized) * 10) / 10,
     });
   }
+
+  // Teacher workload by teacher (annual)
+  const teacherWorkloadMap = new Map<string, { name: string; realized: number; planned: number }>();
+  for (const lesson of annualLessonsForTeachers) {
+    if (!lesson.teacherId || !lesson.teacher) continue;
+    const hours = lessonHours(lesson.startTime, lesson.endTime);
+    const entry = teacherWorkloadMap.get(lesson.teacherId) ?? {
+      name: `${lesson.teacher.lastName ?? ""} ${lesson.teacher.firstName ?? ""}`.trim(),
+      realized: 0,
+      planned: 0,
+    };
+    if (!lesson.isCancelled) {
+      if (lesson.endTime < now) entry.realized += hours;
+      else entry.planned += hours;
+    }
+    teacherWorkloadMap.set(lesson.teacherId, entry);
+  }
+  const teacherWorkloadByTeacher = Array.from(teacherWorkloadMap.values())
+    .map((t) => ({
+      teacherName: t.name,
+      realized: Math.round(t.realized * 10) / 10,
+      planned: Math.round(t.planned * 10) / 10,
+    }))
+    .sort((a, b) => b.realized + b.planned - (a.realized + a.planned));
+
+  // Teacher attendance rate: % of non-cancelled lessons over all planned lessons this year
+  const totalAnnualLessons = annualLessonsForTeachers.length;
+  const cancelledLessons = annualLessonsForTeachers.filter((l) => l.isCancelled).length;
+  const teacherAttendanceRate =
+    totalAnnualLessons > 0
+      ? Math.round(((totalAnnualLessons - cancelledLessons) / totalAnnualLessons) * 100)
+      : 100;
 
   const ratingDistribution = [1, 2, 3, 4, 5].map((rating) => ({
     rating,
@@ -592,7 +654,11 @@ export async function loadAdminDashboardPayload(
     schoolName,
     qualiopiEnabled,
     filterOptions: {
-      semesters: semesters.map((s) => ({ id: s.id, name: s.name })),
+      semesters: semesters.map((s) => ({
+        id: s.id,
+        name: s.name,
+        schoolYear: s.schoolYear?.name ?? null,
+      })),
       classes,
       selectedSemesterId,
       selectedClassId,
@@ -610,11 +676,13 @@ export async function loadAdminDashboardPayload(
       competencyAcquiredPct: Math.round(competencyAcquiredPct),
       hrHoursRealized: Math.round(hrHoursRealized * 10) / 10,
       hrHoursProjected: Math.round(hrHoursProjected * 10) / 10,
+      hrRealizationRate: hrHoursProjected > 0 ? Math.min(100, Math.round((hrHoursRealized / hrHoursProjected) * 100)) : 0,
       contractCoveragePct: Math.round(contractCoveragePct),
       parentLinkPct: Math.round(parentLinkPct),
       satisfactionAvg: qualiopiEnabled && satisfactionAvg != null ? Math.round(satisfactionAvg * 10) / 10 : null,
       openComplaints: qualiopiEnabled ? openComplaintsList.length : 0,
       pendingRollCalls,
+      teacherAttendanceRate,
     },
     charts: {
       attendanceWeekly,
@@ -622,6 +690,7 @@ export async function loadAdminDashboardPayload(
       sanctionsByType,
       hrHoursWeekly,
       satisfactionMonthly: qualiopiEnabled ? satisfactionMonthly : [],
+      teacherWorkloadByTeacher,
     },
     miniTables: {
       topClasses,

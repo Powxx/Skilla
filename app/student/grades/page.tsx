@@ -41,7 +41,7 @@ export default async function StudentGradesPage({ searchParams }: { searchParams
     }),
     prisma.semester.findMany({
       orderBy: { startDate: "desc" },
-      select: { id: true, name: true },
+      select: { id: true, name: true, schoolYear: { select: { name: true } } },
     }),
   ]);
 

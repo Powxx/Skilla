@@ -152,7 +152,7 @@ export default function AdminLivretManagerClient({ classes, students, semesters 
               onChange={(e) => setSelectedSemesterId(e.target.value)}
             >
               {semesters.map((s) => (
-                <option key={s.id} value={s.id}>{s.name}</option>
+                <option key={s.id} value={s.id}>{s.name}{s.schoolYear?.name ? ` (${s.schoolYear.name})` : ''}</option>
               ))}
             </select>
           </div>

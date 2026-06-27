@@ -9,7 +9,7 @@ import { Trash2, Edit2, Check, X, Search } from "lucide-react";
 
 type ClassOption = { id: string; name: string };
 type SubjectOption = { id: string; name: string };
-type Semester = { id: string; name: string; startDate: string; endDate: string };
+type Semester = { id: string; name: string; startDate: string; endDate: string; schoolYear?: { name: string } | null };
 
 type Props = {
   classes: ClassOption[];
@@ -342,7 +342,7 @@ export default function GradeEntryClient({ classes, subjects, initialGrades = []
                         onChange={(e) => setSelectedSemesterId(e.target.value)}
                         className="py-2 pl-3 pr-8 rounded-xl border-slate-200 text-sm focus:ring-sky-500 focus:border-sky-500 bg-white"
                     >
-                        {semesters.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                        {semesters.map(s => <option key={s.id} value={s.id}>{s.name}{s.schoolYear?.name ? ` (${s.schoolYear.name})` : ''}</option>)}
                     </select>
                 )}
                 <div className="relative">

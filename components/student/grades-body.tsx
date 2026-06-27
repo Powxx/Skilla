@@ -61,6 +61,7 @@ interface ReportCardLite {
 type SemesterLite = {
   id: string;
   name: string;
+  schoolYear?: string | null;
 };
 
 type Props = {
@@ -160,7 +161,7 @@ export default function GradesBody({
             >
               {semesters.map((s) => (
                 <option key={s.id} value={s.id}>
-                  {s.name}
+                  {s.name}{s.schoolYear ? ` (${s.schoolYear})` : ''}
                 </option>
               ))}
             </select>

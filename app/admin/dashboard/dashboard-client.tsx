@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
+import { useState, useEffect, useCallback } from "react";
 import {
   BarChart,
   Bar,
@@ -29,16 +30,40 @@ import {
   FileWarning,
   ArrowRight,
   Activity,
+  X,
 } from "lucide-react";
 import type { AdminDashboardPayload } from "@/lib/admin-dashboard-data";
 import { EVENT_TYPE_LABELS } from "@/lib/sanctions-ui";
 
 const CHART_COLORS = ["#3b82f6", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6", "#06b6d4"];
-const SEVERITY_STYLES = {
+const SEVERITY_STYLES: Record<string, string> = {
   critical: "bg-red-50 text-red-700 border-red-200",
   warning: "bg-amber-50 text-amber-700 border-amber-200",
   info: "bg-blue-50 text-blue-700 border-blue-200",
 };
+
+const DISMISSED_ALERTS_KEY = "skilla_dismissed_alerts";
+
+function getDismissedAlerts(): string[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = localStorage.getItem(DISMISSED_ALERTS_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+function dismissAlert(id: string) {
+  const current = getDismissedAlerts();
+  if (!current.includes(id)) {
+    localStorage.setItem(DISMISSED_ALERTS_KEY, JSON.stringify([...current, id]));
+  }
+}
+
+function resetDismissedAlerts() {
+  localStorage.removeItem(DISMISSED_ALERTS_KEY);
+}
 
 type Props = { payload: AdminDashboardPayload };
 
@@ -77,6 +102,27 @@ export default function AdminDashboardClient({ payload }: Props) {
   const router = useRouter();
   const pathname = usePathname();
   const { filterOptions, alerts, kpis, charts, miniTables, qualiopi, schoolName, qualiopiEnabled } = payload;
+
+  const [dismissedIds, setDismissedIds] = useState<string[]>([]);
+
+  useEffect(() => {
+    setDismissedIds(getDismissedAlerts());
+  }, []);
+
+  const visibleAlerts = alerts.filter((a) => !dismissedIds.includes(a.id));
+
+  const handleDismiss = useCallback(
+    (id: string) => {
+      dismissAlert(id);
+      setDismissedIds((prev) => [...prev, id]);
+    },
+    [],
+  );
+
+  const handleResetAlerts = useCallback(() => {
+    resetDismissedAlerts();
+    setDismissedIds([]);
+  }, []);
 
   const updateFilters = (key: string, value: string) => {
     const params = new URLSearchParams();
@@ -119,7 +165,7 @@ export default function AdminDashboardClient({ payload }: Props) {
             className="px-3 py-2 text-[10px] font-black uppercase bg-white border border-slate-200 rounded-xl focus:outline-none focus:border-blue-500"
           >
             {filterOptions.semesters.map((s) => (
-              <option key={s.id} value={s.id}>{s.name}</option>
+              <option key={s.id} value={s.id}>{s.name}{s.schoolYear ? ` (${s.schoolYear})` : ''}</option>
             ))}
           </select>
           <select
@@ -145,20 +191,36 @@ export default function AdminDashboardClient({ payload }: Props) {
         </div>
       </header>
 
-      {alerts.length > 0 && (
-        <section className="flex flex-wrap gap-3">
-          {alerts.map((a) => (
-            <Link
-              key={a.id}
-              href={a.href}
-              className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl border text-[10px] font-black uppercase tracking-wider transition hover:scale-[1.02] ${SEVERITY_STYLES[a.severity]}`}
-            >
-              <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
-              <span>{a.count} {a.label}</span>
-              <ArrowRight className="h-3 w-3 opacity-50" />
-            </Link>
+      {visibleAlerts.length > 0 && (
+        <section className="flex flex-wrap gap-2">
+          {visibleAlerts.map((a) => (
+            <div key={a.id} className={`flex items-center gap-1 rounded-2xl border text-[10px] font-black uppercase tracking-wider transition ${SEVERITY_STYLES[a.severity]}`}>
+              <Link
+                href={a.href}
+                className="flex items-center gap-2 px-3 py-2.5"
+              >
+                <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+                <span>{a.count} {a.label}</span>
+                <ArrowRight className="h-3 w-3 opacity-50" />
+              </Link>
+              <button
+                onClick={() => handleDismiss(a.id)}
+                className="pr-2 py-2.5 pl-0 text-current/40 hover:text-current transition"
+                title="Masquer cette alerte"
+              >
+                <X className="h-3 w-3" />
+              </button>
+            </div>
           ))}
         </section>
+      )}
+      {alerts.length > visibleAlerts.length && (
+        <button
+          onClick={handleResetAlerts}
+          className="text-[9px] font-bold text-slate-400 uppercase tracking-wider hover:text-blue-600 transition ml-1"
+        >
+          ↺ Afficher les {alerts.length - visibleAlerts.length} alerte(s) masquée(s)
+        </button>
       )}
 
       <section className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3">
@@ -172,6 +234,8 @@ export default function AdminDashboardClient({ payload }: Props) {
         <KpiCard label="Heures réalisées" value={`${kpis.hrHoursRealized}h`} sub={`/ ${kpis.hrHoursProjected}h projetées`} href="/admin/hr" />
         <KpiCard label="Contrats actifs" value={`${kpis.contractCoveragePct}%`} href="/admin/relations/contracts" />
         <KpiCard label="Parents liés" value={`${kpis.parentLinkPct}%`} href="/admin/recap" />
+        <KpiCard label="Présence profs" value={`${kpis.teacherAttendanceRate}%`} color={kpis.teacherAttendanceRate >= 95 ? "text-emerald-600" : kpis.teacherAttendanceRate >= 85 ? "text-amber-600" : "text-red-600"} href="/admin/absences" />
+        <KpiCard label="Appels en attente" value={kpis.pendingRollCalls} color={kpis.pendingRollCalls > 0 ? "text-amber-600" : "text-emerald-600"} href="/admin/absences" />
         {qualiopiEnabled && (
           <>
             <KpiCard label="Satisfaction" value={kpis.satisfactionAvg != null ? `${kpis.satisfactionAvg}/5` : "—"} color="text-violet-600" href="/admin/qualiopi" />
@@ -256,6 +320,32 @@ export default function AdminDashboardClient({ payload }: Props) {
                 <Bar dataKey="realized" name="Réalisées" fill="#3b82f6" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
+          </div>
+        </div>
+      </section>
+
+      {/* Teacher Workload Chart */}
+      <section>
+        <div className="bg-white rounded-3xl border border-slate-200 shadow-sm p-6">
+          <h2 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-4">
+            Charge de travail des professeurs (année) — réalisées vs planifiées
+          </h2>
+          <div className="h-64">
+            {charts.teacherWorkloadByTeacher.length === 0 ? (
+              <div className="h-full flex items-center justify-center text-[10px] text-slate-400 font-bold uppercase">Aucune donnée</div>
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={charts.teacherWorkloadByTeacher} layout="vertical" margin={{ top: 5, right: 20, bottom: 5, left: 100 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" horizontal={false} />
+                  <XAxis type="number" stroke="#94a3b8" fontSize={9} unit="h" />
+                  <YAxis type="category" dataKey="teacherName" stroke="#94a3b8" fontSize={9} width={90} tickLine={false} />
+                  <Tooltip contentStyle={{ borderRadius: 12, border: "none", fontSize: 11 }} formatter={(v: any) => `${v}h`} />
+                  <Legend wrapperStyle={{ fontSize: 10 }} />
+                  <Bar dataKey="realized" name="Réalisées" fill="#3b82f6" radius={[0, 4, 4, 0]} barSize={12} />
+                  <Bar dataKey="planned" name="Planifiées" fill="#cbd5e1" radius={[0, 4, 4, 0]} barSize={12} />
+                </BarChart>
+              </ResponsiveContainer>
+            )}
           </div>
         </div>
       </section>

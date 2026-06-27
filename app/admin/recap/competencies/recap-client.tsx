@@ -43,7 +43,7 @@ export default function AdminCompetenciesRecapClient({ initialClasses, studentsD
               onChange={(e) => setSelectedSemesterId(e.target.value)}
             >
               {semesters.map((s: any) => (
-                <option key={s.id} value={s.id}>{s.name}</option>
+                <option key={s.id} value={s.id}>{s.name}{s.schoolYear?.name ? ` (${s.schoolYear.name})` : ''}</option>
               ))}
             </select>
           </div>

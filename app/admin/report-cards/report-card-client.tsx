@@ -16,6 +16,7 @@ interface Student {
 interface Semester {
   id: string;
   name: string;
+  schoolYear?: string | null;
 }
 
 interface ClassVisibility {
@@ -180,7 +181,7 @@ export default function ReportCardClient({ students, semesters, initialClasses =
             onChange={(e) => setSelectedSemester(e.target.value)}
           >
             {semesters.map((s) => (
-              <option key={s.id} value={s.id}>{s.name}</option>
+              <option key={s.id} value={s.id}>{s.name}{s.schoolYear ? ` (${s.schoolYear})` : ''}</option>
             ))}
           </select>
         </div>

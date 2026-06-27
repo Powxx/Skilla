@@ -23,7 +23,8 @@ export default async function AdminCompetenciesRecapPage() {
       orderBy: { lastName: 'asc' }
     }),
     prisma.semester.findMany({
-      orderBy: { startDate: 'asc' }
+      orderBy: { startDate: 'asc' },
+      include: { schoolYear: { select: { name: true } } }
     })
   ]);
 

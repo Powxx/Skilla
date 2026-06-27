@@ -34,7 +34,7 @@ export default async function ProfLivretPage({ searchParams }: { searchParams?: 
       select: { id: true, firstName: true, lastName: true, classId: true, class: { select: { name: true } } },
       orderBy: { lastName: 'asc' }
     }),
-    prisma.semester.findMany({ orderBy: { startDate: 'desc' } })
+    prisma.semester.findMany({ orderBy: { startDate: 'desc' }, include: { schoolYear: { select: { name: true } } } })
   ]);
 
   const studentId = searchParams?.studentId || (students.length > 0 ? students[0].id : undefined);

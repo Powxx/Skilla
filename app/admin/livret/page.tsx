@@ -26,7 +26,8 @@ export default async function AdminLivretPage() {
       orderBy: { lastName: 'asc' }
     }),
     prisma.semester.findMany({
-      orderBy: { startDate: 'desc' }
+      orderBy: { startDate: 'desc' },
+      include: { schoolYear: { select: { name: true } } }
     })
   ]);
 

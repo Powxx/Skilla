@@ -42,7 +42,8 @@ export default async function TeacherGradesPage() {
       orderBy: { createdAt: "desc" },
     }),
     prisma.semester.findMany({
-      orderBy: { startDate: 'asc' }
+      orderBy: { startDate: 'asc' },
+      include: { schoolYear: { select: { name: true } } }
     })
   ]);
 

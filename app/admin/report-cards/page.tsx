@@ -22,7 +22,8 @@ export default async function AdminReportCardsPage() {
       orderBy: { lastName: 'asc' }
     }),
     prisma.semester.findMany({
-      orderBy: { startDate: 'desc' }
+      orderBy: { startDate: 'desc' },
+      include: { schoolYear: { select: { name: true } } }
     }),
     prisma.class.findMany({
       select: { id: true, name: true, reportCardsVisible: true },
@@ -40,7 +41,7 @@ export default async function AdminReportCardsPage() {
 
         <ReportCardClient 
           students={students.map(s => ({ id: s.id, name: `${s.lastName} ${s.firstName}`, className: s.class?.name || "N/A", classId: s.class?.id }))} 
-          semesters={semesters.map(s => ({ id: s.id, name: s.name }))}
+          semesters={semesters.map(s => ({ id: s.id, name: s.name, schoolYear: s.schoolYear?.name ?? null }))}
           initialClasses={classes}
         />
       </div>

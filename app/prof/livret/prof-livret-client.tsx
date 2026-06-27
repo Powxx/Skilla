@@ -46,7 +46,7 @@ export default function ProfLivretClient({ students, initialEvaluations, selecte
             value={selectedSemesterId}
             onChange={(e) => handleNavigation(selectedStudentId, e.target.value)}
         >
-            {semesters.map((s: any) => <option key={s.id} value={s.id}>{s.name}</option>)}
+            {semesters.map((s: any) => <option key={s.id} value={s.id}>{s.name}{s.schoolYear?.name ? ` (${s.schoolYear.name})` : ''}</option>)}
         </select>
 
         <h3 className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-2 mt-4">Choisir un élève</h3>
