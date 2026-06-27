@@ -21,6 +21,7 @@ export default async function ProfPlanningPage() {
   const otherTeachers = await prisma.user.findMany({
     where: {
       role: "TEACHER",
+      isActive: true,
       id: { not: session.user.id }
     },
     select: { id: true, firstName: true, lastName: true }

@@ -13,7 +13,7 @@ export default async function TeacherAvailabilityPage() {
 
   const [teachers, availabilities] = await Promise.all([
     prisma.user.findMany({
-      where: { role: "TEACHER" },
+      where: { role: "TEACHER", isActive: true },
       orderBy: [{ lastName: 'asc' }, { firstName: 'asc' }]
     }),
     prisma.teacherAvailability.findMany({

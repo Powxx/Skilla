@@ -16,12 +16,12 @@ export default async function AdminFamiliesPage() {
 
   const [parents, students] = await Promise.all([
     prisma.user.findMany({
-      where: { role: "RESPONSIBLE" },
+      where: { role: "RESPONSIBLE", isActive: true },
       include: { students: { select: { id: true, firstName: true, lastName: true } } },
       orderBy: [{ lastName: 'asc' }, { firstName: 'asc' }]
     }),
     prisma.user.findMany({
-      where: { role: "STUDENT" },
+      where: { role: "STUDENT", isActive: true },
       select: { id: true, firstName: true, lastName: true, class: { select: { name: true } } },
       orderBy: [{ lastName: 'asc' }, { firstName: 'asc' }]
     })

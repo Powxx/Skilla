@@ -17,7 +17,7 @@ export default async function AdminTeacherSubjectsPage() {
   }
 
   const teachers = await prisma.user.findMany({
-    where: { role: "TEACHER" },
+    where: { role: "TEACHER", isActive: true },
     include: { subjects: true },
     orderBy: [{ lastName: 'asc' }, { firstName: 'asc' }]
   });

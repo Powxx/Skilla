@@ -23,12 +23,12 @@ export default async function AdminContractsPage() {
       orderBy: { startDate: 'desc' }
     }),
     prisma.user.findMany({
-      where: { role: "STUDENT" },
+      where: { role: "STUDENT", isActive: true },
       select: { id: true, firstName: true, lastName: true },
       orderBy: [{ lastName: 'asc' }, { firstName: 'asc' }]
     }),
     prisma.user.findMany({
-      where: { role: "COMPANY_TUTOR" },
+      where: { role: "COMPANY_TUTOR", isActive: true },
       select: { id: true, firstName: true, lastName: true },
       orderBy: [{ lastName: 'asc' }, { firstName: 'asc' }]
     })

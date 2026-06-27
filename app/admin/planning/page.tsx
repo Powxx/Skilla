@@ -21,7 +21,7 @@ export default async function AdminPlanningPage() {
   
   // Get teachers with their allowed subjects
   const teachers = await prisma.user.findMany({ 
-    where: { role: "TEACHER" },
+    where: { role: "TEACHER", isActive: true },
     select: { 
       id: true, 
       firstName: true, 

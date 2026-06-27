@@ -18,7 +18,7 @@ export default async function AdminLivretPage() {
       include: { competencies: true }
     }),
     prisma.user.findMany({
-      where: { role: "STUDENT" },
+      where: { role: "STUDENT", isActive: true },
       include: { 
         evaluations: true,
         class: true

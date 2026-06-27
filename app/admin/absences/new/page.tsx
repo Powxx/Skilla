@@ -24,7 +24,7 @@ export default async function AdminCreateAbsencePage() {
   const session = await getServerSession(authOptions);
   if (!session?.user || (session.user.role !== "ADMIN" && session.user.role !== "SUPER_ADMIN")) redirect("/login");
 
-  const students = await prisma.user.findMany({ where: { role: "STUDENT" }, select: { id: true, firstName: true, lastName: true } });
+  const students = await prisma.user.findMany({ where: { role: "STUDENT", isActive: true }, select: { id: true, firstName: true, lastName: true } });
   const lessons = await prisma.lesson.findMany({ include: { subject: true } });
 
   return (

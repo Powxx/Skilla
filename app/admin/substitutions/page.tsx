@@ -30,7 +30,7 @@ export default async function AdminSubstitutionsPage() {
       orderBy: { createdAt: 'desc' }
     }),
     prisma.user.findMany({
-      where: { role: "TEACHER" },
+      where: { role: "TEACHER", isActive: true },
       select: { 
         id: true, 
         firstName: true, 

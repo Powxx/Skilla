@@ -30,7 +30,7 @@ export default async function ProfLivretPage({ searchParams }: { searchParams?: 
 
   const [students, semesters] = await Promise.all([
     prisma.user.findMany({
-      where: { classId: { in: classIds }, role: "STUDENT" },
+      where: { classId: { in: classIds }, role: "STUDENT", isActive: true },
       select: { id: true, firstName: true, lastName: true, classId: true, class: { select: { name: true } } },
       orderBy: { lastName: 'asc' }
     }),

@@ -24,7 +24,7 @@ export default async function AdminSettingsPage() {
     prisma.holiday.findMany({ orderBy: { date: 'asc' } }),
     getGlobalSettings(),
     prisma.user.findMany({ 
-      where: { role: "TEACHER" },
+      where: { role: "TEACHER", isActive: true },
       orderBy: { lastName: 'asc' },
       select: { id: true, firstName: true, lastName: true, canAccessLivrets: true }
     }),

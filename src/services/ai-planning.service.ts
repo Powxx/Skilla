@@ -49,7 +49,7 @@ export class AIPlanningService {
     // 1. Récupérer les données de base
     const [teachers, rooms, classes, requirementsData, existingLessons] = await Promise.all([
       prisma.user.findMany({
-        where: { role: "TEACHER" },
+        where: { role: "TEACHER", isActive: true },
         include: { subjects: true, availabilities: true }
       }),
       prisma.room.findMany(),

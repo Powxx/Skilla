@@ -20,7 +20,7 @@ export default async function AdminHRTeachersPage() {
   const monthEnd = endOfMonth(now);
 
   const teachers = await prisma.user.findMany({
-    where: { role: "TEACHER" },
+    where: { role: "TEACHER", isActive: true },
     include: {
       contract: true,
       lessons: {

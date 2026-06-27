@@ -15,7 +15,7 @@ export default async function AdminReportCardsRecapPage() {
     prisma.semester.findMany({ orderBy: { startDate: 'desc' } }),
     prisma.class.findMany({ orderBy: { name: 'asc' } }),
     prisma.user.findMany({ 
-        where: { role: "STUDENT" }, 
+        where: { role: "STUDENT", isActive: true }, 
         include: { class: true },
         orderBy: { lastName: 'asc' } 
     }),

@@ -13,7 +13,7 @@ export default async function AdminRecapPage() {
   }
 
   const students = await prisma.user.findMany({
-    where: { role: "STUDENT" },
+    where: { role: "STUDENT", isActive: true },
     include: {
       class: true,
       responsibles: {

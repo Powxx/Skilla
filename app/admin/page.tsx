@@ -42,7 +42,7 @@ export default async function AdminHomePage() {
     }),
     getGlobalSettings(),
     prisma.user.findMany({
-      where: { role: { in: ["STUDENT", "RESPONSIBLE", "COMPANY_TUTOR", "TEACHER"] } },
+      where: { role: { in: ["STUDENT", "RESPONSIBLE", "COMPANY_TUTOR", "TEACHER"] }, isActive: true },
       select: { id: true, firstName: true, lastName: true, role: true },
       orderBy: [{ role: 'asc' }, { lastName: 'asc' }]
     }),
