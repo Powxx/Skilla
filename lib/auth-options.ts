@@ -5,18 +5,26 @@ import bcrypt from "bcrypt";
 import prisma from "@/lib/prisma";
 import { updateLoginStreak } from "@/app/actions/gamification";
 
+/**
+ * Options de configuration de NextAuth pour la plateforme Skilla.
+ * Gère le cycle de vie de l'authentification : login par identifiant ou email,
+ * stratégie de session par JWT, usurpation d'identité (impersonation), et streak d'assiduité.
+ */
 export const authOptions: NextAuthOptions = {
+  // Chemins personnalisés pour les pages de connexion et de retour d'erreur
   pages: {
     signIn: "/login",
     error: "/login",
   },
+  // Stratégie de stockage de session basée sur les JSON Web Tokens (JWT) expirant après 24h
   session: { 
     strategy: "jwt", 
-    maxAge: 24 * 60 * 60 // 24 heures
+    maxAge: 24 * 60 * 60 // 24 heures en secondes
   },
   secret: process.env.NEXTAUTH_SECRET,
   
   providers: [
+    // Connexion classique par formulaire (Identifiant/Email + Mot de passe)
     CredentialsProvider({
       name: "Identifiants",
       credentials: {
@@ -30,8 +38,10 @@ export const authOptions: NextAuthOptions = {
 
           if (!usernameRaw || !password) return null;
 
+          // Convertit l'identifiant en minuscules pour éviter les soucis de casse
           const loginIdentifier = usernameRaw.toLowerCase();
           
+          // Recherche l'utilisateur soit par son nom d'utilisateur, soit par son e-mail
           const user = await prisma.user.findFirst({ 
             where: {
               OR: [
@@ -58,14 +68,17 @@ export const authOptions: NextAuthOptions = {
 
           if (!user || !user.password) return null;
           
+          // Vérification si le compte a été suspendu par l'administration
           if (user.isActive === false) {
             throw new Error("Compte désactivé. Veuillez contacter l'administration.");
           }
 
+          // Comparaison du hash du mot de passe stocké en BDD
           const isPasswordValid = await bcrypt.compare(password, user.password);
           
           if (!isPasswordValid) return null;
 
+          // Retourne l'objet User décoré de ses habilitations RBAC qui sera encrypté dans le JWT
           return {
             id: user.id,
             email: user.email,
@@ -86,7 +99,9 @@ export const authOptions: NextAuthOptions = {
   ],
 
   callbacks: {
+    // Exécuté lors de la création ou de la mise à jour du JSON Web Token
     async jwt({ token, user, trigger, session }) {
+      // Étape initiale lors du premier login réussi
       if (user) {
         token.role = user.role as Role;
         token.id = user.id;
@@ -97,14 +112,19 @@ export const authOptions: NextAuthOptions = {
         token.canManageRH = (user as any).canManageRH ?? false;
       }
 
+      // Mécanisme d'usurpation d'identité (Impersonate) :
+      // Permet à un admin d'endosser le rôle d'un autre utilisateur
       if (trigger === "update" && session?.impersonateUser) {
+        // Sauvegarde de l'identité originale de l'admin pour pouvoir y revenir
         token.originalUserId = token.originalUserId || token.id;
         token.originalUserRole = token.originalUserRole || token.role;
+        // Remplacement par la cible usurpée
         token.id = session.impersonateUser.id;
         token.role = session.impersonateUser.role;
         token.impersonated = true;
       }
 
+      // Arrêt de l'usurpation d'identité : restauration de l'identité d'origine
       if (trigger === "update" && session?.stopImpersonation) {
         if (token.originalUserId) {
           token.id = token.originalUserId as string;
@@ -117,6 +137,7 @@ export const authOptions: NextAuthOptions = {
 
       return token;
     },
+    // Exécuté lors de la vérification de la session par le client
     async session({ session, token }) {
       if (session.user) {
         session.user.id = token.id as string;
@@ -134,13 +155,16 @@ export const authOptions: NextAuthOptions = {
   },
 
   events: {
+    // Événement déclenché à la connexion d'un utilisateur
     async signIn({ user }) {
       if (user?.id) {
+        // Met à jour la série de connexions quotidiennes de l'élève (streak de gamification)
         await updateLoginStreak(user.id);
       }
     },
   },
 
+  // Sécurisation des cookies en production (HTTPS requis et SameSite lax)
   useSecureCookies: process.env.NODE_ENV === "production",
   cookies: {
     sessionToken: {

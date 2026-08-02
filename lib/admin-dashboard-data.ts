@@ -12,21 +12,31 @@ import {
 } from "date-fns";
 import { fr } from "date-fns/locale";
 
+// Périodes temporelles d'analyse du tableau de bord
 export type AdminDashboardPeriod = "7d" | "30d" | "90d" | "semester";
 
+// Filtres de sélection applicables au tableau de bord
 export type AdminDashboardFilters = {
   semesterId?: string;
   classId?: string;
   period?: AdminDashboardPeriod;
 };
 
+// Structure simplifiée pour le calcul de moyenne
 type GradeLite = { value: number; coefficient: number };
 
+/**
+ * Calcule la moyenne générale pondérée d'une liste de notes.
+ * 
+ * @param grades Tableau de notes contenant la valeur et le coefficient.
+ * @returns Moyenne pondérée ou null si aucune note n'est disponible.
+ */
 function weightedAverage(grades: GradeLite[]): number | null {
   if (grades.length === 0) return null;
-  let sumWx = 0;
-  let sumC = 0;
+  let sumWx = 0; // Somme des (valeur * coefficient)
+  let sumC = 0;  // Somme des coefficients
   for (const g of grades) {
+    // Si le coefficient est invalide ou <= 0, on applique un coefficient par défaut de 1
     const c = Number.isFinite(g.coefficient) && g.coefficient > 0 ? g.coefficient : 1;
     sumWx += g.value * c;
     sumC += c;
@@ -35,10 +45,14 @@ function weightedAverage(grades: GradeLite[]): number | null {
   return sumWx / sumC;
 }
 
+/**
+ * Calcule le nombre d'heures écoulées entre deux dates.
+ */
 function lessonHours(start: Date, end: Date): number {
   return (end.getTime() - start.getTime()) / (1000 * 60 * 60);
 }
 
+// Format d'une alerte affichée dans la barre latérale du dashboard
 export type AdminAlert = {
   id: string;
   severity: "critical" | "warning" | "info";
@@ -47,6 +61,7 @@ export type AdminAlert = {
   href: string;
 };
 
+// Payload complet renvoyé à l'interface d'administration
 export type AdminDashboardPayload = {
   schoolName: string;
   qualiopiEnabled: boolean;
@@ -124,6 +139,9 @@ export type AdminDashboardPayload = {
   };
 };
 
+/**
+ * Résout la date de début de la période d'analyse en fonction du choix utilisateur.
+ */
 function resolvePeriodStart(period: AdminDashboardPeriod, semester: { startDate: Date } | null): Date {
   const now = new Date();
   if (period === "semester" && semester) return semester.startDate;
@@ -132,12 +150,20 @@ function resolvePeriodStart(period: AdminDashboardPeriod, semester: { startDate:
   return subDays(now, 90);
 }
 
+/**
+ * Fonction principale chargeant l'intégralité des indicateurs du tableau de bord de l'administrateur.
+ * Regroupe et exécute en parallèle les requêtes Prisma pour maximiser les performances de chargement.
+ * 
+ * @param filters Filtres de sélection (période, classe, semestre).
+ * @returns Le payload complet d'indicateurs et graphiques.
+ */
 export async function loadAdminDashboardPayload(
   filters: AdminDashboardFilters = {},
 ): Promise<AdminDashboardPayload> {
   const now = new Date();
   const period = filters.period ?? "30d";
 
+  // 1. Récupération des filtres globaux et options de sélection
   const [semesters, classes, globalSettings, schoolYears] = await Promise.all([
     prisma.semester.findMany({
       orderBy: { startDate: "desc" },
@@ -148,6 +174,7 @@ export async function loadAdminDashboardPayload(
     prisma.schoolYear.findMany({ orderBy: { startDate: "desc" } }),
   ]);
 
+  // Détermine le semestre et l'année scolaire en cours en fonction de la date actuelle
   const currentSemester =
     semesters.find((s) => isWithinInterval(now, { start: s.startDate, end: s.endDate })) ??
     semesters[0] ??
@@ -167,6 +194,7 @@ export async function loadAdminDashboardPayload(
   const qualiopiEnabled =
     globalSettings.find((s) => s.key === QUALIOPI_ENABLED_KEY)?.value !== "false";
 
+  // Filtre réutilisable pour cibler uniquement les étudiants actifs de la classe filtrée
   const studentWhere = {
     role: "STUDENT" as const,
     isActive: true,
@@ -176,10 +204,11 @@ export async function loadAdminDashboardPayload(
   const monthStart = startOfMonth(now);
   const monthEnd = endOfMonth(now);
 
-  // Annual school year date range for teacher workload
+  // Plage de dates de l'année scolaire pour l'annualisation de la charge de travail des profs
   const schoolYearStart = currentSchoolYear?.startDate ?? subDays(now, 365);
   const schoolYearEnd = currentSchoolYear?.endDate ?? now;
 
+  // 2. Agrégation des données de base en parallèle (KPIs, absences, notes, sanctions)
   const [
     studentsCount,
     teachersCount,
@@ -236,7 +265,7 @@ export async function loadAdminDashboardPayload(
     prisma.attendance.findMany({
       where: {
         lesson: {
-          startTime: { gte: subDays(now, 84) },
+          startTime: { gte: subDays(now, 84) }, // Historique de présence sur 12 semaines
           isCancelled: false,
           ...(selectedClassId ? { classId: selectedClassId } : {}),
         },
@@ -312,16 +341,16 @@ export async function loadAdminDashboardPayload(
       where: {
         startTime: { lt: now },
         isCancelled: false,
-        isAttendanceValidated: false,
+        isAttendanceValidated: false, // Cours passés dont l'appel n'a pas été validé
       },
     }),
     prisma.user.count({
       where: {
         ...studentWhere,
-        conductPoints: { lte: 50 },
+        conductPoints: { lte: 50 }, // Étudiants sous le premier palier d'alerte de conduite
       },
     }),
-    // Annual lessons per teacher for workload chart
+    // Charge de cours annuelle pour le suivi des contrats profs (Ressources Humaines)
     prisma.lesson.findMany({
       where: {
         startTime: { gte: schoolYearStart },
@@ -337,11 +366,14 @@ export async function loadAdminDashboardPayload(
     }),
   ]);
 
+  // 3. Calculs des KPIs principaux
   const studentIds = new Set(students.map((s) => s.id));
   const filteredGrades = grades.filter((g) => studentIds.has(g.studentId));
 
+  // Calcul de la moyenne générale de l'école ou de la classe filtrée
   const generalAverage = weightedAverage(filteredGrades);
 
+  // Taux de présence des élèves sur la période cible
   const periodAttendances = attendances.filter(
     (a) => a.lesson.startTime >= periodStart,
   );
@@ -351,16 +383,19 @@ export async function loadAdminDashboardPayload(
       ? (presentCount / periodAttendances.length) * 100
       : 100;
 
+  // Pourcentage de livrets/bulletins déjà complétés
   const reportCardsPct =
     students.length > 0 && selectedSemesterId
       ? (reportCards.filter((rc) => studentIds.has(rc.studentId)).length / students.length) * 100
       : 0;
 
+  // Pourcentage de compétences acquises (Niveau d'évaluation >= 3)
   const competencyAcquiredPct =
     evaluations.length > 0
       ? (evaluations.filter((e) => e.level >= 3).length / evaluations.length) * 100
       : 0;
 
+  // Suivi des heures mensuelles (réalisées vs planifiées) pour les indicateurs RH
   const hrHoursProjected = lessonsThisMonth.reduce(
     (acc, l) => acc + lessonHours(l.startTime, l.endTime),
     0,
@@ -369,15 +404,18 @@ export async function loadAdminDashboardPayload(
     .filter((l) => l.endTime < now)
     .reduce((acc, l) => acc + lessonHours(l.startTime, l.endTime), 0);
 
+  // Couverture de contrat d'alternance/stage des élèves
   const activeContracts = companyContracts.filter(
     (c) => c.endDate >= now && studentIds.has(c.studentId),
   );
   const contractCoveragePct =
     students.length > 0 ? (activeContracts.length / students.length) * 100 : 0;
 
+  // Pourcentage d'élèves ayant au moins un responsable légal lié en BDD
   const parentLinkPct =
     students.length > 0 ? (studentsWithParents.length / students.length) * 100 : 0;
 
+  // Statistiques Qualiopi
   const openComplaintsList = complaints.filter((c) => c.status === "OPEN");
   const closedComplaints = complaints.filter((c) => c.status !== "OPEN").length;
   const satisfactionAvg =
@@ -385,6 +423,7 @@ export async function loadAdminDashboardPayload(
       ? surveys.reduce((acc, s) => acc + s.rating, 0) / surveys.length
       : null;
 
+  // 4. Statistiques par classe (Moyenne générale et présence)
   const classStats = classes
     .filter((c) => !selectedClassId || c.id === selectedClassId)
     .map((cls) => {
@@ -407,6 +446,7 @@ export async function loadAdminDashboardPayload(
     })
     .filter((c) => c.studentCount > 0);
 
+  // Top 5 des meilleures classes en moyenne
   const topClasses = [...classStats]
     .filter((c) => c.average != null)
     .sort((a, b) => (b.average ?? 0) - (a.average ?? 0))
@@ -417,6 +457,7 @@ export async function loadAdminDashboardPayload(
       average: Math.round((c.average ?? 0) * 100) / 100,
     }));
 
+  // Classes en difficulté (Présence < 85% ou Moyenne < 10/20)
   const atRiskClasses = classStats
     .filter((c) => c.attendanceRate < 85 || (c.average != null && c.average < 10))
     .sort((a, b) => a.attendanceRate - b.attendanceRate)
@@ -428,6 +469,7 @@ export async function loadAdminDashboardPayload(
       average: c.average != null ? Math.round(c.average * 100) / 100 : null,
     }));
 
+  // Extraction des compétences non acquises pour amélioration pédagogique (Qualiopi)
   const competencyMap = new Map<string, { total: number; acquired: number }>();
   for (const ev of evaluations) {
     const entry = competencyMap.get(ev.competency) ?? { total: 0, acquired: 0 };
@@ -445,6 +487,7 @@ export async function loadAdminDashboardPayload(
     .sort((a, b) => a.acquiredPct - b.acquiredPct)
     .slice(0, 5);
 
+  // Distribution des sanctions pour graphiques administratifs
   const sanctionsByTypeMap = new Map<string, number>();
   for (const s of sanctions) {
     const name = s.sanctionType.name;
@@ -454,6 +497,7 @@ export async function loadAdminDashboardPayload(
     .map(([type, count]) => ({ type, count }))
     .sort((a, b) => b.count - a.count);
 
+  // Taux de présence hebdomadaire glissant sur 12 semaines
   const attendanceWeekly: { week: string; rate: number }[] = [];
   for (let i = 11; i >= 0; i--) {
     const weekStart = startOfWeek(subDays(now, i * 7), { weekStartsOn: 1 });
@@ -476,6 +520,7 @@ export async function loadAdminDashboardPayload(
     }))
     .sort((a, b) => b.average - a.average);
 
+  // Analyse des heures programmées vs assurées sur 12 semaines pour les KPI RH
   const hrHoursWeekly: { week: string; planned: number; realized: number; gap: number }[] = [];
   const allRecentLessons = await prisma.lesson.findMany({
     where: {
@@ -502,7 +547,7 @@ export async function loadAdminDashboardPayload(
     });
   }
 
-  // Teacher workload by teacher (annual)
+  // Charge de cours cumulée par enseignant (heures réalisées vs planifiées à venir)
   const teacherWorkloadMap = new Map<string, { name: string; realized: number; planned: number }>();
   for (const lesson of annualLessonsForTeachers) {
     if (!lesson.teacherId || !lesson.teacher) continue;
@@ -526,7 +571,7 @@ export async function loadAdminDashboardPayload(
     }))
     .sort((a, b) => b.realized + b.planned - (a.realized + a.planned));
 
-  // Teacher attendance rate: % of non-cancelled lessons over all planned lessons this year
+  // Taux de présence global des professeurs (cours assurés / total planifié)
   const totalAnnualLessons = annualLessonsForTeachers.length;
   const cancelledLessons = annualLessonsForTeachers.filter((l) => l.isCancelled).length;
   const teacherAttendanceRate =
@@ -546,6 +591,7 @@ export async function loadAdminDashboardPayload(
     satisfactionMonthly.push({ month: label, avg: satisfactionAvg ?? 0, count: surveys.length });
   }
 
+  // Liste des contrats d'alternance qui arrivent à expiration sous 90 jours
   const expiringContracts = companyContracts
     .filter((c) => {
       const daysLeft = Math.ceil((c.endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
@@ -567,6 +613,7 @@ export async function loadAdminDashboardPayload(
       ? students.length - reportCards.filter((rc) => studentIds.has(rc.studentId)).length
       : 0;
 
+  // 5. Génération dynamique des alertes système
   const alerts: AdminAlert[] = [];
   if (pendingRollCalls > 0) {
     alerts.push({
@@ -650,6 +697,7 @@ export async function loadAdminDashboardPayload(
     });
   }
 
+  // 6. Assemblage et retour du Payload
   return {
     schoolName,
     qualiopiEnabled,

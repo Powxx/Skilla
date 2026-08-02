@@ -11,7 +11,7 @@ export const metadata = {
 export default async function AdminImpersonatePage() {
   const session = await getServerSession(authOptions);
 
-  if (!session?.user?.id || (String(session.user.role) !== "ADMIN" && String(session.user.role) !== "SUPER_ADMIN")) {
+  if (!session?.user?.id || String(session.user.role) !== "SUPER_ADMIN") {
     redirect("/login");
   }
 
@@ -33,7 +33,7 @@ export default async function AdminImpersonatePage() {
       <p className="text-slate-600 mb-8">
         Sélectionnez un utilisateur pour vous connecter en tant que lui et voir l'interface exactement comme il la voit.
       </p>
-      
+
       <div className="rounded-2xl border border-slate-200 bg-white shadow-sm ring-1 ring-slate-900/[0.04] overflow-hidden">
         <ImpersonateClient users={users} />
       </div>

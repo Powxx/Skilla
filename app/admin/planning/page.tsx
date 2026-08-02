@@ -12,26 +12,26 @@ export const metadata = {
 export default async function AdminPlanningPage() {
   const session = await getServerSession(authOptions);
 
-  if (!session?.user?.id || (String(session.user.role) !== "ADMIN" && String(session.user.role) !== "SUPER_ADMIN")) {
+  if (!session?.user?.id || (String(session.user.role) !== "ADMIN" && String(session.user.role) !== "SUPER_ADMIN" && String(session.user.canManagePlanning) !== "true")) {
     redirect("/login");
   }
 
   // Load data for the dropdowns
-  const classes = await prisma.class.findMany({ select: { id: true, name: true }});
-  
+  const classes = await prisma.class.findMany({ select: { id: true, name: true } });
+
   // Get teachers with their allowed subjects
-  const teachers = await prisma.user.findMany({ 
+  const teachers = await prisma.user.findMany({
     where: { role: "TEACHER", isActive: true },
-    select: { 
-      id: true, 
-      firstName: true, 
+    select: {
+      id: true,
+      firstName: true,
       lastName: true,
       subjects: { select: { id: true, name: true } }
     }
   });
-  
-  const subjects = await prisma.subject.findMany({ select: { id: true, name: true }});
-  const rooms = await prisma.room.findMany({ select: { id: true, name: true }});
+
+  const subjects = await prisma.subject.findMany({ select: { id: true, name: true } });
+  const rooms = await prisma.room.findMany({ select: { id: true, name: true } });
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900">
@@ -54,7 +54,7 @@ export default async function AdminPlanningPage() {
             </p>
           </div>
           <div className="flex gap-3">
-            <Link 
+            <Link
               href="/admin/planning/optimizer"
               className="flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 transition"
             >
@@ -66,9 +66,9 @@ export default async function AdminPlanningPage() {
           </div>
         </header>
 
-        <AdvancedPlanningClient 
-          classes={classes} 
-          teachers={teachers} 
+        <AdvancedPlanningClient
+          classes={classes}
+          teachers={teachers}
           subjects={subjects}
           rooms={rooms}
         />

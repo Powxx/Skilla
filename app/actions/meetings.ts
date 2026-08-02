@@ -6,9 +6,15 @@ import { authOptions } from "@/lib/auth-options";
 import { revalidatePath } from "next/cache";
 import { createNotification, checkEventEnabled } from "./notifications";
 
+/**
+ * Server Action : Crée une nouvelle demande d'entretien (meeting request).
+ * Initiée par un étudiant, tuteur en entreprise ou parent/responsable.
+ * 
+ * @param reason Motif ou ordre du jour de la réunion demandée.
+ */
 export async function createMeetingRequest(reason: string) {
   const session = await getServerSession(authOptions);
-  if (!session?.user?.id) throw new Error("Unauthorized");
+  if (!session?.user?.id) throw new Error("Non autorisé.");
 
   await prisma.meetingRequest.create({
     data: {
@@ -17,15 +23,26 @@ export async function createMeetingRequest(reason: string) {
     }
   });
 
+  // Revalidation des caches pour afficher immédiatement la demande
   revalidatePath("/student");
   revalidatePath("/parent");
   revalidatePath("/employer");
   revalidatePath("/admin");
 }
 
+/**
+ * Server Action : Modifie le statut d'une demande de réunion (validation, planification, complétion).
+ * Réservé aux administrateurs. Déclenche des notifications in-app automatiques.
+ * 
+ * @param id ID de la réunion.
+ * @param status Nouveau statut (ex: SCHEDULED, REJECTED, COMPLETED).
+ * @param scheduledAt Date et heure du rendez-vous validé.
+ * @param adminNotes Remarques administratives transmises à l'utilisateur.
+ */
 export async function updateMeetingStatus(id: string, status: any, scheduledAt?: Date, adminNotes?: string) {
   const session = await getServerSession(authOptions);
-  if (String(session?.user?.role) !== "ADMIN" && String(session?.user?.role) !== "SUPER_ADMIN") throw new Error("Unauthorized");
+  if (String(session?.user?.role) !== "ADMIN" && String(session?.user?.role) !== "SUPER_ADMIN") 
+    throw new Error("Non autorisé.");
 
   const meeting = await prisma.meetingRequest.update({
     where: { id },
@@ -37,9 +54,11 @@ export async function updateMeetingStatus(id: string, status: any, scheduledAt?:
     include: { sender: true }
   });
 
+  // Envoi de notification si le type d'événement est activé
   const isEnabled = await checkEventEnabled("MEETING_UPDATE");
   if (isEnabled) {
     let message: string;
+    
     if (status === "SCHEDULED" && scheduledAt) {
       const dateStr = scheduledAt.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
       const timeStr = scheduledAt.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
@@ -61,6 +80,7 @@ export async function updateMeetingStatus(id: string, status: any, scheduledAt?:
     });
   }
 
+  // Force la mise à jour des pages de tous les acteurs potentiels
   revalidatePath("/admin");
   revalidatePath("/student");
   revalidatePath("/student/dashboard");
@@ -71,21 +91,24 @@ export async function updateMeetingStatus(id: string, status: any, scheduledAt?:
 }
 
 /**
- * Admin creates a meeting directly as SCHEDULED.
- * If targetUserId is provided, the meeting is created on behalf of that user and they get notified.
- * If null, it's an internal admin reminder (no notification sent).
+ * Server Action : Planifie directement une réunion de manière proactive par un administrateur.
+ * - Si targetUserId est fourni : la réunion est affectée à cet utilisateur, et il reçoit une notification.
+ * - Si targetUserId est null : c'est un rappel personnel de l'admin (aucune notification envoyée).
+ * 
+ * @param data Objet contenant l'utilisateur cible, le motif, la date (chaîne ISO) et des notes optionnelles.
  */
 export async function createAdminScheduledMeeting(data: {
   targetUserId: string | null;
   reason: string;
-  scheduledAt: string;  // ISO string
+  scheduledAt: string;  // Chaîne au format ISO
   adminNotes?: string;
 }) {
   const session = await getServerSession(authOptions);
   if (String(session?.user?.role) !== "ADMIN" && String(session?.user?.role) !== "SUPER_ADMIN") {
-    throw new Error("Unauthorized");
+    throw new Error("Non autorisé.");
   }
 
+  // Si aucun destinataire n'est spécifié, l'administrateur crée le meeting pour lui-même
   const senderId = data.targetUserId ?? session!.user!.id!;
   const scheduledAt = new Date(data.scheduledAt);
 
@@ -100,7 +123,7 @@ export async function createAdminScheduledMeeting(data: {
     include: { sender: { select: { firstName: true, lastName: true } } },
   });
 
-  // Notify the target user (only if it's not an internal self-reminder)
+  // Notifie l'utilisateur ciblé
   if (data.targetUserId) {
     const isEnabled = await checkEventEnabled("MEETING_UPDATE");
     if (isEnabled) {

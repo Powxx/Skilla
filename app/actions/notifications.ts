@@ -6,6 +6,13 @@ import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { sendPushNotification } from "./push";
 
+/**
+ * Récupère la liste paginée des notifications in-app d'un utilisateur.
+ * 
+ * @param userId ID de l'utilisateur.
+ * @param page Numéro de la page (indexé à 1).
+ * @param pageSize Nombre de notifications par page.
+ */
 export async function getNotifications(userId: string, page: number = 1, pageSize: number = 20) {
   return await prisma.notification.findMany({
     where: { userId },
@@ -15,12 +22,18 @@ export async function getNotifications(userId: string, page: number = 1, pageSiz
   });
 }
 
+/**
+ * Compte le nombre de notifications non lues pour un utilisateur.
+ */
 export async function getUnreadCount(userId: string) {
   return await prisma.notification.count({
     where: { userId, isRead: false },
   });
 }
 
+/**
+ * Server Action : Marque une notification spécifique comme lue.
+ */
 export async function markAsRead(notificationId: string) {
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) throw new Error("Non autorisé");
@@ -29,9 +42,14 @@ export async function markAsRead(notificationId: string) {
     where: { id: notificationId },
     data: { isRead: true },
   });
+  
+  // Revalide la mise en page racine pour mettre à jour la cloche de notification
   revalidatePath("/", "layout");
 }
 
+/**
+ * Server Action : Marque TOUTES les notifications d'un utilisateur comme lues.
+ */
 export async function markAllAsRead(userId: string) {
   const session = await getServerSession(authOptions);
   if (!session?.user?.id || session.user.id !== userId) throw new Error("Non autorisé");
@@ -43,6 +61,13 @@ export async function markAllAsRead(userId: string) {
   revalidatePath("/", "layout");
 }
 
+/**
+ * Server Action : Envoie une notification administrative globale (à toute l'école ou à une classe).
+ * Envoie une notification in-app et émet des notifications push de navigateur.
+ * Réservé aux administrateurs.
+ * 
+ * @param data Cible (classe ou école entière), ID de classe optionnel, titre, message et type visuel.
+ */
 export async function sendAdminNotification(data: {
   target: 'CLASS' | 'SCHOOL';
   classId?: string;
@@ -56,7 +81,8 @@ export async function sendAdminNotification(data: {
   
   const senderName = "Administration";
 
-  const whereClause: any = { role: "STUDENT" };
+  // Cible par défaut : tous les étudiants actifs de l'école
+  const whereClause: any = { role: "STUDENT", isActive: true };
   if (data.target === 'CLASS' && data.classId) {
     whereClause.classId = data.classId;
   }
@@ -66,6 +92,7 @@ export async function sendAdminNotification(data: {
     select: { id: true }
   });
 
+  // Création en masse dans la base de données
   await prisma.notification.createMany({
     data: students.map(s => ({
       userId: s.id,
@@ -76,6 +103,7 @@ export async function sendAdminNotification(data: {
     }))
   });
   
+  // Envoi asynchrone des pushs à tous les étudiants de la liste
   for (const student of students) {
     sendPushNotification(student.id, {
       title: data.title,
@@ -88,6 +116,10 @@ export async function sendAdminNotification(data: {
   return { ok: true, count: students.length };
 }
 
+/**
+ * Server Action : Envoie une notification collective à une classe de la part d'un enseignant ou de l'admin.
+ * Enregistre également l'envoi dans la table d'historique ClassNotificationLog.
+ */
 export async function sendClassNotification(data: {
   classId: string;
   title: string;
@@ -99,14 +131,17 @@ export async function sendClassNotification(data: {
   
   const senderName = `${session.user.name || 'Enseignant'}`;
 
+  // Récupère les étudiants de la classe ciblée
   const students = await prisma.user.findMany({
     where: {
       classId: data.classId,
-      role: "STUDENT"
+      role: "STUDENT",
+      isActive: true
     },
     select: { id: true }
   });
 
+  // Enregistrement transactionnel : création des notifications + log d'envoi classe
   const [notifications, log] = await prisma.$transaction([
     prisma.notification.createMany({
       data: students.map(s => ({
@@ -127,7 +162,7 @@ export async function sendClassNotification(data: {
     })
   ]);
   
-  // Envoi des notifications push
+  // Envoi individuel des notifications push
   for (const student of students) {
     sendPushNotification(student.id, {
       title: data.title,
@@ -140,6 +175,12 @@ export async function sendClassNotification(data: {
   return { notifications, log };
 }
 
+/**
+ * Fonction utilitaire interne : Crée une notification unique et envoie un push de navigateur.
+ * 
+ * @param data Destinataire, titre, message, type esthétique et lien de redirection optionnel.
+ * @returns La notification créée.
+ */
 export async function createNotification(data: {
   userId: string;
   title: string;
@@ -157,7 +198,7 @@ export async function createNotification(data: {
     },
   });
 
-  // Envoi push
+  // Déclenche le push de navigateur
   sendPushNotification(data.userId, {
     title: data.title,
     body: data.message,
@@ -168,6 +209,10 @@ export async function createNotification(data: {
   return notification;
 }
 
+/**
+ * Récupère les configurations des notifications.
+ * Alimente automatiquement les valeurs par défaut dans la BDD s'il s'agit du premier appel.
+ */
 export async function getNotificationConfigs() {
   await ensureDefaultConfigs();
   return await prisma.notificationConfig.findMany({
@@ -175,6 +220,10 @@ export async function getNotificationConfigs() {
   });
 }
 
+/**
+ * Renseigne les configurations par défaut en base de données si elles sont absentes.
+ * Cela permet un déploiement fluide sur une nouvelle base sans nécessiter un script externe.
+ */
 async function ensureDefaultConfigs() {
   try {
     const defaults = [
@@ -226,11 +275,12 @@ async function ensureDefaultConfigs() {
         message: "Votre bulletin semestriel est désormais disponible.",
         targetRoles: ["STUDENT", "RESPONSIBLE"] as any[],
       }
-      ];
+    ];
+
     for (const def of defaults) {
       await prisma.notificationConfig.upsert({
         where: { event: def.event },
-        update: {},
+        update: {}, // Ne modifie rien si la config existe déjà
         create: {
           event: def.event,
           title: def.title,
@@ -241,12 +291,12 @@ async function ensureDefaultConfigs() {
     }
   } catch (error) {
     console.error("Error in ensureDefaultConfigs:", error);
-    // Don't crash the whole page if seeding fails
   }
 }
 
-
-
+/**
+ * Server Action : Met à jour la configuration d'activation et de ciblage d'une alerte système.
+ */
 export async function updateNotificationConfig(id: string, data: { isEnabled?: boolean; targetRoles?: any[] }) {
   await prisma.notificationConfig.update({
     where: { id },
@@ -255,10 +305,15 @@ export async function updateNotificationConfig(id: string, data: { isEnabled?: b
   revalidatePath("/admin/settings");
 }
 
+/**
+ * Vérifie si un type d'événement est activé avant de déclencher des envois de notifications.
+ * Si l'événement n'est pas renseigné en BDD, il est considéré comme activé par défaut.
+ * 
+ * @param event Clé de l'événement (ex: "NEW_GRADE").
+ */
 export async function checkEventEnabled(event: string) {
   const config = await prisma.notificationConfig.findUnique({
     where: { event },
   });
-  return config?.isEnabled ?? true; // Default to true if not configured
+  return config?.isEnabled ?? true;
 }
-

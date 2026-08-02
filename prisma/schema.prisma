@@ -8,63 +8,101 @@ datasource db {
   directUrl = env("DIRECT_URL")
 }
 
-// --- ENUMS ---
+// ==========================================
+// --- ENUMS / TYPES ÉNUMÉRÉS ---
+// ==========================================
+
+/// Rôles des utilisateurs au sein de la plateforme.
 enum Role {
-  SUPER_ADMIN
-  ADMIN
-  TEACHER
+  SUPER_ADMIN     // Accès technique et administratif complet
+  ADMIN           // Administrateur de l'école (scolarité, RH, sanctions)
+  TEACHER         // Enseignant (saisie de notes, appels, livrets)
+  STUDENT         // Étudiant (agenda, notes, sanctions, jeux)
+  RESPONSIBLE     // Parent ou représentant légal d'un élève
+  COMPANY_TUTOR   // Tuteur de l'alternant en entreprise
+}
+
+/// Statuts d'une demande de remplacement d'un enseignant.
+enum SubstitutionStatus {
+  PENDING   // En attente de traitement
+  APPROVED  // Acceptée et appliquée au planning
+  REJECTED  // Refusée
+}
+
+/// Statuts de présence d'un élève lors d'un cours.
+enum AttendanceStatus {
+  PRESENT   // Présent au cours
+  ABSENT    // Absent non justifié
+  LATE      // En retard
+  EXCUSED   // Absent excusé (justificatif fourni)
+}
+
+/// Types de contrat d'alternance ou de stage pour un étudiant.
+enum InternshipType {
+  APPRENTICESHIP  // Contrat d'apprentissage
+  INTERNSHIP      // Convention de stage classique
+}
+
+/// Rythme d'alternance d'une classe.
+enum RhythmType {
+  WEEKLY          // Rythme hebdomadaire standard
+  ALTERNANCE_1_3  // 1 semaine école / 3 semaines entreprise
+  ALTERNANCE_1_4  // 1 semaine école / 4 semaines entreprise
+}
+
+/// Statut d'exécution d'une sanction.
+enum SanctionStatus {
+  PLANIFIE     // Planifiée dans le temps
+  REALISE      // Effectuée / purgée
+  NON_PRESENT  // Élève ne s'est pas présenté
+  EXCUSE       // Sanction annulée ou excusée
+}
+
+/// Cibles possibles pour les campagnes de satisfaction Qualiopi.
+enum SatisfactionSurveyTarget {
   STUDENT
+  TEACHER
   RESPONSIBLE
   COMPANY_TUTOR
+  CLASS
 }
 
-enum SubstitutionStatus {
-  PENDING
-  APPROVED
-  REJECTED
+/// Statut de planification d'un rendez-vous / réunion.
+enum MeetingStatus {
+  PENDING     // En attente de validation admin
+  SCHEDULED   // Rendez-vous planifié
+  REJECTED    // Demande rejetée
+  COMPLETED   // Entretien effectué
 }
 
-enum AttendanceStatus {
-  PRESENT
-  ABSENT
-  LATE
-  EXCUSED
-}
+// ==========================================
+// --- UTILISATEURS ET PROFILS ---
+// ==========================================
 
-enum InternshipType {
-  APPRENTICESHIP
-  INTERNSHIP
-}
-
-enum RhythmType {
-  WEEKLY
-  ALTERNANCE_1_3
-  ALTERNANCE_1_4
-}
-
-// --- UTILISATEURS ---
+/// Dispense d'un élève pour une matière spécifique.
 model Dispensation {
   id        String   @id @default(cuid())
-  studentId String
+  studentId String   /// ID de l'étudiant dispensé
   student   User     @relation("StudentDispensation", fields: [studentId], references: [id], onDelete: Cascade)
-  subjectId String
+  subjectId String   /// ID de la matière dispensée
   subject   Subject  @relation(fields: [subjectId], references: [id], onDelete: Cascade)
-  reason    String?
+  reason    String?  /// Motif de la dispense
   createdAt DateTime @default(now())
 
   @@unique([studentId, subjectId])
 }
 
+/// Utilisateur générique de la plateforme Skilla.
 model User {
   id            String  @id @default(cuid())
   email         String? @unique
   username      String? @unique
   password      String?
   role          Role    @default(STUDENT)
-  calendarToken String? @unique @default(cuid())
+  calendarToken String? @unique @default(cuid()) /// Jeton pour l'abonnement calendrier ICS extérieur
 
-  // Noms : On garde les deux pour supporter ton code de création et de login
-  name      String? // Format combiné "Prénom Nom"
+  // Identité
+  name      String? /// Format combiné historique "Prénom Nom"
   firstName String?
   lastName  String?
 
@@ -79,64 +117,65 @@ model User {
   class          Class?          @relation(fields: [classId], references: [id])
   dispensations  Dispensation[]  @relation("StudentDispensation")
 
-  // Relations Responsables (Self-relation pour les parents/tuteurs)
+  // Relations Responsables (Self-relation pour lier les étudiants à leurs parents/tuteurs)
   students     User[] @relation("UserToResponsible")
   responsibles User[] @relation("UserToResponsible")
 
-  // Relations Entreprises
+  // Relations Entreprises (Alternance et Stage)
   studentContracts CompanyContract[] @relation("StudentInCompany")
   tutorContracts   CompanyContract[] @relation("TutorInCompany")
 
-  // Relations Enseignement
-  subjects      Subject[]
-  lessons       Lesson[]         @relation("TeacherLessons")
-  substitutions Lesson[]         @relation("SubstituteTeacher")
-  contract      TeacherContract?
-  skillMatrix   SkillMatrix[]
+  // Relations Enseignement (Professeurs)
+  subjects      Subject[]        /// Matières enseignées par ce professeur
+  lessons       Lesson[]         @relation("TeacherLessons") /// Cours programmés
+  substitutions Lesson[]         @relation("SubstituteTeacher") /// Cours de remplacement
+  contract      TeacherContract? /// Contrat de travail / Volume d'heures enseignant
+  skillMatrix   SkillMatrix[]    /// Matrice de compétences (Qualiopi)
 
-  // Relations Pédagogiques
-  grades      Grade[]
-  absences    Attendance[]
-  reportCards ReportCard[]
-  evaluations Evaluation[]
+  // Relations Pédagogiques (Étudiants)
+  grades      Grade[]       /// Notes obtenues
+  absences    Attendance[]  /// Émargements / Absences et retards
+  reportCards ReportCard[]  /// Bulletins de notes
+  evaluations Evaluation[]  /// Évaluation des compétences Qualiopi
 
-  // Substitution Requests
+  // Demandes de Remplacement
   substitutionRequestsSent     SubstitutionRequest[] @relation("OriginalTeacher")
   substitutionRequestsReceived SubstitutionRequest[] @relation("SubstituteTeacherReq")
 
-  // Qualiopi & Feedback
+  // Qualiopi, Enquêtes & Demandes d'entretiens
   complaints          Complaint[]            @relation("Sender")
   surveys             SatisfactionSurvey[]
   meetingRequestsSent MeetingRequest[]       @relation("MeetingSender")
   notifications       Notification[]
   sentNotifications   ClassNotificationLog[] @relation("NotificationSender")
-  pushSubscriptions   PushSubscription[]
-  gameScores          GameScore[]
-  assignedGrades      Grade[]                @relation("TeacherGrades")
+  pushSubscriptions   PushSubscription[]     /// Tokens de notifications Web Push
+  gameScores          GameScore[]            /// Scores de mini-jeux pédagogiques
+  assignedGrades      Grade[]                @relation("TeacherGrades") /// Notes saisies par ce professeur
 
   // Gamification & Assiduité
-  loginStreak    Int                   @default(0)
-  lastLoginAt    DateTime?
-  availabilities TeacherAvailability[]
+  loginStreak    Int                   @default(0)  /// Série de connexions quotidiennes consécutives
+  lastLoginAt    DateTime?                          /// Date de dernière connexion
+  availabilities TeacherAvailability[]              /// Grille de disponibilités horaires hebdomadaires du professeur
 
-  // Habilitations spécifiques
-  canAccessLivrets  Boolean @default(false)
-  canManageUsers    Boolean @default(false)
-  canManageSettings Boolean @default(false)
-  canManagePlanning Boolean @default(false)
-  canManageRH       Boolean @default(false)
-  canImpersonate    Boolean @default(false)
-  isActive          Boolean @default(true)
-  deletionRequested Boolean @default(false)
+  // Habilitations d'accès spécifiques (Contrôle d'accès fin RBAC)
+  canAccessLivrets  Boolean @default(false) /// Droit de modifier le livret d'apprentissage
+  canManageUsers    Boolean @default(false) /// Droit de créer/supprimer des comptes
+  canManageSettings Boolean @default(false) /// Droit de modifier les paramètres généraux de l'école
+  canManagePlanning Boolean @default(false) /// Droit de modifier les horaires de cours
+  canManageRH       Boolean @default(false) /// Droit de modifier les contrats RH et salaires
+  canImpersonate    Boolean @default(false) /// Droit d'usurper l'identité d'un autre utilisateur
+  isActive          Boolean @default(true)  /// Compte actif ou suspendu
+  deletionRequested Boolean @default(false) /// Demande de suppression RGPD effectuée
 
-  // Système de points de conduite (activable par l'admin)
-  conductPoints     Int     @default(100)
+  // Système de points de conduite (activable et modifiable)
+  conductPoints     Int     @default(100)   /// Capital points de l'étudiant (sur 100)
 
-  // Chat system
+  // Système de Chat
   conversationsAs1 Conversation[] @relation("Participant1")
   conversationsAs2 Conversation[] @relation("Participant2")
   sentMessages     ChatMessage[]  @relation("SentMessages")
 
+  // Système disciplinaire (Sanctions)
   studentSanctions   Sanction[]            @relation("StudentSanctions")
   givenSanctions     Sanction[]            @relation("GivenSanctions")
   sanctionComments   SanctionComment[]     @relation("SanctionCommentAuthor")
@@ -147,62 +186,7 @@ model User {
   @@index([lastName, firstName])
 }
 
-// ... existing models ...
-
-model Conversation {
-  id           String   @id @default(cuid())
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-
-  participant1Id String
-  participant1   User   @relation("Participant1", fields: [participant1Id], references: [id], onDelete: Cascade)
-
-  participant2Id String
-  participant2   User   @relation("Participant2", fields: [participant2Id], references: [id], onDelete: Cascade)
-
-  messages ChatMessage[]
-
-  @@unique([participant1Id, participant2Id])
-  @@index([participant1Id])
-  @@index([participant2Id])
-}
-
-model ChatMessage {
-  id             String   @id @default(cuid())
-  content        String   @db.Text
-  createdAt      DateTime @default(now())
-  isRead         Boolean  @default(false)
-
-  senderId       String
-  sender         User     @relation("SentMessages", fields: [senderId], references: [id], onDelete: Cascade)
-
-  conversationId String
-  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
-
-  @@index([conversationId])
-  @@index([senderId])
-}
-
-model TeacherAvailability {
-  id        String @id @default(cuid())
-  dayOfWeek Int // 0 (Sunday) to 6 (Saturday)
-  startTime String // "HH:mm"
-  endTime   String // "HH:mm"
-  teacherId String
-  teacher   User   @relation(fields: [teacherId], references: [id], onDelete: Cascade)
-
-  @@index([teacherId])
-}
-
-model GlobalSetting {
-  id    String @id @default(cuid())
-  key   String @unique
-  value String
-}
-
-// Pour le chat, on utilisera la clé 'CHAT_ENABLED' dans GlobalSetting
-
-
+/// Profil de l'étudiant (Relation 1-à-1 avec User).
 model StudentProfile {
   id      String @id @default(cuid())
   userId  String @unique
@@ -210,44 +194,72 @@ model StudentProfile {
   classId String
 }
 
-// --- STRUCTURE PÉDAGOGIQUE ---
-model Class {
-  id               String            @id @default(cuid())
-  name             String            @unique
-  rhythm           RhythmType        @default(WEEKLY)
-  cycleWeeks       Int               @default(1) // Number of weeks in a cycle
-  reportCardsVisible Boolean         @default(true)
-  students         User[]
-  lessons          Lesson[]
-  attendanceSheets AttendanceSheet[]
-  competencies     ClassCompetency[]
-  notifications    ClassNotificationLog[]
-  requirements     ClassSubjectRequirement[]
-  surveyCampaigns  SatisfactionSurveyCampaign[]
+/// Disponibilités hebdomadaires déclarées par un enseignant.
+model TeacherAvailability {
+  id        String @id @default(cuid())
+  dayOfWeek Int    /// Jour de la semaine (0 pour Dimanche, 6 pour Samedi)
+  startTime String /// Heure de début formatée "HH:mm"
+  endTime   String /// Heure de fin formatée "HH:mm"
+  teacherId String
+  teacher   User   @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+
+  @@index([teacherId])
 }
 
+/// Table des paramètres système globaux (clé-valeur).
+model GlobalSetting {
+  id    String @id @default(cuid())
+  key   String @unique /// ex: 'SCHOOL_NAME', 'CHAT_ENABLED', 'QUALIOPI_ENABLED'
+  value String
+}
+
+// ==========================================
+// --- STRUCTURE PÉDAGOGIQUE ET CLASSES ---
+// ==========================================
+
+/// Classe d'étudiants (ex: "Bachelor 1A").
+model Class {
+  id                 String            @id @default(cuid())
+  name               String            @unique
+  rhythm             RhythmType        @default(WEEKLY)
+  cycleWeeks         Int               @default(1)    /// Nombre de semaines composant un cycle d'alternance
+  reportCardsVisible Boolean           @default(true) /// Visibilité des bulletins pour les élèves/parents
+  students           User[]
+  lessons            Lesson[]
+  attendanceSheets   AttendanceSheet[]
+  competencies       ClassCompetency[]
+  notifications      ClassNotificationLog[]
+  requirements       ClassSubjectRequirement[]       /// Volume d'heures de cours requis par matière
+  surveyCampaigns    SatisfactionSurveyCampaign[]
+
+  @@index([name])
+}
+
+/// Volume d'heures hebdomadaires requis pour une classe dans une matière donnée.
 model ClassSubjectRequirement {
   id          String  @id @default(cuid())
   classId     String
   subjectId   String
-  weeklyHours Float
+  weeklyHours Float   /// Objectif d'heures de cours par semaine
   class       Class   @relation(fields: [classId], references: [id], onDelete: Cascade)
   subject     Subject @relation(fields: [subjectId], references: [id], onDelete: Cascade)
 
   @@unique([classId, subjectId])
 }
 
+/// Salle de classe de l'établissement.
 model Room {
   id       String   @id @default(cuid())
   name     String   @unique
-  capacity Int?
+  capacity Int?     /// Capacité maximale d'accueil physique
   lessons  Lesson[]
 }
 
+/// Matière / Cours d'enseignement (ex: "Développement Web", "Mathématiques").
 model Subject {
   id                       String                    @id @default(cuid())
   name                     String                    @unique
-  teachers                 User[]
+  teachers                 User[]                    /// Liste des profs habilités à l'enseigner
   lessons                  Lesson[]
   grades                   Grade[]
   skillMatrix              SkillMatrix[]
@@ -255,17 +267,19 @@ model Subject {
   classSubjectRequirements ClassSubjectRequirement[]
 }
 
+/// Année académique scolaire (ex: "2025-2026").
 model SchoolYear {
   id        String     @id @default(cuid())
-  name      String     @unique  // ex: "2025-2026"
+  name      String     @unique  /// ex: "2025-2026"
   startDate DateTime
   endDate   DateTime
   semesters Semester[]
 }
 
+/// Semestre pédagogique rattaché à une année scolaire.
 model Semester {
   id           String       @id @default(cuid())
-  name         String
+  name         String       /// ex: "Semestre 1"
   startDate    DateTime
   endDate      DateTime
   schoolYearId String?
@@ -277,16 +291,20 @@ model Semester {
   @@index([schoolYearId])
 }
 
-// --- PLANNING & ÉMARGEMENT ---
+// ==========================================
+// --- PLANNING & ÉMARGEMENT (COURS) ---
+// ==========================================
+
+/// Cours planifié pour une classe, un professeur et une salle sur un créneau donné.
 model Lesson {
   id                    String   @id @default(cuid())
   startTime             DateTime
   endTime               DateTime
-  isCancelled           Boolean  @default(false)
-  isAttendanceValidated Boolean  @default(false)
-  isFreeLesson          Boolean  @default(false)
-  customSubject         String?
-  customTeacher         String?
+  isCancelled           Boolean  @default(false)                /// Cours annulé par l'administration
+  isAttendanceValidated Boolean  @default(false)                /// L'émargement / appel a été validé par le prof
+  isFreeLesson          Boolean  @default(false)                /// Libellé libre (sans matière liée)
+  customSubject         String?                                 /// Nom de matière libre si isFreeLesson est vrai
+  customTeacher         String?                                 /// Nom d'intervenant libre si isFreeLesson est vrai
 
   subjectId String?
   subject   Subject? @relation(fields: [subjectId], references: [id])
@@ -294,9 +312,9 @@ model Lesson {
   teacherId String?
   teacher   User?    @relation("TeacherLessons", fields: [teacherId], references: [id])
 
-  substituteId    String?
+  substituteId    String?                                       /// Enseignant de remplacement
   substitute      User?   @relation("SubstituteTeacher", fields: [substituteId], references: [id])
-  replacementNote String?
+  replacementNote String?                                       /// Note justificative du remplacement
 
   classId String
   class   Class  @relation(fields: [classId], references: [id])
@@ -304,21 +322,22 @@ model Lesson {
   roomId  String?
   room    Room?   @relation(fields: [roomId], references: [id])
   groupId String?
-  recurrenceId String?
+  recurrenceId String?                                          /// ID commun pour les cours d'une même récurrence
 
-  attendances Attendance[]
+  attendances Attendance[]                                      /// Émargements des élèves pour ce cours
 
   attendanceSheetId    String?
   attendanceSheet      AttendanceSheet?      @relation(fields: [attendanceSheetId], references: [id])
-  substitutionRequests SubstitutionRequest[]
+  substitutionRequests SubstitutionRequest[]                    /// Demandes de remplacement liées à ce cours
 
-  summary  String? @db.Text
-  homework String? @db.Text
+  summary  String? @db.Text                                     /// Résumé du cours / Cahier de texte
+  homework String? @db.Text                                     /// Devoirs / Travail à faire
 
   @@index([startTime, endTime])
   @@index([recurrenceId])
 }
 
+/// Feuille d'émargement journalière regroupant plusieurs leçons pour une classe.
 model AttendanceSheet {
   id      String   @id @default(cuid())
   date    DateTime @default(now())
@@ -327,43 +346,49 @@ model AttendanceSheet {
   lessons Lesson[]
 }
 
+/// Émargement individuel d'un étudiant pour une leçon spécifique.
 model Attendance {
   id           String           @id @default(cuid())
   status       AttendanceStatus @default(PRESENT)
-  lateDuration Int?
-  reason       String?
+  lateDuration Int?             /// Durée du retard en minutes (si status == LATE)
+  reason       String?          /// Motif du retard ou de l'absence
   lessonId     String
   lesson       Lesson           @relation(fields: [lessonId], references: [id], onDelete: Cascade)
   studentId    String
   student      User             @relation(fields: [studentId], references: [id], onDelete: Cascade)
 }
 
-// --- NOTES & BULLETINS ---
+// ==========================================
+// --- NOTES & BULLETINS DE NOTES ---
+// ==========================================
+
+/// Note attribuée à un étudiant dans une matière pour un semestre donné.
 model Grade {
   id          String   @id @default(cuid())
-  value       Float
+  value       Float    /// Note sur 20
   coefficient Float    @default(1.0)
-  subjectName String? // Stockage du nom pour historique
-  comment     String?
+  subjectName String?  /// Copie historique du nom de la matière
+  comment     String?  /// Commentaire ou appréciation de l'enseignant
   createdAt   DateTime @default(now())
 
   studentId String
-  student   User   @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  student   User     @relation(fields: [studentId], references: [id], onDelete: Cascade)
 
   teacherId String?
-  teacher   User?   @relation("TeacherGrades", fields: [teacherId], references: [id])
+  teacher   User?    @relation("TeacherGrades", fields: [teacherId], references: [id])
 
   subjectId String
-  subject   Subject @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  subject   Subject  @relation(fields: [subjectId], references: [id], onDelete: Cascade)
 
   semesterId String
   semester   Semester @relation(fields: [semesterId], references: [id], onDelete: Cascade)
 }
 
+/// Bulletin semestriel d'un étudiant (validations et appréciations).
 model ReportCard {
   id               String   @id @default(cuid())
-  generalAppraisal String?
-  distinction      String?
+  generalAppraisal String?  /// Appréciation globale du conseil de classe
+  distinction      String?  /// Distinction (ex: "Félicitations", "Encouragements")
   semesterId       String
   semester         Semester @relation(fields: [semesterId], references: [id], onDelete: Cascade)
   studentId        String
@@ -372,7 +397,11 @@ model ReportCard {
   @@unique([studentId, semesterId])
 }
 
-// --- ENTREPRISE & RH ---
+// ==========================================
+// --- ENTREPRISE ET CONTRATS RH ---
+// ==========================================
+
+/// Contrat d'alternance ou de stage liant un étudiant à un tuteur et une entreprise.
 model CompanyContract {
   id          String         @id @default(cuid())
   companyName String
@@ -385,21 +414,26 @@ model CompanyContract {
   tutor       User           @relation("TutorInCompany", fields: [tutorId], references: [id])
 }
 
+/// Spécificités du contrat de travail d'un professeur.
 model TeacherContract {
   id           String @id @default(cuid())
-  hourlyRate   Float
-  annualHours  Float  @default(0)
+  hourlyRate   Float  /// Tarif horaire du professeur
+  annualHours  Float  @default(0) /// Volume d'heures annuel de service requis
   teacherId    String @unique
   teacher      User   @relation(fields: [teacherId], references: [id])
 }
 
-// --- MODULES QUALIOPI ---
+// ==========================================
+// --- MODULES DE COMPÉTENCES & QUALIOPI ---
+// ==========================================
+
+/// Évaluation Qualiopi d'une compétence pour un étudiant.
 model Evaluation {
   id         String   @id @default(cuid())
-  competency String
-  level      Int
-  source     String
-  category   String   @default("SCHOOL") // "SCHOOL" or "ENTERPRISE"
+  competency String   /// Nom de la compétence évaluée
+  level      Int      /// Niveau d'acquisition (1 à 4)
+  source     String   /// Outil source d'évaluation
+  category   String   @default("SCHOOL") /// Catégorie "SCHOOL" (école) ou "ENTERPRISE" (entreprise)
   studentId  String
   student    User     @relation(fields: [studentId], references: [id])
   semesterId String?
@@ -407,14 +441,16 @@ model Evaluation {
   updatedAt  DateTime @updatedAt
 }
 
+/// Compétence requise définie pour une classe d'étudiants.
 model ClassCompetency {
   id       String @id @default(cuid())
   name     String
-  category String // "SCHOOL" or "ENTERPRISE"
+  category String /// "SCHOOL" ou "ENTERPRISE"
   classId  String
   class    Class  @relation(fields: [classId], references: [id])
 }
 
+/// Matrice de compétences (association professeur - matière).
 model SkillMatrix {
   id        String  @id @default(cuid())
   teacherId String
@@ -423,16 +459,18 @@ model SkillMatrix {
   subject   Subject @relation(fields: [subjectId], references: [id])
 }
 
+/// Ticket de réclamation Qualiopi soumis par un utilisateur.
 model Complaint {
   id          String   @id @default(cuid())
-  subject     String
-  description String
-  status      String   @default("OPEN")
+  subject     String   /// Objet de la réclamation
+  description String   @db.Text
+  status      String   @default("OPEN") /// "OPEN" ou "CLOSED"
   senderId    String
   sender      User     @relation("Sender", fields: [senderId], references: [id])
   createdAt   DateTime @default(now())
 }
 
+/// Demande de remplacement d'un professeur pour un cours donné.
 model SubstitutionRequest {
   id                  String             @id @default(cuid())
   lessonId            String
@@ -445,30 +483,25 @@ model SubstitutionRequest {
   createdAt           DateTime           @default(now())
 }
 
-enum MeetingStatus {
-  PENDING
-  SCHEDULED
-  REJECTED
-  COMPLETED
-}
-
+/// Demande d'entretien ou de réunion.
 model MeetingRequest {
   id          String        @id @default(cuid())
   senderId    String
   sender      User          @relation("MeetingSender", fields: [senderId], references: [id])
-  reason      String
+  reason      String        /// Motif ou sujet de l'entretien
   status      MeetingStatus @default(PENDING)
   requestedAt DateTime      @default(now())
-  scheduledAt DateTime?
-  adminNotes  String?
+  scheduledAt DateTime?     /// Date et heure validée et planifiée pour l'entretien
+  adminNotes  String?       @db.Text
 }
 
+/// Campagne de sondage de satisfaction Qualiopi.
 model SatisfactionSurveyCampaign {
   id          String                   @id @default(cuid())
   title       String
   description String?                  @db.Text
   targetType  SatisfactionSurveyTarget
-  classId     String?
+  classId     String?                  /// Classe ciblée en cas de targetType == CLASS
   class       Class?                   @relation(fields: [classId], references: [id], onDelete: SetNull)
   isActive    Boolean                  @default(true)
   createdAt   DateTime                 @default(now())
@@ -480,17 +513,10 @@ model SatisfactionSurveyCampaign {
   @@index([isActive])
 }
 
-enum SatisfactionSurveyTarget {
-  STUDENT
-  TEACHER
-  RESPONSIBLE
-  COMPANY_TUTOR
-  CLASS
-}
-
+/// Réponse individuelle d'un utilisateur à un sondage de satisfaction.
 model SatisfactionSurvey {
   id         String                      @id @default(cuid())
-  rating     Int
+  rating     Int                         /// Note attribuée (ex: de 1 à 5)
   comment    String?                     @db.Text
   userId     String
   user       User                        @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -503,19 +529,60 @@ model SatisfactionSurvey {
   @@index([campaignId])
 }
 
+// ==========================================
+// --- SYSTÈME DE MESSAGERIE ET CHAT ---
+// ==========================================
+
+/// Discussion privée (chat) entre deux utilisateurs uniques.
+model Conversation {
+  id             String      @id @default(cuid())
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+  participant1Id String
+  participant1   User        @relation("Participant1", fields: [participant1Id], references: [id], onDelete: Cascade)
+  participant2Id String
+  participant2   User        @relation("Participant2", fields: [participant2Id], references: [id], onDelete: Cascade)
+  messages       ChatMessage[]
+
+  @@unique([participant1Id, participant2Id])
+  @@index([participant1Id])
+  @@index([participant2Id])
+}
+
+/// Message individuel au sein d'une discussion privée.
+model ChatMessage {
+  id             String       @id @default(cuid())
+  content        String       @db.Text
+  createdAt      DateTime     @default(now())
+  isRead         Boolean      @default(false)
+  senderId       String
+  sender         User         @relation("SentMessages", fields: [senderId], references: [id], onDelete: Cascade)
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId])
+  @@index([senderId])
+}
+
+// ==========================================
+// --- NOTIFICATIONS ET ABONNEMENTS ---
+// ==========================================
+
+/// Notification in-app destinée à un utilisateur spécifique.
 model Notification {
   id         String   @id @default(cuid())
   userId     String
   user       User     @relation(fields: [userId], references: [id])
   title      String
   message    String
-  type       String   @default("INFO") // INFO, WARNING, SUCCESS, ERROR
+  type       String   @default("INFO") /// "INFO", "WARNING", "SUCCESS", "ERROR"
   isRead     Boolean  @default(false)
-  link       String? // Optional link to navigate to
+  link       String?                   /// Lien optionnel vers lequel rediriger l'utilisateur au clic
   senderName String   @default("Système")
   createdAt  DateTime @default(now())
 }
 
+/// Journal des notifications collectives envoyées à une classe.
 model ClassNotificationLog {
   id        String   @id @default(cuid())
   senderId  String
@@ -527,22 +594,25 @@ model ClassNotificationLog {
   createdAt DateTime @default(now())
 }
 
+/// Configuration système des notifications pour chaque événement déclencheur.
 model NotificationConfig {
   id          String   @id @default(cuid())
-  event       String   @unique // e.g., "NEW_GRADE", "MEETING_UPDATE"
-  isEnabled   Boolean  @default(true)
-  title       String // Default title template
-  message     String // Default message template
-  targetRoles Role[]   @default([STUDENT])
+  event       String   @unique          /// Nom de l'événement (ex: "NEW_GRADE", "MEETING_UPDATE")
+  isEnabled   Boolean  @default(true)   /// Active ou désactive le déclencheur
+  title       String                    /// Modèle de titre par défaut (ex: "Nouvelle note en {subject}")
+  message     String                    /// Modèle de corps du message
+  targetRoles Role[]   @default([STUDENT]) /// Rôles ciblés par la notification
   updatedAt   DateTime @updatedAt
 }
 
+/// Jour de congé / vacances scolaires de l'établissement.
 model Holiday {
   id   String   @id @default(cuid())
   date DateTime @unique
   name String
 }
 
+/// Abonnement aux notifications de navigateur Web Push.
 model PushSubscription {
   id        String   @id @default(cuid())
   userId    String
@@ -553,10 +623,15 @@ model PushSubscription {
   createdAt DateTime @default(now())
 }
 
+// ==========================================
+// --- GAMIFICATION ---
+// ==========================================
+
+/// Score maximal enregistré par un utilisateur pour un jeu éducatif spécifique.
 model GameScore {
   id        String   @id @default(cuid())
-  gameKey   String // Clé identifiant le jeu (ex: "katana-scissors")
-  score     Int
+  gameKey   String   /// Clé unique du jeu (ex: "sakura-mix")
+  score     Int      /// Score atteint
   userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   createdAt DateTime @default(now())
@@ -566,23 +641,22 @@ model GameScore {
   @@index([userId])
 }
 
+// ==========================================
+// --- DISCIPLINE & SANCTIONS ---
+// ==========================================
+
+/// Type de sanction prédéfini (ex: "Retenue", "Avertissement de conduite").
 model SanctionType {
   id           String     @id @default(cuid())
   name         String     @unique
   description  String?
-  allowTeacher Boolean    @default(false)
-  allowAdmin   Boolean    @default(true)
+  allowTeacher Boolean    @default(false) /// Les enseignants peuvent-ils donner ce type de sanction ?
+  allowAdmin   Boolean    @default(true)  /// Les admins peuvent-ils donner ce type de sanction ?
   sanctions    Sanction[]
   createdAt    DateTime   @default(now())
 }
 
-enum SanctionStatus {
-  PLANIFIE
-  REALISE
-  NON_PRESENT
-  EXCUSE
-}
-
+/// Sanction individuelle émise à l'encontre d'un étudiant.
 model Sanction {
   id             String         @id @default(cuid())
   studentId      String
@@ -594,9 +668,9 @@ model Sanction {
   givenBy        User           @relation("GivenSanctions", fields: [givenById], references: [id], onDelete: Cascade)
   createdAt      DateTime       @default(now())
   date           DateTime       @default(now())
-  duration       String?        // e.g. "2 heures", "3 jours" (optionnel)
+  duration       String?                       /// ex: "2 heures", "3 jours"
   status         SanctionStatus @default(PLANIFIE)
-  pointsCost     Int            @default(0) // Points de conduite retirés (si système activé)
+  pointsCost     Int            @default(0)    /// Points de conduite retirés de l'élève à cause de cette sanction
   comments       SanctionComment[]
   actionEvents   SanctionActionEvent[]
 
@@ -605,7 +679,7 @@ model Sanction {
   @@index([date])
 }
 
-// Commentaires sur une sanction (activable par toggle admin)
+/// Commentaire partagé sur le suivi d'une sanction.
 model SanctionComment {
   id         String   @id @default(cuid())
   sanctionId String
@@ -618,14 +692,14 @@ model SanctionComment {
   @@index([sanctionId])
 }
 
-// Événements générés automatiquement par le système de points
+/// Événement d'action disciplinaire tracé par le système (ex: passage sous un seuil de points).
 model SanctionActionEvent {
   id          String   @id @default(cuid())
   studentId   String
   student     User     @relation("SanctionEventStudent", fields: [studentId], references: [id], onDelete: Cascade)
   sanctionId  String?
   sanction    Sanction? @relation(fields: [sanctionId], references: [id], onDelete: SetNull)
-  type        String   // e.g. "POINTS_DEDUCTED", "THRESHOLD_50", "THRESHOLD_20"
+  type        String   /// Type d'événement (ex: "POINTS_DEDUCTED", "THRESHOLD_50", "THRESHOLD_20")
   description String
   createdAt   DateTime @default(now())
 
