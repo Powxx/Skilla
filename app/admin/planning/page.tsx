@@ -12,7 +12,7 @@ export const metadata = {
 export default async function AdminPlanningPage() {
   const session = await getServerSession(authOptions);
 
-  if (!session?.user?.id || (String(session.user.role) !== "ADMIN" && String(session.user.role) !== "SUPER_ADMIN" && String(session.user.canManagePlanning) !== "true")) {
+  if (!session?.user?.id || (String(session.user.role) !== "ADMIN" && String(session.user.role) !== "SUPER_ADMIN" && String(session.user.canManagePlanning) !== "TRUE")) {
     redirect("/login");
   }
 
