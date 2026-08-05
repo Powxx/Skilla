@@ -81,7 +81,6 @@ function roleBadgeClasses(role: Role) {
 }
 
 function canDeleteListedUser(u: ListedUserRow): boolean {
-  if (u.hasStudentProfile) return false;
   if (u.hasTeacherProfile && u.teacherCourseCount > 0) return false;
   return true;
 }
@@ -725,7 +724,7 @@ function ConfirmDeleteModal({
   return (
     <DialogPortal title="Supprimer le compte ?" subtitle={label} onClose={onClose}>
       <p className="px-6 pb-2 text-sm text-slate-600">
-        Cette action est définitive. Les comptes avec profil élève ne peuvent pas être supprimés depuis cet écran.
+        Cette action est définitive. Tous les contrats, notes et données associés à ce compte seront également supprimés.
       </p>
       <div className="flex justify-end gap-2 border-t border-slate-100 px-6 py-4">
         <button

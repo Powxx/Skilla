@@ -412,12 +412,6 @@ export async function deleteUserSafe(userId: string): Promise<MutationResult> {
     return { ok: false, error: "Utilisateur introuvable." };
   }
 
-  if (existing.studentProfile) {
-    return {
-      ok: false,
-      error: "Les comptes avec profil élève ne peuvent pas être supprimés depuis cet écran.",
-    };
-  }
   if (existing.contract && existing._count?.lessons > 0) {
     return {
       ok: false,
@@ -434,11 +428,26 @@ export async function deleteUserSafe(userId: string): Promise<MutationResult> {
   }
 
   await prisma.$transaction(async (tx) => {
+    if (existing.studentProfile) {
+      await tx.studentProfile.delete({ where: { userId } });
+    }
     if (existing.contract) {
       await tx.teacherContract.delete({ 
         where: { teacherId: userId } 
       });
     }
+    await tx.companyContract.deleteMany({
+      where: {
+        OR: [
+          { studentId: userId },
+          { tutorId: userId }
+        ]
+      }
+    });
+    await tx.evaluation.deleteMany({ where: { studentId: userId } });
+    await tx.complaint.deleteMany({ where: { senderId: userId } });
+    await tx.meetingRequest.deleteMany({ where: { senderId: userId } });
+
     await tx.user.delete({ where: { id: userId } });
   });
 
