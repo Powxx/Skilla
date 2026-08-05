@@ -17,11 +17,11 @@ export default async function AdminRecapPage() {
     include: {
       class: true,
       responsibles: {
-        select: { firstName: true, lastName: true, email: true }
+        select: { firstName: true, lastName: true, email: true, phone: true }
       },
       studentContracts: {
         include: {
-          tutor: { select: { firstName: true, lastName: true, email: true } }
+          tutor: { select: { firstName: true, lastName: true, email: true, phone: true } }
         }
       }
     },
@@ -68,6 +68,7 @@ export default async function AdminRecapPage() {
                         </span>
                       </div>
                       <div className="text-[10px] text-slate-400 mt-1 font-medium">{s.email}</div>
+                      {s.phone && <div className="text-[10px] text-slate-500 mt-0.5 font-semibold">Tél: {s.phone}</div>}
                     </td>
                     <td className="px-6 py-6 align-top">
                       {s.responsibles.length > 0 ? (
@@ -76,6 +77,7 @@ export default async function AdminRecapPage() {
                             <li key={i} className="group">
                               <div className="font-bold text-slate-800 text-sm group-hover:text-blue-600 transition">{r.firstName} {r.lastName}</div>
                               <div className="text-[10px] text-slate-400 font-medium">{r.email}</div>
+                              {r.phone && <div className="text-[10px] text-slate-500 mt-0.5 font-semibold">Tél: {r.phone}</div>}
                             </li>
                           ))}
                         </ul>
@@ -91,6 +93,7 @@ export default async function AdminRecapPage() {
                               <div className="text-[10px] font-black text-blue-600 uppercase tracking-widest mb-1">{c.companyName}</div>
                               <div className="font-bold text-slate-900 text-sm">{c.tutor.firstName} {c.tutor.lastName}</div>
                               <div className="text-[10px] text-slate-400 font-medium">{c.tutor.email}</div>
+                              {c.tutor.phone && <div className="text-[10px] text-slate-500 mt-0.5 font-semibold">Tél: {c.tutor.phone}</div>}
                             </li>
                           ))}
                         </ul>

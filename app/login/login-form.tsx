@@ -31,6 +31,7 @@ export default function LoginForm() {
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [showForgot, setShowForgot] = useState(false);
 
   // Détection du paramètre reason=timeout
   useEffect(() => {
@@ -105,7 +106,31 @@ export default function LoginForm() {
         </p>
       </div>
 
-      {!success ? (
+      {showForgot ? (
+        <div className="space-y-6">
+          <div className="rounded-2xl border border-sky-100 bg-sky-50/50 p-5 text-center">
+            <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-sky-500 text-white shadow-md">
+              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 5.25a3 3 0 013 3m3 0a6 6 0 01-7.029 5.912c-.563-.097-1.159.026-1.563.43L10.5 17.25H8.25v2.25H6v2.25H2.25v-2.818c0-.597.237-1.17.659-1.591l6.499-6.499c.404-.404.527-1 .43-1.563A6 6 0 1121.75 8.25z" />
+              </svg>
+            </div>
+            <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wide">Mot de passe oublié</h3>
+            <p className="mt-3 text-xs text-slate-600 leading-relaxed font-medium">
+              Pour réinitialiser votre mot de passe, veuillez contacter l'administration de votre établissement ou votre enseignant.
+            </p>
+            <p className="mt-2 text-[10px] text-slate-400 font-medium leading-relaxed">
+              Un administrateur pourra réinitialiser et vous communiquer vos nouveaux identifiants de connexion depuis son panneau de contrôle.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setShowForgot(false)}
+            className="w-full flex justify-center items-center rounded-xl bg-slate-900 py-3 text-sm font-semibold text-white shadow-md transition hover:bg-slate-800"
+          >
+            Retour à la connexion
+          </button>
+        </div>
+      ) : !success ? (
         <form className="space-y-5" onSubmit={handleSubmit}>
           {error && (
             <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800 animate-shake">
@@ -136,6 +161,16 @@ export default function LoginForm() {
               placeholder="••••••••"
             />
           </label>
+
+          <div className="flex justify-end text-[11px] -mt-2">
+            <button
+              type="button"
+              onClick={() => setShowForgot(true)}
+              className="text-sky-600 hover:text-sky-700 hover:underline font-bold focus:outline-none transition-colors duration-200"
+            >
+              Mot de passe oublié ?
+            </button>
+          </div>
 
           <button
             type="submit"

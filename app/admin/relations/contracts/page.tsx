@@ -29,7 +29,7 @@ export default async function AdminContractsPage() {
     }),
     prisma.user.findMany({
       where: { role: "COMPANY_TUTOR", isActive: true },
-      select: { id: true, firstName: true, lastName: true },
+      select: { id: true, firstName: true, lastName: true, company: true },
       orderBy: [{ lastName: 'asc' }, { firstName: 'asc' }]
     })
   ]);

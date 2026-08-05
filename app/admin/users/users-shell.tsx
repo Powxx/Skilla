@@ -33,6 +33,8 @@ export type ListedUserRow = {
   canImpersonate: boolean;
   isActive: boolean;
   username: string | null;
+  phone: string | null;
+  company: string | null;
 };
 
 type ClassOption = { id: string; name: string };
@@ -257,7 +259,7 @@ export default function UsersShell(props: Props) {
                       </span>
                     </td>
                     <td className="hidden px-5 py-3 lg:table-cell text-[10px] font-bold text-slate-400 uppercase tracking-tighter">
-                      {u.hasStudentProfile && u.studentClass ? u.studentClass.name : u.hasTeacherProfile ? `${u.teacherCourseCount} cours` : "—"}
+                      {u.hasStudentProfile ? (u.studentClass?.name || "Sans classe") : u.hasTeacherProfile ? `${u.teacherCourseCount} cours` : "—"}
                     </td>
                     <td className="px-5 py-3 text-right">
                       <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition">
@@ -423,6 +425,8 @@ type CreateUserPayload = {
   lastName: string;
   role: Role;
   classId?: string;
+  phone?: string;
+  company?: string;
 };
 
 function CreateUserModal({
@@ -455,6 +459,8 @@ function CreateUserModal({
             lastName: String(fd.get("lastName") ?? ""),
             role,
             classId: role === Role.STUDENT ? classIdRaw : undefined,
+            phone: String(fd.get("phone") ?? "").trim() || undefined,
+            company: role === Role.COMPANY_TUTOR ? (String(fd.get("company") ?? "").trim() || undefined) : undefined,
           });
         }}
       >
@@ -474,9 +480,9 @@ function CreateUserModal({
         </Field>
 
         {role === Role.STUDENT ? (
-          <Field label="Classe *">
-            <select name="classId" required className={inputClass}>
-              <option value="">Sélectionner…</option>
+          <Field label="Classe (optionnelle)">
+            <select name="classId" className={inputClass}>
+              <option value="">Aucune classe</option>
               {classes.map((c) => (
                 <option key={c.id} value={c.id}>
                   {c.name}
@@ -486,11 +492,20 @@ function CreateUserModal({
           </Field>
         ) : null}
 
+        {role === Role.COMPANY_TUTOR ? (
+          <Field label="Entreprise *">
+            <input name="company" required className={inputClass} placeholder="Ex: Google France" />
+          </Field>
+        ) : null}
+
         <Field label="Prénom *">
           <input name="firstName" required className={inputClass} />
         </Field>
         <Field label="Nom *">
           <input name="lastName" required className={inputClass} />
+        </Field>
+        <Field label="Téléphone (optionnel)">
+          <input name="phone" type="tel" className={inputClass} placeholder="Ex: +33 6 12 34 56 78" />
         </Field>
         <Field label="E-mail (optionnel)">
           <input name="email" type="email" className={inputClass} />
@@ -520,6 +535,8 @@ type UpdateUserPayload = {
   isActive: boolean;
   newPassword?: string;
   studentClassId?: string;
+  phone?: string;
+  company?: string;
 };
 
 function EditUserModal({
@@ -565,7 +582,9 @@ function EditUserModal({
             isActive,
             newPassword: newPassword === "" ? undefined : newPassword,
             studentClassId:
-              role === Role.STUDENT && classRaw !== "" ? classRaw : undefined,
+              role === Role.STUDENT ? classRaw : undefined,
+            phone: String(fd.get("phone") ?? "").trim() || undefined,
+            company: effectiveRole === Role.COMPANY_TUTOR ? (String(fd.get("company") ?? "").trim() || undefined) : undefined,
           });
         }}
       >
@@ -615,24 +634,31 @@ function EditUserModal({
         ) : null}
 
         {showStudentClass ? (
-          <Field
-            label={user.hasStudentProfile ? "Classe (élève) *" : "Classe (nouvel élève) *"}
-          >
+          <Field label="Classe (élève)">
             <select
               name="studentClassId"
-              required={!user.hasStudentProfile}
               defaultValue={user.studentClass?.id ?? ""}
               className={inputClass}
             >
-              {!user.hasStudentProfile ? (
-                <option value="">Choisir…</option>
-              ) : null}
+              <option value="">Aucune classe</option>
               {classes.map((c) => (
                 <option key={c.id} value={c.id}>
                   {c.name}
                 </option>
               ))}
             </select>
+          </Field>
+        ) : null}
+
+        {effectiveRole === Role.COMPANY_TUTOR ? (
+          <Field label="Entreprise *">
+            <input
+              name="company"
+              required
+              defaultValue={user.company ?? ""}
+              className={inputClass}
+              placeholder="Ex: Google France"
+            />
           </Field>
         ) : null}
 
@@ -646,6 +672,15 @@ function EditUserModal({
         </Field>
         <Field label="Nom *">
           <input name="lastName" required defaultValue={user.lastName} className={inputClass} />
+        </Field>
+        <Field label="Téléphone (optionnel)">
+          <input
+            name="phone"
+            type="tel"
+            defaultValue={user.phone ?? ""}
+            className={inputClass}
+            placeholder="Ex: +33 6 12 34 56 78"
+          />
         </Field>
         <Field label="E-mail (optionnel)">
           <input

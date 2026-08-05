@@ -58,14 +58,33 @@ export default function CompanyContractsClient({ initialContracts, students, tut
           </div>
           <div>
             <label className="text-[10px] uppercase font-bold text-slate-500 mb-1 block">Tuteur Entreprise</label>
-            <select required className="w-full rounded-xl border-slate-200 text-sm" value={form.tutorId} onChange={e => setForm({...form, tutorId: e.target.value})}>
+            <select
+              required
+              className="w-full rounded-xl border-slate-200 text-sm"
+              value={form.tutorId}
+              onChange={e => {
+                const selectedTutorId = e.target.value;
+                const tutorObj = tutors.find((t: any) => t.id === selectedTutorId);
+                setForm({
+                  ...form,
+                  tutorId: selectedTutorId,
+                  companyName: tutorObj?.company || ""
+                });
+              }}
+            >
               <option value="">-- Sélectionner le tuteur --</option>
               {tutors.map((t: any) => <option key={t.id} value={t.id}>{t.lastName} {t.firstName}</option>)}
             </select>
           </div>
           <div>
-            <label className="text-[10px] uppercase font-bold text-slate-500 mb-1 block">Nom de l'entreprise</label>
-            <input required type="text" className="w-full rounded-xl border-slate-200 text-sm" value={form.companyName} onChange={e => setForm({...form, companyName: e.target.value})} placeholder="Ex: Google France" />
+            <label className="text-[10px] uppercase font-bold text-slate-500 mb-1 block">Nom de l'entreprise (automatique)</label>
+            <input
+              readOnly
+              type="text"
+              className="w-full rounded-xl border border-slate-200 bg-slate-100 text-slate-500 font-medium cursor-not-allowed text-sm focus:ring-0 focus:border-slate-200"
+              value={form.companyName}
+              placeholder="Sélectionnez d'abord un tuteur"
+            />
           </div>
           <div>
             <label className="text-[10px] uppercase font-bold text-slate-500 mb-1 block">Type de contrat</label>

@@ -94,6 +94,8 @@ export async function createUser(input: {
   lastName: string;
   role: Role;
   classId?: string;
+  phone?: string;
+  company?: string;
 }): Promise<MutationResult> {
   const session = await requireAdmin();
   if (!session) return { ok: false, error: "Accès réservé aux administrateurs." };
@@ -110,34 +112,53 @@ export async function createUser(input: {
   if (!ADMIN_ROLES.includes(role)) {
     return { ok: false, error: "Rôle invalide." };
   }
-  if (role === Role.STUDENT && !input.classId?.trim()) {
-    return { ok: false, error: "Une classe est obligatoire pour un élève." };
-  }
-
   const passwordHash = await bcrypt.hash(password, 10);
   const fullName = `${firstName} ${lastName}`;
   const username = await generateUniqueUsername(firstName, lastName);
 
   try {
-    if (role === Role.STUDENT) {
-      const classe = await prisma.class.findUnique({
-        where: { id: input.classId!.trim() },
-      });
-      if (!classe) return { ok: false, error: "Classe introuvable." };
+    const phone = input.phone?.trim() || null;
+    const company = role === Role.COMPANY_TUTOR ? (input.company?.trim() || null) : null;
 
-      await prisma.user.create({
-        data: {
-          email,
-          username,
-          password: passwordHash,
-          role,
-          firstName,
-          lastName,
-          name: fullName,
-          class: { connect: { id: classe.id } }, // Important pour le planning élève
-          studentProfile: { create: { classId: classe.id } },
-        },
-      });
+    if (role === Role.STUDENT) {
+      const classId = input.classId?.trim() || null;
+      if (classId) {
+        const classe = await prisma.class.findUnique({
+          where: { id: classId },
+        });
+        if (!classe) return { ok: false, error: "Classe introuvable." };
+
+        await prisma.user.create({
+          data: {
+            email,
+            username,
+            password: passwordHash,
+            role,
+            firstName,
+            lastName,
+            name: fullName,
+            phone,
+            company,
+            class: { connect: { id: classe.id } }, // Important pour le planning élève
+            studentProfile: { create: { classId: classe.id } },
+          },
+        });
+      } else {
+        await prisma.user.create({
+          data: {
+            email,
+            username,
+            password: passwordHash,
+            role,
+            firstName,
+            lastName,
+            name: fullName,
+            phone,
+            company,
+            studentProfile: { create: { classId: null } },
+          },
+        });
+      }
     } else if (role === Role.TEACHER) {
       await prisma.user.create({
         data: {
@@ -148,6 +169,8 @@ export async function createUser(input: {
           firstName,
           lastName,
           name: fullName,
+          phone,
+          company,
           contract: { 
             create: { 
               hourlyRate: 0,
@@ -166,6 +189,8 @@ export async function createUser(input: {
           firstName,
           lastName,
           name: fullName,
+          phone,
+          company,
         },
       });
     }
@@ -189,6 +214,8 @@ export async function updateUser(input: {
   isActive: boolean;
   newPassword?: string;
   studentClassId?: string;
+  phone?: string;
+  company?: string;
 }): Promise<MutationResult> {
   const session = await requireAdmin();
   if (!session) return { ok: false, error: "Accès réservé aux administrateurs." };
@@ -202,6 +229,8 @@ export async function updateUser(input: {
     isActive,
     newPassword,
     studentClassId,
+    phone,
+    company,
   } = input;
 
   const email = emailRaw?.trim() ? emailRaw.trim().toLowerCase() : null;
@@ -269,14 +298,10 @@ export async function updateUser(input: {
 
   if (newRole === Role.STUDENT && !existing.studentProfile) {
     const cid = studentClassId?.trim();
-    if (!cid) {
-      return {
-        ok: false,
-        error: "Pour affecter le rôle Élève, sélectionnez une classe.",
-      };
+    if (cid) {
+      const classe = await prisma.class.findUnique({ where: { id: cid } });
+      if (!classe) return { ok: false, error: "Classe introuvable." };
     }
-    const classe = await prisma.class.findUnique({ where: { id: cid } });
-    if (!classe) return { ok: false, error: "Classe introuvable." };
   }
 
   const fullName = `${firstName} ${lastName}`;
@@ -289,6 +314,8 @@ export async function updateUser(input: {
     name: fullName,
     role: newRole,
     isActive,
+    phone: phone?.trim() || null,
+    company: newRole === Role.COMPANY_TUTOR ? (company?.trim() || null) : null,
   };
 
   if (newPassword?.trim()) {
@@ -307,10 +334,13 @@ export async function updateUser(input: {
 
   /** Passage sans profil → ÉLÈVE. */
   if (newRole === Role.STUDENT && !existing.studentProfile) {
+    const cid = studentClassId?.trim() || null;
     data.studentProfile = {
-      create: { classId: studentClassId!.trim() },
+      create: { classId: cid },
     };
-    data.class = { connect: { id: studentClassId!.trim() } };
+    if (cid) {
+      data.class = { connect: { id: cid } };
+    }
   }
 
   /** Professeur sans cours → autre rôle : retirer le profil Teacher. */
@@ -324,14 +354,15 @@ export async function updateUser(input: {
       data,
     });
 
-    /** Si élève existe : mettre à jour la classe uniquement lorsque reste STUDENT et fourni classId différent intention */
-    if (newRole === Role.STUDENT && existing.studentProfile && studentClassId?.trim()) {
+    /** Si élève existe : mettre à jour la classe quand le rôle est STUDENT */
+    if (newRole === Role.STUDENT && existing.studentProfile) {
+      const cid = studentClassId?.trim() || null;
       await prisma.user.update({
         where: { id: userId },
         data: { 
-          classId: studentClassId.trim(),
+          classId: cid,
           studentProfile: {
-            update: { classId: studentClassId.trim() }
+            update: { classId: cid }
           }
         },
       });

@@ -8,7 +8,18 @@ export async function POST(request: Request) {
   if (!session?.user || (session.user.role !== "ADMIN" && session.user.role !== "SUPER_ADMIN")) return NextResponse.json({ error: "Non autorisé" }, { status: 403 });
 
   try {
-    const { studentId, tutorId, companyName, type, startDate, endDate } = await request.json();
+    const { studentId, tutorId, type, startDate, endDate } = await request.json();
+
+    const tutor = await prisma.user.findUnique({
+      where: { id: tutorId },
+      select: { company: true }
+    });
+
+    if (!tutor) {
+      return NextResponse.json({ error: "Tuteur introuvable" }, { status: 400 });
+    }
+
+    const companyName = tutor.company || "Entreprise Inconnue";
 
     const contract = await prisma.companyContract.create({
       data: {

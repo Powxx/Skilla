@@ -107,6 +107,7 @@ model User {
   lastName  String?
 
   phone     String?
+  company   String? /// Entreprise (pour les employeurs)
   address   String?
   birthday  DateTime?
   createdAt DateTime  @default(now())
@@ -188,10 +189,10 @@ model User {
 
 /// Profil de l'étudiant (Relation 1-à-1 avec User).
 model StudentProfile {
-  id      String @id @default(cuid())
-  userId  String @unique
-  user    User   @relation(fields: [userId], references: [id])
-  classId String
+  id      String  @id @default(cuid())
+  userId  String  @unique
+  user    User    @relation(fields: [userId], references: [id])
+  classId String?
 }
 
 /// Disponibilités hebdomadaires déclarées par un enseignant.
