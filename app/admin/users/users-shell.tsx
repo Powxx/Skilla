@@ -413,6 +413,29 @@ export default function UsersShell(props: Props) {
               })}
           />
       ) : null}
+
+      {accessDocumentUser ? (
+        <AccessDocumentModal
+          user={accessDocumentUser}
+          pending={running}
+          onClose={() => setAccessDocumentUser(null)}
+          onUpdatePassword={async (newPassword) => {
+            const res = await updateUser({
+              userId: accessDocumentUser.id,
+              firstName: accessDocumentUser.firstName,
+              lastName: accessDocumentUser.lastName,
+              email: accessDocumentUser.email,
+              role: accessDocumentUser.role,
+              isActive: accessDocumentUser.isActive,
+              newPassword: newPassword,
+              studentClassId: accessDocumentUser.studentClass?.id || undefined
+            });
+            return res;
+          }}
+          roleOptions={ROLE_EDIT_OPTIONS}
+          setFlash={setFlash}
+        />
+      ) : null}
     </div>
   );
 }
@@ -850,6 +873,141 @@ function AdminPermissionsModal({
             className="px-6 py-2 bg-slate-900 text-white text-sm font-bold rounded-xl shadow-lg hover:bg-slate-800 transition disabled:opacity-50"
           >
             {pending ? "Enregistrement..." : "Sauvegarder"}
+          </button>
+        </div>
+      </div>
+    </DialogPortal>
+  );
+}
+
+function AccessDocumentModal({
+  user,
+  pending,
+  onClose,
+  onUpdatePassword,
+  roleOptions,
+  setFlash
+}: {
+  user: ListedUserRow;
+  pending: boolean;
+  onClose: () => void;
+  onUpdatePassword: (pass: string) => Promise<any>;
+  roleOptions: { value: string; label: string }[];
+  setFlash: (f: any) => void;
+}) {
+  const [updating, setUpdating] = useState(false);
+  const [pwdValue, setPwdValue] = useState("Skilla2026!");
+  const [shouldUpdateDb, setShouldUpdateDb] = useState(false);
+
+  const generatePassword = () => {
+    const chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#";
+    let pass = "";
+    for (let i = 0; i < 10; i++) {
+      pass += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    setPwdValue(pass);
+  };
+
+  const handleGenerateFile = async () => {
+    setUpdating(true);
+    try {
+      if (shouldUpdateDb) {
+        const res = await onUpdatePassword(pwdValue);
+        if (!res.ok) {
+          alert("Erreur lors de la mise à jour du mot de passe en base : " + res.error);
+          setUpdating(false);
+          return;
+        }
+        setFlash({ type: "ok", msg: "Mot de passe utilisateur mis à jour avec succès." });
+      }
+
+      // Generate TXT file
+      const roleLabel = roleOptions.find(r => r.value === user.role)?.label ?? user.role;
+      const fileContent = `==================================================
+FICHE D'ACCÈS DE L'UTILISATEUR - SKILLA
+==================================================
+Nom Complet  : ${user.lastName} ${user.firstName}
+Rôle         : ${roleLabel}
+Identifiant  : ${user.username}
+Adresse Mail : ${user.email || "Non spécifiée"}
+Mot de passe : ${pwdValue}
+
+Lien d'accès : ${window.location.origin}/login
+==================================================
+Conservez ces identifiants de manière sécurisée.
+`;
+      
+      const blob = new Blob([fileContent], { type: 'text/plain;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.setAttribute("href", url);
+      link.setAttribute("download", `acces_${user.username}.txt`);
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      onClose();
+    } catch (e) {
+      console.error(e);
+      alert("Une erreur est survenue lors de la génération.");
+    } finally {
+      setUpdating(false);
+    }
+  };
+
+  const roleLabel = roleOptions.find(r => r.value === user.role)?.label ?? user.role;
+
+  return (
+    <DialogPortal title="Fiche d'Accès Utilisateur" subtitle={`${user.lastName} ${user.firstName}`} onClose={onClose}>
+      <div className="p-6 space-y-4">
+        <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 space-y-2">
+          <p className="text-xs text-slate-600"><strong>Identifiant (Username) :</strong> <code className="bg-slate-200 px-1 rounded">{user.username}</code></p>
+          <p className="text-xs text-slate-600"><strong>Email :</strong> {user.email || "Non défini"}</p>
+          <p className="text-xs text-slate-600"><strong>Rôle :</strong> {roleLabel}</p>
+        </div>
+
+        <div className="space-y-2">
+          <label className="block text-xs font-medium text-slate-700">Mot de passe à insérer dans le fichier :</label>
+          <div className="flex gap-2">
+            <input 
+              type="text" 
+              value={pwdValue} 
+              onChange={(e) => setPwdValue(e.target.value)}
+              className="flex-1 rounded-xl border border-slate-200 px-3 py-2.5 text-xs outline-none focus:border-sky-600 focus:ring-2 focus:ring-sky-600/20"
+              placeholder="Mot de passe"
+            />
+            <button
+              type="button"
+              onClick={generatePassword}
+              className="px-3 py-2 bg-slate-100 text-slate-700 rounded-xl text-xs font-bold hover:bg-slate-200 transition"
+            >
+              Générer
+            </button>
+          </div>
+          <p className="text-[10px] text-slate-400">Note : Pour des raisons de sécurité, le mot de passe actuel n'est pas lisible en clair.</p>
+        </div>
+
+        <div className="flex items-center gap-2 py-2">
+          <input 
+            type="checkbox" 
+            id="update-db-password"
+            checked={shouldUpdateDb}
+            onChange={(e) => setShouldUpdateDb(e.target.checked)}
+            className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-600 cursor-pointer"
+          />
+          <label htmlFor="update-db-password" className="text-xs font-medium text-slate-700 cursor-pointer select-none">
+            Mettre à jour le mot de passe du compte en base avec cette valeur
+          </label>
+        </div>
+
+        <div className="mt-6 flex justify-end gap-2 border-t border-slate-100 pt-4">
+          <button onClick={onClose} className="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50 rounded-xl transition">Annuler</button>
+          <button 
+            disabled={updating || pending}
+            onClick={handleGenerateFile}
+            className="px-6 py-2 bg-blue-600 text-white text-sm font-bold rounded-xl shadow-lg hover:bg-blue-700 transition disabled:opacity-50"
+          >
+            {updating ? "Enregistrement..." : "Générer la Fiche TXT"}
           </button>
         </div>
       </div>

@@ -35,7 +35,7 @@ export default async function AdminPlanningPage() {
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900">
-      <div className="mx-auto max-w-[1600px] px-4 py-8 sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-[1850px] px-4 py-8 sm:px-6 lg:px-8">
         <nav className="mb-8 text-sm text-slate-500">
           <Link href="/" className="font-medium hover:text-slate-700">Accueil</Link>
           <span aria-hidden className="mx-2 text-slate-300">/</span>

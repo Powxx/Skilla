@@ -8,6 +8,8 @@ import frLocale from '@fullcalendar/core/locales/fr';
 import { startOfWeek, format, isWithinInterval, parseISO, endOfWeek, addWeeks, setHours, setMinutes, isSameDay } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { massDeleteLessons, massDuplicateLessons } from '@/app/actions/planning-mass-actions';
+import html2canvas from 'html2canvas';
+import jsPDF from 'jspdf';
 
 interface AdvancedPlanningClientProps {
   classes: { id: string; name: string }[];
@@ -38,6 +40,8 @@ export default function AdvancedPlanningClient({ classes, teachers, subjects, ro
 
   // Middle Column: Calendar state
   const calendarRef = useRef<FullCalendar>(null);
+  const calendarContainerRef = useRef<HTMLDivElement>(null);
+  const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
   const [currentDate, setCurrentDate] = useState(new Date());
   const [events, setEvents] = useState<any[]>([]);
   const [holidays, setHolidays] = useState<any[]>([]);
@@ -80,6 +84,39 @@ export default function AdvancedPlanningClient({ classes, teachers, subjects, ro
       if (Array.isArray(data)) setHolidays(data);
     } catch (err) {
       console.error("Erreur holidays:", err);
+    }
+  };
+
+  const handleExportPDF = async () => {
+    if (!calendarContainerRef.current) return;
+    setIsGeneratingPdf(true);
+
+    try {
+      const headerToolbar = calendarContainerRef.current.querySelector('.fc-header-toolbar') as HTMLElement;
+      if (headerToolbar) headerToolbar.style.display = 'none';
+
+      const canvas = await html2canvas(calendarContainerRef.current, {
+        scale: 2,
+        useCORS: true,
+        logging: false,
+        backgroundColor: "#ffffff"
+      });
+
+      if (headerToolbar) headerToolbar.style.display = '';
+
+      const imgData = canvas.toDataURL("image/png");
+      const pdf = new jsPDF({
+        orientation: "landscape",
+        unit: "px",
+        format: [canvas.width, canvas.height]
+      });
+
+      pdf.addImage(imgData, "PNG", 0, 0, canvas.width, canvas.height);
+      pdf.save(`emploi-du-temps-admin-${new Date().toISOString().split('T')[0]}.pdf`);
+    } catch (error) {
+      console.error("Erreur PDF:", error);
+    } finally {
+      setIsGeneratingPdf(false);
     }
   };
 
@@ -295,16 +332,19 @@ export default function AdvancedPlanningClient({ classes, teachers, subjects, ro
       const recurrenceId = occurrences > 1 ? `rec_${crypto.randomUUID()}` : null;
 
       const creations = [];
-      
-      for (let i = 0; i < occurrences; i++) {
+      let weeksAdded = 0;
+      let createdCount = 0;
+
+      while (createdCount < occurrences) {
         const nextStart = new Date(start);
-        nextStart.setDate(start.getDate() + (i * intervalWeeks * 7));
+        nextStart.setDate(start.getDate() + (weeksAdded * intervalWeeks * 7));
         const nextEnd = new Date(end);
-        nextEnd.setDate(end.getDate() + (i * intervalWeeks * 7));
+        nextEnd.setDate(end.getDate() + (weeksAdded * intervalWeeks * 7));
 
         if (occurrences > 1) {
            const isHoliday = holidays.some(h => isSameDay(typeof h.date === 'string' ? parseISO(h.date) : new Date(h.date), nextStart));
            if (isHoliday) {
+               weeksAdded++;
                continue;
            }
         }
@@ -312,7 +352,7 @@ export default function AdvancedPlanningClient({ classes, teachers, subjects, ro
         const conflictError = checkConflicts(nextStart, nextEnd, props.teacherId, props.classId, props.roomId, undefined, occurrences > 1);
         if (conflictError) {
           info.revert();
-          setErrorMsg(`Conflit à l'occurrence ${i + 1} (${format(nextStart, 'dd/MM')}): ${conflictError}`);
+          setErrorMsg(`Conflit à l'occurrence ${createdCount + 1} (${format(nextStart, 'dd/MM')}): ${conflictError}`);
           setTimeout(() => setErrorMsg(""), 5000);
           setLoading(false);
           return;
@@ -330,6 +370,9 @@ export default function AdvancedPlanningClient({ classes, teachers, subjects, ro
           customTeacher: props.customTeacher || null,
           recurrenceId: recurrenceId
         });
+
+        createdCount++;
+        weeksAdded++;
       }
 
       // We could batch this, but for now let's just loop or update API to handle multiple
@@ -557,7 +600,7 @@ export default function AdvancedPlanningClient({ classes, teachers, subjects, ro
   const isConfigComplete = config.classId && (config.isFree ? (config.customSubject && config.customTeacher) : (config.teacherId && config.subjectId));
 
   return (
-    <div className="h-full flex flex-col lg:flex-row gap-4 items-stretch min-h-0 font-sans text-slate-900">
+    <div className="h-[820px] flex flex-col lg:flex-row gap-4 items-stretch min-h-0 font-sans text-slate-900">
       
       {/* LEFT COLUMN: Config & Draggable (4 cols equivalent) */}
       <div className="w-full lg:w-64 shrink-0 bg-white border border-slate-200 rounded-2xl shadow-sm flex flex-col min-h-0 overflow-hidden">
@@ -749,28 +792,40 @@ export default function AdvancedPlanningClient({ classes, teachers, subjects, ro
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
-            <span className="text-[10px] font-black text-slate-900 uppercase tracking-widest">Aller à la date :</span>
-            <input 
-              type="date"
-              className="text-[10px] font-black uppercase tracking-widest rounded-xl border-slate-200 py-1 px-2 focus:ring-blue-500/20 bg-white border"
-              value={format(currentDate, 'yyyy-MM-dd')}
-              onChange={(e) => {
-                const val = e.target.value;
-                if (val) {
-                  const date = parseISO(val);
-                  setCurrentDate(date);
-                  const calendarApi = calendarRef.current?.getApi();
-                  if (calendarApi) {
-                    calendarApi.gotoDate(date);
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] font-black text-slate-900 uppercase tracking-widest">Aller à la date :</span>
+              <input 
+                type="date"
+                className="text-[10px] font-black uppercase tracking-widest rounded-xl border-slate-200 py-1 px-2 focus:ring-blue-500/20 bg-white border"
+                value={format(currentDate, 'yyyy-MM-dd')}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  if (val) {
+                    const date = parseISO(val);
+                    setCurrentDate(date);
+                    const calendarApi = calendarRef.current?.getApi();
+                    if (calendarApi) {
+                      calendarApi.gotoDate(date);
+                    }
                   }
-                }
-              }}
-            />
+                }}
+              />
+            </div>
+            <button 
+              onClick={handleExportPDF}
+              disabled={isGeneratingPdf}
+              className="text-[10px] font-black uppercase tracking-widest px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl shadow transition flex items-center gap-1.5 disabled:opacity-50"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-3.5 h-3.5">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
+              </svg>
+              {isGeneratingPdf ? "PDF..." : "Exporter PDF"}
+            </button>
           </div>
         </div>
 
-        <div className="flex-1 p-2 overflow-hidden min-h-0" id="calendar-container">
+        <div ref={calendarContainerRef} className="flex-1 p-2 overflow-hidden min-h-0" id="calendar-container">
           <FullCalendar
             ref={calendarRef}
             plugins={[timeGridPlugin, interactionPlugin]}
