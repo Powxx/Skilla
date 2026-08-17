@@ -147,6 +147,57 @@ function runTests() {
     throw new Error("Test 4 échoué : les heures des classes sont incorrectes.");
   }
 
+  // Test 5 : Fusion d'un cours de 2h et un cours de 1h simultané (imbriqué)
+  console.log("\nTest 5: Fusion d'un cours de 2h et un cours de 1h simultané");
+  const mockEvents2 = [
+    {
+      start: "2026-09-07T09:00:00.000Z",
+      end: "2026-09-07T11:00:00.000Z",
+      extendedProps: { teacher: "M. Martin", class: "Classe A" }
+    },
+    {
+      start: "2026-09-07T09:00:00.000Z",
+      end: "2026-09-07T10:00:00.000Z",
+      extendedProps: { teacher: "M. Martin", class: "Classe B" }
+    }
+  ];
+
+  const testStats2: any = { teachers: {}, classes: {} };
+  const teacherIntervals2: { [key: string]: { start: number; end: number }[] } = {};
+
+  mockEvents2.forEach(e => {
+    const tName = e.extendedProps.teacher;
+    const start = new Date(e.start).getTime();
+    const end = new Date(e.end).getTime();
+    if (!teacherIntervals2[tName]) teacherIntervals2[tName] = [];
+    teacherIntervals2[tName].push({ start, end });
+
+    const cName = e.extendedProps.class;
+    if (!testStats2.classes[cName]) testStats2.classes[cName] = 0;
+    testStats2.classes[cName] += (end - start) / (1000 * 60 * 60);
+  });
+
+  for (const tName in teacherIntervals2) {
+    const intervals = teacherIntervals2[tName];
+    intervals.sort((a, b) => a.start - b.start);
+    const merged = [intervals[0]];
+    for (let i = 1; i < intervals.length; i++) {
+      const current = intervals[i];
+      const last = merged[merged.length - 1];
+      if (current.start < last.end) {
+        last.end = Math.max(last.end, current.end);
+      } else {
+        merged.push(current);
+      }
+    }
+    testStats2.teachers[tName] = merged.reduce((acc, curr) => acc + (curr.end - curr.start), 0) / (1000 * 60 * 60);
+  }
+
+  console.log(`  - Heures M. Martin : ${testStats2.teachers["M. Martin"]}h (Attendu : 2h)`);
+  if (testStats2.teachers["M. Martin"] !== 2) {
+    throw new Error("Test 5 échoué : un cours imbriqué plus court n'a pas été fusionné correctement.");
+  }
+
   console.log("\n>>> TOUS LES TESTS SONT AU VERT ! <<<");
 }
 
