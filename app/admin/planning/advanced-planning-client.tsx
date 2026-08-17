@@ -7,7 +7,7 @@ import interactionPlugin, { Draggable } from '@fullcalendar/interaction';
 import frLocale from '@fullcalendar/core/locales/fr';
 import { startOfWeek, format, isWithinInterval, parseISO, endOfWeek, addWeeks, setHours, setMinutes, isSameDay } from 'date-fns';
 import { fr } from 'date-fns/locale';
-import { massDeleteLessons, massDuplicateLessons } from '@/app/actions/planning-mass-actions';
+import { massDeleteLessons, massDuplicateLessons, getLessonsForTimeframe } from '@/app/actions/planning-mass-actions';
 import html2canvas from 'html2canvas-pro';
 import jsPDF from 'jspdf';
 
@@ -293,62 +293,46 @@ export default function AdvancedPlanningClient({ classes, teachers, subjects, ro
     const end = event.end;
     const props = event.extendedProps;
 
-    // Détection de cours "groupable"
-    const groupableEvent = getGroupableEvent(start, end, props.teacherId, props.subjectId);
-    if (groupableEvent) {
+    const occurrences = config.periodicity === "none" ? 1 : config.occurrences;
+
+    // 1. Détection de cours "groupable" au premier créneau
+    const firstGroupableEvent = getGroupableEvent(start, end, props.teacherId, props.subjectId);
+    let shouldGroup = false;
+
+    if (firstGroupableEvent) {
       if (confirm(`Ce professeur donne déjà cours à une autre classe sur la même matière à ce créneau. Voulez-vous regrouper les classes ?`)) {
-        // Créer un groupe ou ajouter à un groupe existant
-        const groupId = groupableEvent.extendedProps.groupId || crypto.randomUUID();
-        
-        // Mettre à jour l'événement existant avec le groupId s'il n'en avait pas
-        if (!groupableEvent.extendedProps.groupId) {
-             await fetch("/api/lessons", {
-                 method: "PUT",
-                 headers: { "Content-Type": "application/json" },
-                 body: JSON.stringify({ id: groupableEvent.id, groupId: groupId })
-             });
-        }
-        
-        // Créer le nouveau cours lié au même groupe
-        await fetch("/api/lessons", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            startTime: start.toISOString(),
-            endTime: end.toISOString(),
-            subjectId: props.subjectId,
-            teacherId: props.teacherId,
-            classId: props.classId,
-            roomId: props.roomId || null,
-            groupId: groupId
-          })
-        });
-        
-        fetchLessons(currentDate);
+        shouldGroup = true;
+      } else {
         info.revert();
         return;
       }
     }
-
-    const occurrences = config.periodicity === "none" ? 1 : config.occurrences;
-
-    // Vérification de conflits standard
-    const conflictError = checkConflicts(start, end, props.teacherId, props.classId, props.roomId, undefined, occurrences > 1);
-
-    if (conflictError) {
-      info.revert();
-      setErrorMsg(conflictError);
-      setTimeout(() => setErrorMsg(""), 5000);
-      return;
-    }
-    // ... reste de la logique
 
     setLoading(true);
     try {
       const intervalWeeks = config.periodicity === "weekly" ? 1 : (config.periodicity === "1/4" ? 4 : 1);
       const recurrenceId = occurrences > 1 ? `rec_${crypto.randomUUID()}` : null;
 
+      // Récupérer à l'avance les cours du prof pour la période concernée afin de pouvoir 
+      // détecter les cours groupables sur les semaines futures de la récurrence.
+      let existingLessons: any[] = [];
+      if (shouldGroup) {
+        const maxWeeks = occurrences * intervalWeeks + 4;
+        const maxEndDate = new Date(start);
+        maxEndDate.setDate(start.getDate() + (maxWeeks * 7));
+        
+        try {
+          const fetched = await getLessonsForTimeframe(props.teacherId, start.toISOString(), maxEndDate.toISOString());
+          if (Array.isArray(fetched)) {
+            existingLessons = fetched;
+          }
+        } catch (e) {
+          console.error("Erreur récupération cours prof:", e);
+        }
+      }
+
       const creations = [];
+      const updates = [];
       let weeksAdded = 0;
       let createdCount = 0;
 
@@ -366,7 +350,38 @@ export default function AdvancedPlanningClient({ classes, teachers, subjects, ro
            }
         }
 
-        const conflictError = checkConflicts(nextStart, nextEnd, props.teacherId, props.classId, props.roomId, undefined, occurrences > 1);
+        // Trouver si un cours existant doit être groupé à cette date
+        let occurrenceGroupId: string | null = null;
+        if (shouldGroup) {
+          const match = existingLessons.find(el => {
+            const elStart = new Date(el.startTime);
+            const elEnd = new Date(el.endTime);
+            const overlaps = (nextStart < elEnd && nextEnd > elStart);
+            return overlaps && el.subjectId === props.subjectId;
+          });
+          
+          if (match) {
+            occurrenceGroupId = match.groupId || crypto.randomUUID();
+            if (match.groupId !== occurrenceGroupId) {
+              updates.push({
+                id: match.id,
+                groupId: occurrenceGroupId
+              });
+            }
+          }
+        }
+
+        const conflictError = checkConflicts(
+          nextStart,
+          nextEnd,
+          props.teacherId,
+          props.classId,
+          props.roomId,
+          undefined,
+          occurrences > 1,
+          occurrenceGroupId
+        );
+
         if (conflictError) {
           info.revert();
           setErrorMsg(`Conflit à l'occurrence ${createdCount + 1} (${format(nextStart, 'dd/MM')}): ${conflictError}`);
@@ -385,15 +400,26 @@ export default function AdvancedPlanningClient({ classes, teachers, subjects, ro
           isFreeLesson: props.isFreeLesson || false,
           customSubject: props.customSubject || null,
           customTeacher: props.customTeacher || null,
-          recurrenceId: recurrenceId
+          recurrenceId: recurrenceId,
+          groupId: occurrenceGroupId
         });
 
         createdCount++;
         weeksAdded++;
       }
 
-      // We could batch this, but for now let's just loop or update API to handle multiple
-      // For simplicity and to avoid API changes now, let's just do them sequentially or promise.all
+      // 1. Mettre à jour les groupId existants
+      if (updates.length > 0) {
+        await Promise.all(updates.map(payload => 
+          fetch("/api/lessons", {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
+          })
+        ));
+      }
+
+      // 2. Créer les nouveaux cours
       await Promise.all(creations.map(payload => 
         fetch("/api/lessons", {
           method: "POST",

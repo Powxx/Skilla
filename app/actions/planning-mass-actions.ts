@@ -124,3 +124,35 @@ export async function massDuplicateLessons(
   revalidatePath("/admin/planning");
   return { success: true, duplicatedLessons: creations.length };
 }
+
+export async function getLessonsForTimeframe(teacherId: string, startStr: string, endStr: string) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user || (session.user.role !== "ADMIN" && session.user.role !== "SUPER_ADMIN")) {
+    throw new Error("Non autorisé");
+  }
+
+  const start = new Date(startStr);
+  const end = new Date(endStr);
+
+  const lessons = await prisma.lesson.findMany({
+    where: {
+      teacherId,
+      startTime: {
+        gte: start,
+      },
+      endTime: {
+        lte: end,
+      },
+    },
+    select: {
+      id: true,
+      startTime: true,
+      endTime: true,
+      subjectId: true,
+      groupId: true,
+      classId: true,
+    }
+  });
+
+  return lessons;
+}
