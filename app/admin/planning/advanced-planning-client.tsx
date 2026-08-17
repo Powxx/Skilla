@@ -569,30 +569,69 @@ export default function AdvancedPlanningClient({ classes, teachers, subjects, ro
   const calculateStats = () => {
     const stats: any = { teachers: {}, classes: {} };
     
-    // Use a Set to track processed group IDs to avoid double counting
-    const processedGroups = new Set();
-    
+    // 1. Calculer les heures par classe (somme simple)
     events.forEach(e => {
-      // Check if this event is part of a group
-      const groupId = e.extendedProps.groupId;
-      if (groupId) {
-          if (processedGroups.has(groupId)) return;
-          processedGroups.add(groupId);
-      }
+      if (e.extendedProps?.type === 'break' || e.extendedProps?.type === 'holiday' || e.extendedProps?.type === 'holiday-label') return;
       
-      const start = parseISO(e.start);
-      const end = parseISO(e.end);
+      const start = typeof e.start === 'string' ? parseISO(e.start) : new Date(e.start);
+      const end = typeof e.end === 'string' ? parseISO(e.end) : new Date(e.end);
       const durationHours = (end.getTime() - start.getTime()) / (1000 * 60 * 60);
 
-      const tName = e.extendedProps.teacher;
-      const cName = e.extendedProps.class;
-
-      if (!stats.teachers[tName]) stats.teachers[tName] = 0;
-      stats.teachers[tName] += durationHours;
-
-      if (!stats.classes[cName]) stats.classes[cName] = 0;
-      stats.classes[cName] += durationHours;
+      const cName = e.extendedProps?.class;
+      if (cName) {
+        if (!stats.classes[cName]) stats.classes[cName] = 0;
+        stats.classes[cName] += durationHours;
+      }
     });
+
+    // 2. Calculer les heures par professeur (fusion des créneaux chevauchants / simultanés)
+    const teacherIntervals: { [key: string]: { start: number; end: number }[] } = {};
+    
+    events.forEach(e => {
+      if (e.extendedProps?.type === 'break' || e.extendedProps?.type === 'holiday' || e.extendedProps?.type === 'holiday-label') return;
+      
+      const tName = e.extendedProps?.teacher;
+      if (!tName) return;
+
+      const start = typeof e.start === 'string' ? parseISO(e.start).getTime() : new Date(e.start).getTime();
+      const end = typeof e.end === 'string' ? parseISO(e.end).getTime() : new Date(e.end).getTime();
+
+      if (!teacherIntervals[tName]) {
+        teacherIntervals[tName] = [];
+      }
+      teacherIntervals[tName].push({ start, end });
+    });
+
+    for (const tName in teacherIntervals) {
+      const intervals = teacherIntervals[tName];
+      if (intervals.length === 0) {
+        stats.teachers[tName] = 0;
+        continue;
+      }
+
+      // Trier par heure de début
+      intervals.sort((a, b) => a.start - b.start);
+
+      // Fusionner les créneaux chevauchants
+      const merged: { start: number; end: number }[] = [intervals[0]];
+      for (let i = 1; i < intervals.length; i++) {
+        const current = intervals[i];
+        const last = merged[merged.length - 1];
+
+        if (current.start < last.end) {
+          // Chevauchement -> fusionner en étendant l'heure de fin si nécessaire
+          last.end = Math.max(last.end, current.end);
+        } else {
+          // Pas de chevauchement
+          merged.push(current);
+        }
+      }
+
+      // Convertir en heures totales
+      const totalMs = merged.reduce((acc, curr) => acc + (curr.end - curr.start), 0);
+      stats.teachers[tName] = totalMs / (1000 * 60 * 60);
+    }
+
     return stats;
   };
   const stats = calculateStats();

@@ -85,6 +85,68 @@ function runTests() {
     throw new Error("Test 3 échoué : Le jour férié n'a pas été sauté ou décalé correctement");
   }
 
+  // Test 4 : Fusion des heures de professeurs chevauchantes
+  console.log("\nTest 4: Fusion des heures de profs (2 cours de 2h simultanés + 1 cours de 1.5h)");
+  const mockEvents = [
+    {
+      start: "2026-09-07T09:00:00.000Z",
+      end: "2026-09-07T11:00:00.000Z",
+      extendedProps: { teacher: "M. Dupont", class: "Classe A" }
+    },
+    {
+      start: "2026-09-07T09:00:00.000Z",
+      end: "2026-09-07T11:00:00.000Z",
+      extendedProps: { teacher: "M. Dupont", class: "Classe B" }
+    },
+    {
+      start: "2026-09-07T14:00:00.000Z",
+      end: "2026-09-07T15:30:00.000Z",
+      extendedProps: { teacher: "M. Dupont", class: "Classe A" }
+    }
+  ];
+
+  const testStats: any = { teachers: {}, classes: {} };
+  const teacherIntervals: { [key: string]: { start: number; end: number }[] } = {};
+
+  mockEvents.forEach(e => {
+    const tName = e.extendedProps.teacher;
+    const start = new Date(e.start).getTime();
+    const end = new Date(e.end).getTime();
+    if (!teacherIntervals[tName]) teacherIntervals[tName] = [];
+    teacherIntervals[tName].push({ start, end });
+
+    const cName = e.extendedProps.class;
+    if (!testStats.classes[cName]) testStats.classes[cName] = 0;
+    testStats.classes[cName] += (end - start) / (1000 * 60 * 60);
+  });
+
+  for (const tName in teacherIntervals) {
+    const intervals = teacherIntervals[tName];
+    intervals.sort((a, b) => a.start - b.start);
+    const merged = [intervals[0]];
+    for (let i = 1; i < intervals.length; i++) {
+      const current = intervals[i];
+      const last = merged[merged.length - 1];
+      if (current.start < last.end) {
+        last.end = Math.max(last.end, current.end);
+      } else {
+        merged.push(current);
+      }
+    }
+    testStats.teachers[tName] = merged.reduce((acc, curr) => acc + (curr.end - curr.start), 0) / (1000 * 60 * 60);
+  }
+
+  console.log(`  - Heures M. Dupont : ${testStats.teachers["M. Dupont"]}h (Attendu : 3.5h)`);
+  console.log(`  - Heures Classe A : ${testStats.classes["Classe A"]}h (Attendu : 3.5h)`);
+  console.log(`  - Heures Classe B : ${testStats.classes["Classe B"]}h (Attendu : 2h)`);
+
+  if (testStats.teachers["M. Dupont"] !== 3.5) {
+    throw new Error("Test 4 échoué : les heures du prof n'ont pas été fusionnées correctement.");
+  }
+  if (testStats.classes["Classe A"] !== 3.5 || testStats.classes["Classe B"] !== 2) {
+    throw new Error("Test 4 échoué : les heures des classes sont incorrectes.");
+  }
+
   console.log("\n>>> TOUS LES TESTS SONT AU VERT ! <<<");
 }
 
