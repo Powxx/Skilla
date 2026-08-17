@@ -238,7 +238,8 @@ export default function AdvancedPlanningClient({ classes, teachers, subjects, ro
     roomId: string, 
     excludeEventId?: string, 
     ignoreHoliday = false,
-    groupId?: string | null
+    groupId?: string | null,
+    subjectId?: string | null
   ) => {
     // Check holidays
     if (!ignoreHoliday) {
@@ -261,7 +262,11 @@ export default function AdvancedPlanningClient({ classes, teachers, subjects, ro
       
       if (overlaps) {
         // Ignorer les conflits prof/salle si les deux cours appartiennent au même groupe
-        if (groupId && event.extendedProps.groupId === groupId) {
+        // OU si on a la même matière et le même professeur (regroupement en cours)
+        const isSameGroup = groupId && event.extendedProps.groupId === groupId;
+        const isGroupingSameSubject = groupId && event.extendedProps.teacherId === teacherId && event.extendedProps.subjectId === subjectId;
+
+        if (isSameGroup || isGroupingSameSubject) {
           if (event.extendedProps.classId === classId) {
             return `La classe a déjà cours à cet horaire.`;
           }
@@ -276,14 +281,15 @@ export default function AdvancedPlanningClient({ classes, teachers, subjects, ro
     return null; // No conflict
   };
 
-  const getGroupableEvent = (start: Date, end: Date, teacherId: string, subjectId: string) => {
+  const getGroupableEvent = (start: Date, end: Date, teacherId: string, subjectId: string, excludeGroupId?: string | null) => {
     return events.find(event => {
       const eStart = parseISO(event.start);
       const eEnd = parseISO(event.end);
       const overlaps = (start < eEnd && end > eStart);
       return overlaps && 
              event.extendedProps.teacherId === teacherId && 
-             event.extendedProps.subjectId === subjectId;
+             event.extendedProps.subjectId === subjectId &&
+             (!excludeGroupId || event.extendedProps.groupId !== excludeGroupId);
     });
   };
 
@@ -379,7 +385,8 @@ export default function AdvancedPlanningClient({ classes, teachers, subjects, ro
           props.roomId,
           undefined,
           occurrences > 1,
-          occurrenceGroupId
+          occurrenceGroupId,
+          props.subjectId
         );
 
         if (conflictError) {
@@ -445,7 +452,7 @@ export default function AdvancedPlanningClient({ classes, teachers, subjects, ro
     const props = event.extendedProps;
 
     // Détection de cours "groupable" pour le déplacement
-    const groupableEvent = getGroupableEvent(start, end, props.teacherId, props.subjectId);
+    const groupableEvent = getGroupableEvent(start, end, props.teacherId, props.subjectId, props.groupId);
     if (groupableEvent && groupableEvent.id !== event.id) {
       if (confirm(`Ce professeur donne déjà cours à une autre classe sur la même matière à ce créneau. Voulez-vous regrouper les classes ?`)) {
         setLoading(true);
@@ -497,7 +504,7 @@ export default function AdvancedPlanningClient({ classes, teachers, subjects, ro
     }
 
     // Sinon, comportement standard (en passant le groupId pour ignorer les faux conflits)
-    const conflictError = checkConflicts(start, end, props.teacherId, props.classId, props.roomId, event.id, false, props.groupId);
+    const conflictError = checkConflicts(start, end, props.teacherId, props.classId, props.roomId, event.id, false, props.groupId, props.subjectId);
     
     if (conflictError) {
       revert();
