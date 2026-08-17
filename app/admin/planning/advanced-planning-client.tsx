@@ -487,8 +487,9 @@ export default function AdvancedPlanningClient({ classes, teachers, subjects, ro
             fetchLessons(currentDate);
             return;
           } else {
+            const errorData = await res.json().catch(() => ({}));
             revert();
-            setErrorMsg("Erreur lors du regroupement.");
+            setErrorMsg(errorData.error || "Erreur lors du regroupement.");
             setTimeout(() => setErrorMsg(""), 5000);
             return;
           }
@@ -537,8 +538,9 @@ export default function AdvancedPlanningClient({ classes, teachers, subjects, ro
       });
       
       if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
         revert();
-        setErrorMsg("Erreur lors de la modification.");
+        setErrorMsg(errorData.error || "Erreur lors de la modification.");
         setTimeout(() => setErrorMsg(""), 5000);
       } else {
         fetchLessons(currentDate);

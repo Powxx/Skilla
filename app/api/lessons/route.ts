@@ -221,7 +221,7 @@ export async function PUT(request: Request) {
       return NextResponse.json(updatedLesson);
     }
 
-    if (session.user.role !== "ADMIN") {
+    if (session.user.role !== "ADMIN" && session.user.role !== "SUPER_ADMIN") {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
