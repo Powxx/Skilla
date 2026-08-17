@@ -8,7 +8,7 @@ import frLocale from '@fullcalendar/core/locales/fr';
 import { startOfWeek, format, isWithinInterval, parseISO, endOfWeek, addWeeks, setHours, setMinutes, isSameDay } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { massDeleteLessons, massDuplicateLessons } from '@/app/actions/planning-mass-actions';
-import html2canvas from 'html2canvas';
+import html2canvas from 'html2canvas-pro';
 import jsPDF from 'jspdf';
 
 interface AdvancedPlanningClientProps {
