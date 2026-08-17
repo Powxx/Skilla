@@ -230,7 +230,16 @@ export default function AdvancedPlanningClient({ classes, teachers, subjects, ro
   }, [currentDate]);
 
   // Conflict Checking logic
-  const checkConflicts = (start: Date, end: Date, teacherId: string, classId: string, roomId: string, excludeEventId?: string, ignoreHoliday = false) => {
+  const checkConflicts = (
+    start: Date, 
+    end: Date, 
+    teacherId: string, 
+    classId: string, 
+    roomId: string, 
+    excludeEventId?: string, 
+    ignoreHoliday = false,
+    groupId?: string | null
+  ) => {
     // Check holidays
     if (!ignoreHoliday) {
       const isHoliday = holidays.some(h => isSameDay(typeof h.date === 'string' ? parseISO(h.date) : new Date(h.date), start));
@@ -251,6 +260,14 @@ export default function AdvancedPlanningClient({ classes, teachers, subjects, ro
       const overlaps = (start < eventEnd && end > eventStart);
       
       if (overlaps) {
+        // Ignorer les conflits prof/salle si les deux cours appartiennent au même groupe
+        if (groupId && event.extendedProps.groupId === groupId) {
+          if (event.extendedProps.classId === classId) {
+            return `La classe a déjà cours à cet horaire.`;
+          }
+          continue;
+        }
+
         if (event.extendedProps.teacherId === teacherId) return `Le professeur est déjà pris à cet horaire.`;
         if (event.extendedProps.classId === classId) return `La classe a déjà cours à cet horaire.`;
         if (roomId && event.extendedProps.roomId === roomId) return `La salle est déjà occupée à cet horaire.`;
@@ -259,7 +276,6 @@ export default function AdvancedPlanningClient({ classes, teachers, subjects, ro
     return null; // No conflict
   };
 
-  // 1. Détection de conflits (existant) + Détection de cours "groupables"
   const getGroupableEvent = (start: Date, end: Date, teacherId: string, subjectId: string) => {
     return events.find(event => {
       const eStart = parseISO(event.start);
@@ -287,9 +303,9 @@ export default function AdvancedPlanningClient({ classes, teachers, subjects, ro
         // Mettre à jour l'événement existant avec le groupId s'il n'en avait pas
         if (!groupableEvent.extendedProps.groupId) {
              await fetch("/api/lessons", {
-                method: "PUT",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ id: groupableEvent.id, groupId: groupId })
+                 method: "PUT",
+                 headers: { "Content-Type": "application/json" },
+                 body: JSON.stringify({ id: groupableEvent.id, groupId: groupId })
              });
         }
         
@@ -309,6 +325,7 @@ export default function AdvancedPlanningClient({ classes, teachers, subjects, ro
         });
         
         fetchLessons(currentDate);
+        info.revert();
         return;
       }
     }
@@ -401,7 +418,60 @@ export default function AdvancedPlanningClient({ classes, teachers, subjects, ro
     const end = event.end;
     const props = event.extendedProps;
 
-    const conflictError = checkConflicts(start, end, props.teacherId, props.classId, props.roomId, event.id);
+    // Détection de cours "groupable" pour le déplacement
+    const groupableEvent = getGroupableEvent(start, end, props.teacherId, props.subjectId);
+    if (groupableEvent && groupableEvent.id !== event.id) {
+      if (confirm(`Ce professeur donne déjà cours à une autre classe sur la même matière à ce créneau. Voulez-vous regrouper les classes ?`)) {
+        setLoading(true);
+        try {
+          const groupId = groupableEvent.extendedProps.groupId || crypto.randomUUID();
+          
+          // Mettre à jour l'événement existant avec le groupId s'il n'en avait pas
+          if (!groupableEvent.extendedProps.groupId) {
+             await fetch("/api/lessons", {
+                 method: "PUT",
+                 headers: { "Content-Type": "application/json" },
+                 body: JSON.stringify({ id: groupableEvent.id, groupId: groupId })
+             });
+          }
+          
+          // Mettre à jour l'événement déplacé avec le groupId et les horaires exacts du cours groupable
+          const targetStart = parseISO(groupableEvent.start);
+          const targetEnd = parseISO(groupableEvent.end);
+          
+          const res = await fetch("/api/lessons", {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              id: event.id,
+              startTime: targetStart.toISOString(),
+              endTime: targetEnd.toISOString(),
+              groupId: groupId
+            })
+          });
+          
+          if (res.ok) {
+            fetchLessons(currentDate);
+            return;
+          } else {
+            revert();
+            setErrorMsg("Erreur lors du regroupement.");
+            setTimeout(() => setErrorMsg(""), 5000);
+            return;
+          }
+        } catch (err) {
+          revert();
+          setErrorMsg("Erreur réseau lors du regroupement.");
+          setTimeout(() => setErrorMsg(""), 5000);
+          return;
+        } finally {
+          setLoading(false);
+        }
+      }
+    }
+
+    // Sinon, comportement standard (en passant le groupId pour ignorer les faux conflits)
+    const conflictError = checkConflicts(start, end, props.teacherId, props.classId, props.roomId, event.id, false, props.groupId);
     
     if (conflictError) {
       revert();
@@ -427,10 +497,12 @@ export default function AdvancedPlanningClient({ classes, teachers, subjects, ro
       if (!res.ok) {
         revert();
         setErrorMsg("Erreur lors de la modification.");
+        setTimeout(() => setErrorMsg(""), 5000);
       }
     } catch (err) {
       revert();
       setErrorMsg("Erreur réseau");
+      setTimeout(() => setErrorMsg(""), 5000);
     } finally {
       setLoading(false);
     }

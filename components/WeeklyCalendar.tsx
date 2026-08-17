@@ -119,7 +119,7 @@ export default function WeeklyCalendar({ events, onDateChange, onEventClick, onD
         slotMinTime="08:00:00"
         slotMaxTime="20:00:00"
         slotDuration="00:30:00"
-        slotEventOverlap={false}
+        slotEventOverlap={true}
         allDaySlot={false}
         weekends={false}
         events={events}

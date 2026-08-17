@@ -198,6 +198,87 @@ function runTests() {
     throw new Error("Test 5 échoué : un cours imbriqué plus court n'a pas été fusionné correctement.");
   }
 
+  // Test 6 : Résolution de conflit par groupId (groupement de cours)
+  console.log("\nTest 6: Résolution de conflit par groupId (groupement de cours)");
+  
+  function mockCheckConflicts(
+    start: Date,
+    end: Date,
+    teacherId: string,
+    classId: string,
+    roomId: string,
+    events: any[],
+    groupId?: string | null
+  ) {
+    for (const event of events) {
+      const eventStart = new Date(event.start);
+      const eventEnd = new Date(event.end);
+      
+      const overlaps = (start < eventEnd && end > eventStart);
+      
+      if (overlaps) {
+        if (groupId && event.extendedProps.groupId === groupId) {
+          if (event.extendedProps.classId === classId) {
+            return `La classe a déjà cours à cet horaire.`;
+          }
+          continue;
+        }
+
+        if (event.extendedProps.teacherId === teacherId) return `Le professeur est déjà pris à cet horaire.`;
+        if (event.extendedProps.classId === classId) return `La classe a déjà cours à cet horaire.`;
+        if (roomId && event.extendedProps.roomId === roomId) return `La salle est déjà occupée à cet horaire.`;
+      }
+    }
+    return null;
+  }
+
+  const testGroupEvents = [
+    {
+      start: "2026-09-07T09:00:00.000Z",
+      end: "2026-09-07T11:00:00.000Z",
+      extendedProps: { teacherId: "prof-1", classId: "class-A", roomId: "room-1", groupId: "group-123" }
+    }
+  ];
+
+  // Cas A : Même prof, même matière, autre classe, même groupId -> pas de conflit
+  const res6A = mockCheckConflicts(
+    new Date("2026-09-07T09:00:00.000Z"),
+    new Date("2026-09-07T11:00:00.000Z"),
+    "prof-1",
+    "class-B",
+    "room-1",
+    testGroupEvents,
+    "group-123"
+  );
+  console.log(`  - Groupement autorisé (même groupId) : ${res6A === null ? "OK" : "ÉCHEC"}`);
+  if (res6A !== null) throw new Error("Test 6A échoué");
+
+  // Cas B : Même prof, autre classe, autre/sans groupId -> conflit
+  const res6B = mockCheckConflicts(
+    new Date("2026-09-07T09:00:00.000Z"),
+    new Date("2026-09-07T11:00:00.000Z"),
+    "prof-1",
+    "class-B",
+    "room-1",
+    testGroupEvents,
+    "group-456"
+  );
+  console.log(`  - Conflit détecté (groupId différent) : ${res6B !== null ? "OK" : "ÉCHEC"}`);
+  if (res6B === null) throw new Error("Test 6B échoué");
+
+  // Cas C : Même classe, même groupId -> conflit
+  const res6C = mockCheckConflicts(
+    new Date("2026-09-07T09:00:00.000Z"),
+    new Date("2026-09-07T11:00:00.000Z"),
+    "prof-1",
+    "class-A",
+    "room-1",
+    testGroupEvents,
+    "group-123"
+  );
+  console.log(`  - Conflit de classe détecté (même groupId) : ${res6C !== null ? "OK" : "ÉCHEC"}`);
+  if (res6C === null) throw new Error("Test 6C échoué");
+
   console.log("\n>>> TOUS LES TESTS SONT AU VERT ! <<<");
 }
 
