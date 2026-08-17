@@ -515,10 +515,19 @@ export default function AdvancedPlanningClient({ classes, teachers, subjects, ro
 
     setLoading(true);
     try {
+      const hasGroupOverlap = props.groupId ? events.some(e => 
+        e.id !== event.id &&
+        e.extendedProps.groupId === props.groupId &&
+        (start < parseISO(e.end) && end > parseISO(e.start))
+      ) : false;
+
+      const targetGroupId = hasGroupOverlap ? props.groupId : null;
+
       const payload = {
         id: event.id,
         startTime: start.toISOString(),
         endTime: end.toISOString(),
+        groupId: targetGroupId
       };
 
       const res = await fetch("/api/lessons", {
@@ -531,6 +540,8 @@ export default function AdvancedPlanningClient({ classes, teachers, subjects, ro
         revert();
         setErrorMsg("Erreur lors de la modification.");
         setTimeout(() => setErrorMsg(""), 5000);
+      } else {
+        fetchLessons(currentDate);
       }
     } catch (err) {
       revert();
