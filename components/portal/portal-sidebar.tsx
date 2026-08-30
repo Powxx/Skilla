@@ -49,6 +49,7 @@ export default function PortalSidebar({ variant, resolvedChildId, schoolName = "
         { href: "/admin/dashboard", label: "Tour de contrôle", icon: LayoutDashboard },
         { href: "/admin", label: "Hub Admin", icon: BarChart },
         { href: "/admin/users", label: "Utilisateurs", icon: Users },
+        { href: "/admin/classes", label: "Classes", icon: BookOpen },
         { href: "/admin/planning", label: "Emploi du temps", icon: Calendar },
         { href: "/admin/report-cards", label: "Bulletins", icon: FileText },
         { href: "/admin/livret", label: "Livret", icon: BookOpen },
@@ -66,6 +67,7 @@ export default function PortalSidebar({ variant, resolvedChildId, schoolName = "
     case "prof":
       navItems.push(
         { href: "/prof", label: "Dashboard", icon: LayoutDashboard },
+        { href: "/prof/classes", label: "Classes", icon: BookOpen },
         { href: "/prof/planning", label: "Emploi du temps", icon: Calendar },
         { href: "/prof/appel", label: "Appel", icon: Clock },
         { href: "/prof/notes", label: "Notes", icon: GraduationCap },

@@ -51,6 +51,29 @@ export default function HRTeachersClient({ initialTeachers }: { initialTeachers:
 
   if (!selectedTeacher) return <div>Aucun professeur trouvé.</div>;
 
+  // Helper for interval merging
+  const getMergedHours = (lessons: any[]) => {
+    if (lessons.length === 0) return 0;
+    const intervals = lessons.map((l: any) => ({
+      start: new Date(l.startTime).getTime(),
+      end: new Date(l.endTime).getTime()
+    })).sort((a, b) => a.start - b.start);
+
+    const merged: { start: number; end: number }[] = [intervals[0]];
+    for (let i = 1; i < intervals.length; i++) {
+      const current = intervals[i];
+      const last = merged[merged.length - 1];
+      if (current.start < last.end) {
+        last.end = Math.max(last.end, current.end);
+      } else {
+        merged.push(current);
+      }
+    }
+
+    const totalMs = merged.reduce((acc, curr) => acc + (curr.end - curr.start), 0);
+    return totalMs / (1000 * 60 * 60);
+  };
+
   // Calculate Stats
   const now = new Date();
   const monthLessons = selectedTeacher.lessons || [];
@@ -58,13 +81,8 @@ export default function HRTeachersClient({ initialTeachers }: { initialTeachers:
   const realizedLessons = monthLessons.filter((l: any) => !l.isCancelled && isBefore(new Date(l.endTime), now));
   const plannedLessons = monthLessons.filter((l: any) => !l.isCancelled && !isBefore(new Date(l.endTime), now));
   
-  const realizedHours = realizedLessons.reduce((acc: number, l: any) => {
-    return acc + (new Date(l.endTime).getTime() - new Date(l.startTime).getTime()) / (1000 * 60 * 60);
-  }, 0);
-
-  const plannedHours = plannedLessons.reduce((acc: number, l: any) => {
-    return acc + (new Date(l.endTime).getTime() - new Date(l.startTime).getTime()) / (1000 * 60 * 60);
-  }, 0);
+  const realizedHours = getMergedHours(realizedLessons);
+  const plannedHours = getMergedHours(plannedLessons);
 
   const totalMonthHours = realizedHours + plannedHours;
   const expectedAnnualHours = selectedTeacher.contract?.annualHours || 0;
@@ -77,9 +95,7 @@ export default function HRTeachersClient({ initialTeachers }: { initialTeachers:
   const weeklyData = days.map(day => {
     const dayStr = format(day, 'yyyy-MM-dd');
     const dayLessons = monthLessons.filter((l: any) => !l.isCancelled && format(new Date(l.startTime), 'yyyy-MM-dd') === dayStr);
-    const hours = dayLessons.reduce((acc: number, l: any) => {
-      return acc + (new Date(l.endTime).getTime() - new Date(l.startTime).getTime()) / (1000 * 60 * 60);
-    }, 0);
+    const hours = getMergedHours(dayLessons);
     return { day: format(day, 'EEE', { locale: fr }), hours };
   });
 

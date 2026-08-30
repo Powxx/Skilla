@@ -38,15 +38,50 @@ export default async function HRDashboardPage() {
     },
   });
 
-  const totalHours = lessonsThisYear.reduce((acc, lesson) => {
-    const duration = (lesson.endTime.getTime() - lesson.startTime.getTime()) / (1000 * 60 * 60);
-    return acc + duration;
-  }, 0);
-
   const now = new Date();
-  const realizedHours = lessonsThisYear
-    .filter((l) => new Date(l.endTime) < now)
-    .reduce((acc, l) => acc + (l.endTime.getTime() - l.startTime.getTime()) / (1000 * 60 * 60), 0);
+
+  // Algorithme de fusion des créneaux simultanés (aligné sur le planning)
+  const teacherMap = new Map<string, { start: number; end: number }[]>();
+  let unassignedMs = 0;
+
+  const realizedLessons = lessonsThisYear.filter((l) => new Date(l.endTime) < now);
+
+  for (const lesson of realizedLessons) {
+    const startMs = lesson.startTime.getTime();
+    const endMs = lesson.endTime.getTime();
+    if (endMs <= startMs) continue;
+
+    if (!lesson.teacherId) {
+      unassignedMs += endMs - startMs;
+      continue;
+    }
+
+    const intervals = teacherMap.get(lesson.teacherId) ?? [];
+    intervals.push({ start: startMs, end: endMs });
+    teacherMap.set(lesson.teacherId, intervals);
+  }
+
+  let totalTeacherMs = 0;
+  for (const intervals of teacherMap.values()) {
+    if (intervals.length === 0) continue;
+    intervals.sort((a, b) => a.start - b.start);
+
+    const merged: { start: number; end: number }[] = [intervals[0]];
+    for (let i = 1; i < intervals.length; i++) {
+      const current = intervals[i];
+      const last = merged[merged.length - 1];
+
+      if (current.start < last.end) {
+        last.end = Math.max(last.end, current.end);
+      } else {
+        merged.push(current);
+      }
+    }
+
+    totalTeacherMs += merged.reduce((acc, curr) => acc + (curr.end - curr.start), 0);
+  }
+
+  const realizedHours = (totalTeacherMs + unassignedMs) / (1000 * 60 * 60);
 
   const contracts = await prisma.teacherContract.findMany({ select: { annualHours: true } });
   const totalAnnualHours = contracts.reduce((acc, c) => acc + c.annualHours, 0);

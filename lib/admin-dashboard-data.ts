@@ -52,6 +52,82 @@ function lessonHours(start: Date, end: Date): number {
   return (end.getTime() - start.getTime()) / (1000 * 60 * 60);
 }
 
+/**
+ * Calcule les heures d'enseignement d'une liste de cours en fusionnant les créneaux 
+ * chevauchants / simultanés par professeur (même algorithme que dans le planning).
+ */
+function calculateMergedTeacherHours(
+  lessons: { startTime: Date; endTime: Date; teacherId?: string | null }[]
+): number {
+  if (lessons.length === 0) return 0;
+
+  const teacherMap = new Map<string, { start: number; end: number }[]>();
+  let unassignedMs = 0;
+
+  for (const lesson of lessons) {
+    const startMs = lesson.startTime.getTime();
+    const endMs = lesson.endTime.getTime();
+    if (endMs <= startMs) continue;
+
+    if (!lesson.teacherId) {
+      unassignedMs += endMs - startMs;
+      continue;
+    }
+
+    const intervals = teacherMap.get(lesson.teacherId) ?? [];
+    intervals.push({ start: startMs, end: endMs });
+    teacherMap.set(lesson.teacherId, intervals);
+  }
+
+  let totalTeacherMs = 0;
+
+  for (const intervals of teacherMap.values()) {
+    if (intervals.length === 0) continue;
+    intervals.sort((a, b) => a.start - b.start);
+
+    const merged: { start: number; end: number }[] = [intervals[0]];
+    for (let i = 1; i < intervals.length; i++) {
+      const current = intervals[i];
+      const last = merged[merged.length - 1];
+
+      if (current.start < last.end) {
+        last.end = Math.max(last.end, current.end);
+      } else {
+        merged.push(current);
+      }
+    }
+
+    totalTeacherMs += merged.reduce((acc, curr) => acc + (curr.end - curr.start), 0);
+  }
+
+  return (totalTeacherMs + unassignedMs) / (1000 * 60 * 60);
+}
+
+/**
+ * Fusionne les créneaux d'heures chevauchants pour un professeur unique et renvoie le total d'heures.
+ */
+function calculateSingleTeacherMergedHours(
+  intervals: { start: number; end: number }[]
+): number {
+  if (intervals.length === 0) return 0;
+  intervals.sort((a, b) => a.start - b.start);
+
+  const merged: { start: number; end: number }[] = [intervals[0]];
+  for (let i = 1; i < intervals.length; i++) {
+    const current = intervals[i];
+    const last = merged[merged.length - 1];
+
+    if (current.start < last.end) {
+      last.end = Math.max(last.end, current.end);
+    } else {
+      merged.push(current);
+    }
+  }
+
+  const totalMs = merged.reduce((acc, curr) => acc + (curr.end - curr.start), 0);
+  return totalMs / (1000 * 60 * 60);
+}
+
 // Format d'une alerte affichée dans la barre latérale du dashboard
 export type AdminAlert = {
   id: string;
@@ -299,7 +375,7 @@ export async function loadAdminDashboardPayload(
         endTime: { lte: monthEnd },
         isCancelled: false,
       },
-      select: { startTime: true, endTime: true },
+      select: { startTime: true, endTime: true, teacherId: true },
     }),
     prisma.companyContract.findMany({
       include: {
@@ -395,14 +471,11 @@ export async function loadAdminDashboardPayload(
       ? (evaluations.filter((e) => e.level >= 3).length / evaluations.length) * 100
       : 0;
 
-  // Suivi des heures mensuelles (réalisées vs planifiées) pour les indicateurs RH
-  const hrHoursProjected = lessonsThisMonth.reduce(
-    (acc, l) => acc + lessonHours(l.startTime, l.endTime),
-    0,
+  // Suivi des heures mensuelles (réalisées vs planifiées) pour les indicateurs RH (avec fusion des cours groupés par prof)
+  const hrHoursProjected = calculateMergedTeacherHours(lessonsThisMonth);
+  const hrHoursRealized = calculateMergedTeacherHours(
+    lessonsThisMonth.filter((l) => l.endTime < now)
   );
-  const hrHoursRealized = lessonsThisMonth
-    .filter((l) => l.endTime < now)
-    .reduce((acc, l) => acc + lessonHours(l.startTime, l.endTime), 0);
 
   // Couverture de contrat d'alternance/stage des élèves
   const activeContracts = companyContracts.filter(
@@ -527,7 +600,7 @@ export async function loadAdminDashboardPayload(
       startTime: { gte: subDays(now, 84) },
       isCancelled: false,
     },
-    select: { startTime: true, endTime: true },
+    select: { startTime: true, endTime: true, teacherId: true },
   });
   for (let i = 11; i >= 0; i--) {
     const weekStart = startOfWeek(subDays(now, i * 7), { weekStartsOn: 1 });
@@ -535,10 +608,10 @@ export async function loadAdminDashboardPayload(
     const weekLessons = allRecentLessons.filter(
       (l) => l.startTime >= weekStart && l.startTime <= weekEnd,
     );
-    const planned = weekLessons.reduce((acc, l) => acc + lessonHours(l.startTime, l.endTime), 0);
-    const realized = weekLessons
-      .filter((l) => l.endTime < now)
-      .reduce((acc, l) => acc + lessonHours(l.startTime, l.endTime), 0);
+    const planned = calculateMergedTeacherHours(weekLessons);
+    const realized = calculateMergedTeacherHours(
+      weekLessons.filter((l) => l.endTime < now)
+    );
     hrHoursWeekly.push({
       week: format(weekStart, "d MMM", { locale: fr }),
       planned: Math.round(planned * 10) / 10,
@@ -547,28 +620,46 @@ export async function loadAdminDashboardPayload(
     });
   }
 
-  // Charge de cours cumulée par enseignant (heures réalisées vs planifiées à venir)
-  const teacherWorkloadMap = new Map<string, { name: string; realized: number; planned: number }>();
-  for (const lesson of annualLessonsForTeachers) {
-    if (!lesson.teacherId || !lesson.teacher) continue;
-    const hours = lessonHours(lesson.startTime, lesson.endTime);
-    const entry = teacherWorkloadMap.get(lesson.teacherId) ?? {
-      name: `${lesson.teacher.lastName ?? ""} ${lesson.teacher.firstName ?? ""}`.trim(),
-      realized: 0,
-      planned: 0,
-    };
-    if (!lesson.isCancelled) {
-      if (lesson.endTime < now) entry.realized += hours;
-      else entry.planned += hours;
+  // Charge de cours cumulée par enseignant (heures réalisées vs planifiées à venir, avec fusion des cours groupés)
+  const teacherLessonsMap = new Map<
+    string,
+    {
+      name: string;
+      realizedIntervals: { start: number; end: number }[];
+      plannedIntervals: { start: number; end: number }[];
     }
-    teacherWorkloadMap.set(lesson.teacherId, entry);
+  >();
+
+  for (const lesson of annualLessonsForTeachers) {
+    if (!lesson.teacherId || !lesson.teacher || lesson.isCancelled) continue;
+
+    const teacherId = lesson.teacherId;
+    const name = `${lesson.teacher.lastName ?? ""} ${lesson.teacher.firstName ?? ""}`.trim();
+
+    let entry = teacherLessonsMap.get(teacherId);
+    if (!entry) {
+      entry = { name, realizedIntervals: [], plannedIntervals: [] };
+      teacherLessonsMap.set(teacherId, entry);
+    }
+
+    const interval = { start: lesson.startTime.getTime(), end: lesson.endTime.getTime() };
+    if (lesson.endTime < now) {
+      entry.realizedIntervals.push(interval);
+    } else {
+      entry.plannedIntervals.push(interval);
+    }
   }
-  const teacherWorkloadByTeacher = Array.from(teacherWorkloadMap.values())
-    .map((t) => ({
-      teacherName: t.name,
-      realized: Math.round(t.realized * 10) / 10,
-      planned: Math.round(t.planned * 10) / 10,
-    }))
+
+  const teacherWorkloadByTeacher = Array.from(teacherLessonsMap.values())
+    .map((t) => {
+      const realized = calculateSingleTeacherMergedHours(t.realizedIntervals);
+      const planned = calculateSingleTeacherMergedHours(t.plannedIntervals);
+      return {
+        teacherName: t.name,
+        realized: Math.round(realized * 10) / 10,
+        planned: Math.round(planned * 10) / 10,
+      };
+    })
     .sort((a, b) => b.realized + b.planned - (a.realized + a.planned));
 
   // Taux de présence global des professeurs (cours assurés / total planifié)
