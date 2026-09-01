@@ -108,6 +108,7 @@ export default function AdminSubstitutionsClient({ initialRequests, teachers, al
                           <button
                             onClick={() => {
                               setAssigning(req);
+                              setSubTeacherId(req.substituteTeacherId || '');
                               setSubSubjectId(req.lesson.subjectId);
                             }}
                             disabled={!!loading}

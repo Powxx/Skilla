@@ -27,6 +27,13 @@ export async function loadTeacherDashboardPayload(teacherId: string): Promise<Te
   const todayStart = startOfDay(now);
   const todayEnd = endOfDay(now);
 
+  const teacherWhere = {
+    OR: [
+      { substituteId: teacherId },
+      { teacherId: teacherId, substituteId: null }
+    ]
+  };
+
   const [teacher, lessonsToday, pendingRollCalls, nextLesson, teacherLessons, recentLessons] = await Promise.all([
     prisma.user.findUnique({
       where: { id: teacherId },
@@ -34,7 +41,7 @@ export async function loadTeacherDashboardPayload(teacherId: string): Promise<Te
     }),
     prisma.lesson.count({
       where: {
-        teacherId,
+        ...teacherWhere,
         startTime: { gte: todayStart, lte: todayEnd },
         isCancelled: false,
         isFreeLesson: false
@@ -42,7 +49,7 @@ export async function loadTeacherDashboardPayload(teacherId: string): Promise<Te
     }),
     prisma.lesson.count({
       where: {
-        teacherId,
+        ...teacherWhere,
         startTime: { lte: now },
         isAttendanceValidated: false,
         isCancelled: false,
@@ -51,7 +58,7 @@ export async function loadTeacherDashboardPayload(teacherId: string): Promise<Te
     }),
     prisma.lesson.findFirst({
       where: {
-        teacherId,
+        ...teacherWhere,
         startTime: { gte: now },
         isCancelled: false,
         isFreeLesson: false
@@ -64,12 +71,12 @@ export async function loadTeacherDashboardPayload(teacherId: string): Promise<Te
       }
     }),
     prisma.lesson.findMany({
-      where: { teacherId, isFreeLesson: false },
+      where: { ...teacherWhere, isFreeLesson: false },
       select: { classId: true }
     }),
     prisma.lesson.findMany({
       where: {
-        teacherId,
+        ...teacherWhere,
         startTime: { lte: now },
         isAttendanceValidated: false,
         isCancelled: false,

@@ -15,12 +15,12 @@ export default function TeacherPlanningClient({ teacherId, teachers }: { teacher
   const [summary, setSummary] = useState("");
   const [homework, setHomework] = useState("");
   const [activeTab, setActiveTab] = useState<'info' | 'substitute' | 'content'>('info');
-  const [feedback, setFeedback] = useState<{type: 'success' | 'error', text: string} | null>(null);
+  const [feedback, setFeedback] = useState<{ type: 'success' | 'error', text: string } | null>(null);
 
   const fetchLessons = async (date: Date) => {
     setLoading(true);
     const monday = format(startOfWeek(date, { weekStartsOn: 1 }), 'yyyy-MM-dd');
-    
+
     try {
       const response = await fetch(`/api/lessons?date=${monday}&teacherId=${teacherId}`);
       const data = await response.json();
@@ -84,7 +84,8 @@ export default function TeacherPlanningClient({ teacherId, teachers }: { teacher
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          lessonId: selectedEvent.id
+          lessonId: selectedEvent.id,
+          substituteTeacherId: substituteId || null
         })
       });
       if (res.ok) {
@@ -107,8 +108,8 @@ export default function TeacherPlanningClient({ teacherId, teachers }: { teacher
         </div>
       )}
 
-      <WeeklyCalendar 
-        events={events} 
+      <WeeklyCalendar
+        events={events}
         onDateChange={(newDate) => {
           if (newDate.getTime() !== currentDate.getTime()) {
             setCurrentDate(newDate);
@@ -134,26 +135,26 @@ export default function TeacherPlanningClient({ teacherId, teachers }: { teacher
             </div>
 
             <div className="flex border-b border-slate-100">
-              <button 
+              <button
                 onClick={() => setActiveTab('info')}
                 className={`flex-1 py-3 text-xs font-bold uppercase tracking-wider transition ${activeTab === 'info' ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50/30' : 'text-slate-400 hover:text-slate-600'}`}
               >
                 Infos
               </button>
-              <button 
+              <button
                 onClick={() => setActiveTab('content')}
                 className={`flex-1 py-3 text-xs font-bold uppercase tracking-wider transition ${activeTab === 'content' ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50/30' : 'text-slate-400 hover:text-slate-600'}`}
               >
                 Cahier de texte
               </button>
-              <button 
+              <button
                 onClick={() => setActiveTab('substitute')}
                 className={`flex-1 py-3 text-xs font-bold uppercase tracking-wider transition ${activeTab === 'substitute' ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50/30' : 'text-slate-400 hover:text-slate-600'}`}
               >
                 Remplacement
               </button>
             </div>
-            
+
             <div className="p-6">
               {feedback && (
                 <div className={`mb-4 p-3 rounded-xl text-xs font-bold ${feedback.type === 'success' ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' : 'bg-red-50 text-red-700 border border-red-100'}`}>
@@ -186,7 +187,7 @@ export default function TeacherPlanningClient({ teacherId, teachers }: { teacher
                 <form onSubmit={handleSaveContent} className="space-y-4">
                   <div>
                     <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Résumé du cours (fait)</label>
-                    <textarea 
+                    <textarea
                       className="w-full text-sm rounded-xl border-slate-200 focus:border-blue-500 focus:ring-blue-500 min-h-[100px]"
                       placeholder="Qu'avez-vous fait pendant ce cours ?"
                       value={summary}
@@ -195,7 +196,7 @@ export default function TeacherPlanningClient({ teacherId, teachers }: { teacher
                   </div>
                   <div>
                     <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Devoirs (à faire pour le prochain cours)</label>
-                    <textarea 
+                    <textarea
                       className="w-full text-sm rounded-xl border-slate-200 focus:border-blue-500 focus:ring-blue-500 min-h-[80px]"
                       placeholder="Exercices, révisions..."
                       value={homework}
@@ -209,29 +210,52 @@ export default function TeacherPlanningClient({ teacherId, teachers }: { teacher
               )}
 
               {activeTab === 'substitute' && (
-                <div className="space-y-6 py-4">
+                <div className="space-y-4 py-2">
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">
+                      Professeur remplaçant proposé
+                    </label>
+                    <select
+                      className="w-full text-xs rounded-xl border-slate-200 py-2.5 bg-slate-50 focus:bg-white transition"
+                      value={substituteId}
+                      onChange={(e) => setSubstituteId(e.target.value)}
+                    >
+                      <option value="">-- Désigner un professeur --</option>
+                      {teachers.map((t: any) => (
+                        <option key={t.id} value={t.id}>
+                          M./Mme {t.lastName?.toUpperCase()} {t.firstName}
+                        </option>
+                      ))}
+                    </select>
+                    <p className="text-[10px] text-slate-400 mt-1">
+                      Vous pouvez proposer un collègue pressenti pour vous remplacer.
+                    </p>
+                  </div>
+
                   <div>
                     <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Matière concernée</label>
-                    <select 
-                        className="w-full text-xs rounded-xl border-slate-200 py-2"
-                        value={subjectId}
-                        onChange={(e) => setSubjectId(e.target.value)}
+                    <select
+                      className="w-full text-xs rounded-xl border-slate-200 py-2.5 bg-slate-50 focus:bg-white transition"
+                      value={subjectId}
+                      onChange={(e) => setSubjectId(e.target.value)}
                     >
-                        <option value="">{selectedEvent.extendedProps?.subject} (Par défaut)</option>
-                        {teachers.find((t: any) => t.id === teacherId)?.subjects.map((s: any) => (
-                            <option key={s.id} value={s.id}>{s.name}</option>
-                        ))}
+                      <option value="">{selectedEvent.extendedProps?.subject} (Par défaut)</option>
+                      {teachers.find((t: any) => t.id === teacherId)?.subjects?.map((s: any) => (
+                        <option key={s.id} value={s.id}>{s.name}</option>
+                      ))}
                     </select>
                   </div>
+
                   <div className="p-4 bg-orange-50 border border-orange-100 rounded-2xl">
-                     <p className="text-sm text-orange-800 font-medium leading-relaxed">
-                       Vous ne pouvez pas assurer ce cours ? Cliquez sur le bouton ci-dessous pour demander un remplacement. 
-                     </p>
+                    <p className="text-xs text-orange-800 font-medium leading-relaxed">
+                      Vous ne pouvez pas assurer ce cours ? Cliquez ci-dessous pour transmettre la demande de remplacement à l'administration.
+                    </p>
                   </div>
-                  <button 
-                    onClick={handleRequestSubstitution} 
-                    disabled={loading} 
-                    className="w-full py-4 bg-orange-600 text-white rounded-2xl text-sm font-bold shadow-lg hover:bg-orange-700 transition disabled:opacity-50"
+
+                  <button
+                    onClick={handleRequestSubstitution}
+                    disabled={loading}
+                    className="w-full py-3.5 bg-orange-600 text-white rounded-2xl text-xs font-bold shadow-lg hover:bg-orange-700 transition disabled:opacity-50"
                   >
                     {loading ? "Envoi..." : "Demander un remplacement"}
                   </button>

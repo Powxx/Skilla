@@ -97,7 +97,7 @@ export default function AdminSubstitutionsFeed({
 
   const handleOpenModal = (sub: SubstitutionRequestItem) => {
     setSelectedSub(sub);
-    setSubTeacherId("");
+    setSubTeacherId(sub.substituteTeacherId || "");
     setSubSubjectId(sub.lesson.subjectId || (allSubjects[0]?.id ?? ""));
   };
 
@@ -355,10 +355,17 @@ export default function AdminSubstitutionsFeed({
 
               {/* Action Form: Assignation d'un remplaçant */}
               <div className="p-5 bg-gradient-to-br from-slate-50 to-blue-50/30 border border-slate-200 rounded-2xl space-y-4">
-                <h4 className="text-xs font-black text-slate-900 uppercase tracking-wider flex items-center gap-2">
-                  <Sparkles className="h-4 w-4 text-blue-600" />
-                  Traiter la demande de remplacement
-                </h4>
+                <div className="flex items-center justify-between">
+                  <h4 className="text-xs font-black text-slate-900 uppercase tracking-wider flex items-center gap-2">
+                    <Sparkles className="h-4 w-4 text-blue-600" />
+                    Traiter la demande de remplacement
+                  </h4>
+                  {selectedSub.substituteTeacher && (
+                    <span className="text-[10px] font-black text-blue-700 bg-blue-100 px-2.5 py-1 rounded-full border border-blue-200 uppercase tracking-wider">
+                      ★ Professeur suggéré : {selectedSub.substituteTeacher.firstName} {selectedSub.substituteTeacher.lastName}
+                    </span>
+                  )}
+                </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>

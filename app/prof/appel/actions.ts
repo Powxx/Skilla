@@ -60,6 +60,24 @@ export async function submitRollCall(payload: SubmitRollPayload): Promise<Submit
     return { ok: false, error: "Classe et Leçon requises." };
   }
 
+  // 1b. Vérification des droits sur la leçon (en cas de remplacement, seul le remplaçant peut faire l'appel)
+  const targetLesson = await prisma.lesson.findUnique({
+    where: { id: lessonId },
+    select: { teacherId: true, substituteId: true }
+  });
+
+  if (!targetLesson) {
+    return { ok: false, error: "Cours introuvable." };
+  }
+
+  const isAuthorizedToRollCall = targetLesson.substituteId
+    ? targetLesson.substituteId === session.user.id
+    : targetLesson.teacherId === session.user.id;
+
+  if (!isAuthorizedToRollCall) {
+    return { ok: false, error: "Ce cours fait l'objet d'un remplacement. Seul l'enseignant remplaçant peut effectuer cet appel." };
+  }
+
   // 2. Vérification de l'existence de la classe et de ses élèves
   const classe = await prisma.class.findUnique({
     where: { id: classId },

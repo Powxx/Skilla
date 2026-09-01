@@ -23,25 +23,33 @@ export default async function ProfAppelPage() {
   const todayEnd = endOfDay(now);
 
   // Fetch lessons for today + all past unvalidated lessons for this teacher
+  // In case of a replacement, the substitute teacher (substituteId) must have the roll call, not the original teacher.
   const lessons = await prisma.lesson.findMany({
     where: {
-      teacherId: session.user.id,
-      isFreeLesson: false,
       OR: [
-        {
-          startTime: {
-            gte: todayStart,
-            lte: todayEnd,
-          },
-        },
-        {
-          startTime: {
-            lt: todayStart,
-          },
-          isAttendanceValidated: false,
-        }
+        { substituteId: session.user.id },
+        { teacherId: session.user.id, substituteId: null }
       ],
+      isFreeLesson: false,
       isCancelled: false,
+      AND: [
+        {
+          OR: [
+            {
+              startTime: {
+                gte: todayStart,
+                lte: todayEnd,
+              },
+            },
+            {
+              startTime: {
+                lt: todayStart,
+              },
+              isAttendanceValidated: false,
+            }
+          ]
+        }
+      ]
     },
     include: {
       class: { select: { id: true, name: true } },

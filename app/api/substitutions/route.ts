@@ -84,18 +84,19 @@ export async function PUT(request: Request) {
       include: { lesson: true }
     });
 
-    // If approved, update the lesson's teacher and subject
+    // If approved, update the lesson's substitute teacher and subject
     if (status === "APPROVED" && substituteTeacherId) {
       const updatedLesson = await prisma.lesson.update({
         where: { id: subRequest.lessonId },
         data: { 
-          teacherId: substituteTeacherId,
+          substituteId: substituteTeacherId,
           subjectId: subjectId || undefined // Change subject if provided
         },
         include: { 
           class: { include: { students: true } }, 
           subject: true,
-          teacher: { select: { firstName: true, lastName: true } }
+          teacher: { select: { firstName: true, lastName: true } },
+          substitute: { select: { firstName: true, lastName: true } }
         }
       });
 
@@ -104,10 +105,11 @@ export async function PUT(request: Request) {
       if (isEnabled) {
         for (const student of updatedLesson.class.students) {
           const subjectName = updatedLesson.isFreeLesson ? (updatedLesson.customSubject || "Cours libre") : (updatedLesson.subject?.name || "Sans matière");
+          const subTeacherName = updatedLesson.substitute?.lastName || updatedLesson.teacher?.lastName || "l'intervenant";
           createNotification({
             userId: student.id,
             title: "Remplacement validé",
-            message: `M. ${updatedLesson.teacher?.lastName || "l'intervenant"} assurera le cours de ${subjectName} du ${updatedLesson.startTime.toLocaleDateString('fr-FR')}.`,
+            message: `M. ${subTeacherName} assurera le cours de ${subjectName} du ${updatedLesson.startTime.toLocaleDateString('fr-FR')}.`,
             type: "SUCCESS",
             link: "/student/planning"
           }).catch(e => console.error(e));
