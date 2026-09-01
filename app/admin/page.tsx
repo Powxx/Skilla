@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import AdminMeetingsManager from "@/components/admin/admin-meetings-manager";
+import AdminSubstitutionsFeed from "@/components/admin/admin-substitutions-feed";
 import { getGlobalSettings } from "@/app/actions/settings";
 import { QUALIOPI_ENABLED_KEY } from "@/lib/qualiopi";
 import { 
@@ -25,7 +26,7 @@ import {
 export const dynamic = 'force-dynamic';
 
 export default async function AdminHomePage() {
-  const [pendingSubsCount, pendingMeetings, scheduledMeetings, pendingSubs, globalSettings, meetingUsers] = await Promise.all([
+  const [pendingSubsCount, pendingMeetings, scheduledMeetings, pendingSubs, globalSettings, meetingUsers, teachers, allSubjects] = await Promise.all([
     prisma.substitutionRequest.count({ where: { status: "PENDING" } }),
     prisma.meetingRequest.findMany({
       where: { status: "PENDING" },
@@ -38,8 +39,19 @@ export default async function AdminHomePage() {
       orderBy: { scheduledAt: 'asc' }
     }),
     prisma.substitutionRequest.findMany({
-        where: { status: "PENDING" },
-        include: { originalTeacher: { select: { firstName: true, lastName: true } } }
+      where: { status: "PENDING" },
+      include: {
+        lesson: {
+          include: {
+            subject: true,
+            class: true,
+            room: true
+          }
+        },
+        originalTeacher: { select: { id: true, firstName: true, lastName: true, email: true, phone: true } },
+        substituteTeacher: { select: { id: true, firstName: true, lastName: true } }
+      },
+      orderBy: { createdAt: 'desc' }
     }),
     getGlobalSettings(),
     prisma.user.findMany({
@@ -47,6 +59,17 @@ export default async function AdminHomePage() {
       select: { id: true, firstName: true, lastName: true, role: true },
       orderBy: [{ role: 'asc' }, { lastName: 'asc' }]
     }),
+    prisma.user.findMany({
+      where: { role: "TEACHER", isActive: true },
+      select: { 
+        id: true, 
+        firstName: true, 
+        lastName: true,
+        subjects: { select: { id: true, name: true } }
+      },
+      orderBy: { lastName: 'asc' }
+    }),
+    prisma.subject.findMany({ orderBy: { name: 'asc' } })
   ]);
 
   const schoolName = globalSettings.find(s => s.key === "SCHOOL_NAME")?.value || "ECM Academie";
@@ -174,21 +197,11 @@ export default async function AdminHomePage() {
                  <AdminMeetingsManager initialMeetings={pendingMeetings} scheduledMeetings={scheduledMeetings} users={meetingUsers} />
               </div>
               
-              {pendingSubs.length > 0 && (
-                <div className="bg-orange-500/10 border border-orange-500/20 p-5 rounded-[2rem]">
-                  <h3 className="text-[10px] font-black uppercase tracking-widest text-orange-400 mb-4 flex items-center gap-2">
-                     <FileWarning className="h-4 w-4" />
-                     Remplacements ({pendingSubs.length})
-                  </h3>
-                  <div className="space-y-2">
-                    {pendingSubs.map(sub => (
-                      <div key={sub.id} className="text-[11px] font-bold p-3 bg-white/5 text-orange-200 rounded-2xl border border-white/5 hover:bg-white/10 transition-colors">
-                          {sub.originalTeacher.firstName} {sub.originalTeacher.lastName}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
+              <AdminSubstitutionsFeed
+                initialRequests={pendingSubs as any}
+                teachers={teachers as any}
+                allSubjects={allSubjects as any}
+              />
            </div>
         </div>
       </div>
