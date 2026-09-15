@@ -31,6 +31,15 @@ export default function ChatClient() {
   }, []);
 
   useEffect(() => {
+    if (!selectedConversation?.id) return;
+    const interval = setInterval(() => {
+      loadMessages(selectedConversation.id);
+      loadConversations();
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [selectedConversation?.id]);
+
+  useEffect(() => {
     if (selectedConversation) {
         scrollToBottom();
     }
@@ -52,6 +61,7 @@ export default function ChatClient() {
   };
 
   const loadMessages = async (conversationId: string) => {
+    if (!conversationId) return;
     const msgs = await getMessages(conversationId);
     setMessages(msgs);
     await markAsRead(conversationId);
@@ -61,9 +71,14 @@ export default function ChatClient() {
     if (!content.trim() || !selectedConversation) return;
     setLoading(true);
     try {
-      await sendMessage(selectedConversation.otherParticipant.id, content);
+      const newMsg = await sendMessage(selectedConversation.otherParticipant.id, content);
       setContent("");
-      loadMessages(selectedConversation.id);
+      const targetConvId = selectedConversation.id || newMsg.conversationId;
+      if (!selectedConversation.id) {
+        setSelectedConversation((prev: any) => prev ? { ...prev, id: newMsg.conversationId } : null);
+      }
+      await loadMessages(targetConvId);
+      await loadConversations();
     } catch (e: any) {
       alert(e.message);
     } finally {

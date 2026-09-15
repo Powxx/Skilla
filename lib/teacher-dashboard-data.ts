@@ -52,6 +52,7 @@ export async function loadTeacherDashboardPayload(teacherId: string): Promise<Te
         ...teacherWhere,
         startTime: { lte: now },
         isAttendanceValidated: false,
+        attendances: { none: {} },
         isCancelled: false,
         isFreeLesson: false
       }
@@ -78,7 +79,6 @@ export async function loadTeacherDashboardPayload(teacherId: string): Promise<Te
       where: {
         ...teacherWhere,
         startTime: { lte: now },
-        isAttendanceValidated: false,
         isCancelled: false,
         isFreeLesson: false
       },
@@ -86,7 +86,8 @@ export async function loadTeacherDashboardPayload(teacherId: string): Promise<Te
       take: 5,
       include: {
         subject: { select: { name: true } },
-        class: { select: { name: true } }
+        class: { select: { name: true } },
+        attendances: { select: { id: true } }
       }
     })
   ]);
@@ -118,7 +119,7 @@ export async function loadTeacherDashboardPayload(teacherId: string): Promise<Te
       subject: l.isFreeLesson ? (l.customSubject || "Cours libre") : (l.subject?.name || "Sans matière"),
       class: l.class.name,
       start: l.startTime.toISOString(),
-      isValidated: l.isAttendanceValidated
+      isValidated: l.isAttendanceValidated || l.attendances.length > 0
     }))
   };
 }

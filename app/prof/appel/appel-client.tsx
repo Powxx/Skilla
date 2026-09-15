@@ -190,7 +190,7 @@ export default function AppelClient({ initialLessons }: { initialLessons: any[] 
                       {s.user.lastName?.[0]}{s.user.firstName?.[0]}
                     </div>
                     <div>
-                      <p className="font-semibold text-slate-900">{s.user.lastName} {s.user.firstName}</p>
+                      <p className="font-semibold text-slate-900">{s.user.lastName} {s.user.firstName?.[0]}.</p>
                       <p className={`text-[10px] font-bold uppercase ${st === 'present' ? 'text-emerald-600' : st === 'absent' ? 'text-red-600' : 'text-orange-600'}`}>
                         {st === 'present' ? 'Présent' : st === 'absent' ? 'Absent' : 'En retard'}
                       </p>

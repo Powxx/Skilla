@@ -18,7 +18,7 @@ export async function getConversations() {
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) throw new Error("Non autorisé");
 
-  const conversations = await prisma.conversation.findMany({
+  const rawConversations = await prisma.conversation.findMany({
     where: {
       OR: [
         { participant1Id: session.user.id },
@@ -36,6 +36,32 @@ export async function getConversations() {
     orderBy: { updatedAt: 'desc' }
   });
 
+  // Dédupliquer les conversations par partenaire si des doublons historiques existent
+  const partnerMap = new Map<string, typeof rawConversations[0]>();
+  const duplicateIdsToDelete: string[] = [];
+
+  for (const conv of rawConversations) {
+    const partnerId = conv.participant1Id === session.user.id ? conv.participant2Id : conv.participant1Id;
+    if (!partnerMap.has(partnerId)) {
+      partnerMap.set(partnerId, conv);
+    } else {
+      const canonicalConv = partnerMap.get(partnerId)!;
+      duplicateIdsToDelete.push(conv.id);
+      await prisma.chatMessage.updateMany({
+        where: { conversationId: conv.id },
+        data: { conversationId: canonicalConv.id }
+      });
+    }
+  }
+
+  if (duplicateIdsToDelete.length > 0) {
+    await prisma.conversation.deleteMany({
+      where: { id: { in: duplicateIdsToDelete } }
+    });
+  }
+
+  const conversations = Array.from(partnerMap.values());
+
   return conversations.map(c => ({
     ...c,
     otherParticipant: c.participant1Id === session.user.id ? c.participant2 : c.participant1,
@@ -51,7 +77,7 @@ export async function getChatRetentionDays() {
 }
 
 async function cleanupOldMessages() {
-  const days = await getRetentionDays();
+  const days = await getChatRetentionDays();
   const thresholdDate = new Date();
   thresholdDate.setDate(thresholdDate.getDate() - days);
   
@@ -79,7 +105,7 @@ export async function getMessages(conversationId: string, page: number = 1, page
   });
   if (!conversation) throw new Error("Conversation introuvable");
 
-  const days = await getRetentionDays();
+  const days = await getChatRetentionDays();
   const thresholdDate = new Date();
   thresholdDate.setDate(thresholdDate.getDate() - days);
 
@@ -166,20 +192,40 @@ export async function sendMessage(recipientId: string, content: string) {
     throw new Error("Conversation non autorisée entre ces rôles.");
   }
 
-  // Find or create conversation
-  const conversation = await prisma.conversation.upsert({
+  // Find or create conversation safely across both participant orientations
+  const existingConversations = await prisma.conversation.findMany({
     where: {
-        participant1Id_participant2Id: {
-            participant1Id: [session.user.id, recipientId].sort()[0],
-            participant2Id: [session.user.id, recipientId].sort()[1]
-        }
+      OR: [
+        { participant1Id: session.user.id, participant2Id: recipientId },
+        { participant1Id: recipientId, participant2Id: session.user.id }
+      ]
     },
-    create: {
-        participant1Id: [session.user.id, recipientId].sort()[0],
-        participant2Id: [session.user.id, recipientId].sort()[1]
-    },
-    update: {}
+    orderBy: { createdAt: 'asc' }
   });
+
+  let conversation;
+  if (existingConversations.length > 0) {
+    conversation = existingConversations[0];
+    if (existingConversations.length > 1) {
+      const dupIds = existingConversations.slice(1).map(c => c.id);
+      await prisma.chatMessage.updateMany({
+        where: { conversationId: { in: dupIds } },
+        data: { conversationId: conversation.id }
+      });
+      await prisma.conversation.deleteMany({
+        where: { id: { in: dupIds } }
+      });
+    }
+  } else {
+    const p1 = [session.user.id, recipientId].sort()[0];
+    const p2 = [session.user.id, recipientId].sort()[1];
+    conversation = await prisma.conversation.create({
+      data: {
+        participant1Id: p1,
+        participant2Id: p2
+      }
+    });
+  }
 
   const message = await prisma.chatMessage.create({
     data: {
@@ -246,7 +292,9 @@ export async function getAuthorizedContacts(search: string = "") {
           where: { class: { students: { some: { id: studentId } } } },
           select: { teacherId: true }
       });
-      const teacherIds = lessons.map(l => l.teacherId);
+      const teacherIds = lessons
+        .map(l => l.teacherId)
+        .filter((id): id is string => Boolean(id));
       allowedUserIds = Array.from(new Set([...allowedUserIds, ...teacherIds]));
   } else if (sender.role === 'TEACHER') {
       // Profs -> leurs élèves/parents + admins

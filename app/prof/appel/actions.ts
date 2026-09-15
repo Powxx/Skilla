@@ -36,6 +36,7 @@ export async function updateAttendanceStatus(
     });
     
     revalidatePath("/prof/appel");
+    revalidatePath("/admin/absences");
     return { ok: true };
   } catch (error) {
     console.error("Erreur mise à jour absence:", error);
@@ -171,6 +172,7 @@ export async function submitRollCall(payload: SubmitRollPayload): Promise<Submit
     // 7. Revalidation du cache pour mettre à jour les interfaces
     revalidatePath("/prof/appel");
     revalidatePath("/student/absences");
+    revalidatePath("/admin/absences");
 
     return { ok: true, created: toCreate.length };
   } catch (error) {
