@@ -43,7 +43,7 @@ export async function getConversations() {
   }));
 }
 
-async function getRetentionDays() {
+export async function getChatRetentionDays() {
   const setting = await prisma.globalSetting.findUnique({
     where: { key: 'CHAT_RETENTION_DAYS' }
   });

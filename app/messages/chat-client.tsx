@@ -1,10 +1,10 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { getConversations, getMessages, sendMessage, markAsRead, getAuthorizedContacts } from "@/app/actions/chat";
+import { getConversations, getMessages, sendMessage, markAsRead, getAuthorizedContacts, getChatRetentionDays } from "@/app/actions/chat";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
-import { Send, UserCircle, Plus } from "lucide-react";
+import { Send, UserCircle, Plus, X } from "lucide-react";
 
 export default function ChatClient() {
   const [conversations, setConversations] = useState<any[]>([]);
@@ -18,8 +18,16 @@ export default function ChatClient() {
   const [search, setSearch] = useState("");
   const [contacts, setContacts] = useState<any[]>([]);
 
+  const [retentionDays, setRetentionDays] = useState<number>(7);
+  const [showBanner, setShowBanner] = useState<boolean>(true);
+
   useEffect(() => {
     loadConversations();
+    getChatRetentionDays().then(setRetentionDays);
+    const timer = setTimeout(() => {
+      setShowBanner(false);
+    }, 6000); // Masquage automatique après 6 secondes
+    return () => clearTimeout(timer);
   }, []);
 
   useEffect(() => {
@@ -64,8 +72,28 @@ export default function ChatClient() {
   };
 
   return (
-    <div className="h-[calc(100vh-80px)] flex flex-col lg:flex-row bg-white rounded-3xl border border-slate-200 shadow-xl overflow-hidden">
-      {/* Sidebar - Conversations list / Contacts selection */}
+    <div className="h-[calc(100vh-80px)] flex flex-col bg-white rounded-3xl border border-slate-200 shadow-xl overflow-hidden">
+      {/* Bandeau d'information sur la suppression automatique */}
+      {showBanner && (
+        <div className="bg-amber-50 border-b border-amber-200/80 px-4 py-2.5 text-xs text-amber-900 flex items-center justify-between shrink-0 transition-all duration-300 animate-in fade-in">
+          <div className="flex items-center gap-2 font-semibold">
+            <span className="text-sm">⏳</span>
+            <span>
+              Rappel : Les messages sont temporaires et automatiquement supprimés au bout de <strong>{retentionDays} jour{retentionDays > 1 ? 's' : ''}</strong>.
+            </span>
+          </div>
+          <button
+            onClick={() => setShowBanner(false)}
+            className="text-amber-700 hover:text-amber-950 p-1 rounded-lg hover:bg-amber-100 transition shrink-0"
+            title="Fermer le rappel"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+      )}
+
+      <div className="flex-1 flex flex-col lg:flex-row min-h-0">
+        {/* Sidebar - Conversations list / Contacts selection */}
       <div className={`w-full lg:w-1/3 border-b lg:border-b-0 lg:border-r border-slate-100 flex-shrink-0 ${selectedConversation && !showContacts ? 'hidden lg:flex' : 'flex'} flex-col`}>
         <div className="p-6 border-b border-slate-100 flex justify-between items-center">
             <h2 className="font-bold text-lg">Discussions</h2>
@@ -160,5 +188,6 @@ export default function ChatClient() {
         )}
       </div>
     </div>
-  );
+  </div>
+);
 }
