@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
 import NotificationBell from "@/components/notifications/notification-bell";
+import AdminTeacherLinkButton from "./admin-teacher-link-button";
 
 export type PortalParentChild = { id: string; label: string };
 
@@ -125,6 +126,7 @@ export default function PortalHeader({ variant, parentChildren = [] }: Props) {
             )}
 
             <div className="flex items-center gap-2 sm:gap-3 pl-2 sm:pl-4 border-l border-slate-100">
+              <AdminTeacherLinkButton variant={variant} />
               <div className="shrink-0">
                 <NotificationBell />
               </div>

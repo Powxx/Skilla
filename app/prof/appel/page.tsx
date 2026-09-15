@@ -5,6 +5,8 @@ import { redirect } from "next/navigation";
 import { startOfDay, endOfDay } from "date-fns";
 import AppelClient from "./appel-client";
 
+import { getEffectiveTeacherId } from "@/lib/teacher-utils";
+
 export const dynamic = 'force-dynamic';
 
 export const metadata = {
@@ -14,9 +16,11 @@ export const metadata = {
 export default async function ProfAppelPage() {
   const session = await getServerSession(authOptions);
 
-  if (!session?.user?.id || session.user.role !== "TEACHER") {
+  if (!session?.user?.id || (session.user.role !== "TEACHER" && session.user.role !== "ADMIN" && session.user.role !== "SUPER_ADMIN")) {
     redirect("/login");
   }
+
+  const effectiveTeacherId = await getEffectiveTeacherId(session.user.id);
 
   const now = new Date();
   const todayStart = startOfDay(now);
@@ -27,8 +31,8 @@ export default async function ProfAppelPage() {
   const lessons = await prisma.lesson.findMany({
     where: {
       OR: [
-        { substituteId: session.user.id },
-        { teacherId: session.user.id, substituteId: null }
+        { substituteId: effectiveTeacherId },
+        { teacherId: effectiveTeacherId, substituteId: null }
       ],
       isFreeLesson: false,
       isCancelled: false,

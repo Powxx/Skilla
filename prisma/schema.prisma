@@ -167,6 +167,12 @@ model User {
   canImpersonate    Boolean @default(false) /// Droit d'usurper l'identité d'un autre utilisateur
   isActive          Boolean @default(true)  /// Compte actif ou suspendu
   deletionRequested Boolean @default(false) /// Demande de suppression RGPD effectuée
+  isGeneralAdmin    Boolean @default(false) /// Indique si le compte est l'administrateur général
+
+  // Liaison Administrateur <-> Professeur
+  linkedTeacherId   String?
+  linkedTeacher     User?   @relation("AdminLinkedTeacher", fields: [linkedTeacherId], references: [id], onDelete: SetNull)
+  linkedAdmins      User[]  @relation("AdminLinkedTeacher")
 
   // Système de points de conduite (activable et modifiable)
   conductPoints     Int     @default(100)   /// Capital points de l'étudiant (sur 100)
@@ -185,6 +191,7 @@ model User {
 
   @@index([role])
   @@index([lastName, firstName])
+  @@index([linkedTeacherId])
 }
 
 /// Profil de l'étudiant (Relation 1-à-1 avec User).

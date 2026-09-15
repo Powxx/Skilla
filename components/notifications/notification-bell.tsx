@@ -82,7 +82,14 @@ export default function NotificationBell() {
                   className={`p-4 border-b border-slate-50 last:border-0 hover:bg-slate-50 transition cursor-pointer ${!n.isRead ? "bg-blue-50/30" : ""}`}
                   onClick={() => handleOpenNotification(n)}
                 >
-                  <p className="text-xs font-bold text-slate-900 truncate">{n.title}</p>
+                  <div className="flex items-center justify-between gap-1">
+                    <p className="text-xs font-bold text-slate-900 truncate">{n.title}</p>
+                    {n.isLinkedNotification && (
+                      <span className="text-[9px] font-black bg-indigo-50 text-indigo-600 px-1 py-0.5 rounded border border-indigo-100 shrink-0 uppercase tracking-tighter">
+                        Prof
+                      </span>
+                    )}
+                  </div>
                   <p className="text-[11px] text-slate-500 mt-1 line-clamp-2">{n.message}</p>
                 </div>
               ))

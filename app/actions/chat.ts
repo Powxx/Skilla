@@ -95,6 +95,14 @@ export async function getMessages(conversationId: string, page: number = 1, page
   }).then(messages => messages.reverse()); // Remettre dans l'ordre chronologique
 }
 
+function isGeneralAdminUser(u: { email?: string | null; username?: string | null; firstName?: string | null; lastName?: string | null; isGeneralAdmin?: boolean | null }): boolean {
+  if (u.isGeneralAdmin) return true;
+  if (u.email?.toLowerCase() === "admin@skilla.edu") return true;
+  if (u.username?.toLowerCase() === "admin") return true;
+  if (u.firstName?.toLowerCase() === "admin" && (u.lastName?.toLowerCase() === "general" || u.lastName?.toLowerCase() === "général" || u.lastName?.toLowerCase() === "skilla")) return true;
+  return false;
+}
+
 export async function sendMessage(recipientId: string, content: string) {
   if (!(await isChatEnabled())) throw new Error("Le chat est désactivé");
   const session = await getServerSession(authOptions);
@@ -115,9 +123,15 @@ export async function sendMessage(recipientId: string, content: string) {
   // Logique de permission
   const isSenderAdmin = sender.role === 'SUPER_ADMIN' || sender.role === 'ADMIN';
   const isRecipientAdmin = recipient.role === 'SUPER_ADMIN' || recipient.role === 'ADMIN';
+  const recipientIsGeneralAdmin = isGeneralAdminUser(recipient);
 
-  // Admin peut contacter tout le monde
-  if (isSenderAdmin || isRecipientAdmin) {
+  // L'administrateur général ne peut pas être contacté directement par les autres utilisateurs
+  if (isRecipientAdmin && recipientIsGeneralAdmin && !isGeneralAdminUser(sender)) {
+    throw new Error("L'administrateur général ne peut pas être contacté directement.");
+  }
+
+  // Un administrateur ou tout utilisateur contactant un administrateur (non général) est autorisé
+  if (isSenderAdmin || (isRecipientAdmin && !recipientIsGeneralAdmin)) {
     // Ok
   } else if ((sender.role === 'STUDENT' || sender.role === 'RESPONSIBLE') && recipient.role === 'TEACHER') {
     // Vérifier si le prof enseigne à l'élève
@@ -203,41 +217,90 @@ export async function getAuthorizedContacts(search: string = "") {
   });
   if (!sender) throw new Error("Utilisateur introuvable");
 
-  let whereClause: any = {
+  // Récupérer les admins & super admins contactables (exclut l'administrateur général)
+  const contactableAdminsRaw = await prisma.user.findMany({
+    where: {
       id: { not: session.user.id },
-      OR: [
-          { firstName: { contains: search, mode: 'insensitive' } },
-          { lastName: { contains: search, mode: 'insensitive' } }
+      role: { in: ['ADMIN', 'SUPER_ADMIN'] },
+      isActive: true,
+      NOT: [
+        { email: { equals: "admin@skilla.edu", mode: 'insensitive' } },
+        { username: { equals: "admin", mode: 'insensitive' } },
+        { isGeneralAdmin: true }
       ]
-  };
+    },
+    select: { id: true, firstName: true, lastName: true, username: true, email: true, isGeneralAdmin: true }
+  });
 
-  // Restreindre selon les permissions
+  const adminIds = contactableAdminsRaw
+    .filter(a => !isGeneralAdminUser(a))
+    .map(a => a.id);
+
+  let allowedUserIds: string[] = [...adminIds];
+
+  // Restreindre selon les rôles
   if (sender.role === 'STUDENT' || sender.role === 'RESPONSIBLE') {
-      // Élèves/Parents -> uniquement leurs profs
+      // Élèves/Parents -> leurs profs + admins
       const studentId = sender.role === 'STUDENT' ? sender.id : (sender.students[0]?.id || "");
       const lessons = await prisma.lesson.findMany({
           where: { class: { students: { some: { id: studentId } } } },
           select: { teacherId: true }
       });
       const teacherIds = lessons.map(l => l.teacherId);
-      whereClause.id = { in: teacherIds };
+      allowedUserIds = Array.from(new Set([...allowedUserIds, ...teacherIds]));
   } else if (sender.role === 'TEACHER') {
-      // Profs -> uniquement leurs élèves/parents
+      // Profs -> leurs élèves/parents + admins
       const lessons = await prisma.lesson.findMany({
           where: { teacherId: sender.id },
           select: { classId: true }
       });
       const classIds = lessons.map(l => l.classId);
-      whereClause.OR = [
-          { studentProfile: { classId: { in: classIds } } },
-          { role: 'RESPONSIBLE', students: { some: { classId: { in: classIds } } } }
-      ];
-  } // Admins voient tout (par défaut, pas de filtre supplémentaire)
+      const studentsAndParents = await prisma.user.findMany({
+          where: {
+              OR: [
+                  { studentProfile: { classId: { in: classIds } } },
+                  { role: 'RESPONSIBLE', students: { some: { classId: { in: classIds } } } }
+              ]
+          },
+          select: { id: true }
+      });
+      allowedUserIds = Array.from(new Set([...allowedUserIds, ...studentsAndParents.map(u => u.id)]));
+  } else if (sender.role === 'COMPANY_TUTOR') {
+      // Tuteurs entreprise -> leurs alternants + admins
+      const contracts = await prisma.companyContract.findMany({
+          where: { tutorId: sender.id },
+          select: { studentId: true }
+      });
+      const studentIds = contracts.map(c => c.studentId);
+      allowedUserIds = Array.from(new Set([...allowedUserIds, ...studentIds]));
+  } else {
+      // Admins & Super Admins -> voient tous les utilisateurs actifs
+      const allUsers = await prisma.user.findMany({
+        where: {
+            id: { not: session.user.id },
+            isActive: true,
+            OR: [
+                { firstName: { contains: search, mode: 'insensitive' } },
+                { lastName: { contains: search, mode: 'insensitive' } }
+            ]
+        },
+        select: { id: true, firstName: true, lastName: true, role: true },
+        take: 30
+      });
+      return allUsers;
+  }
 
   return await prisma.user.findMany({
-    where: whereClause,
+    where: {
+      id: { in: allowedUserIds, not: session.user.id },
+      isActive: true,
+      OR: [
+          { firstName: { contains: search, mode: 'insensitive' } },
+          { lastName: { contains: search, mode: 'insensitive' } }
+      ]
+    },
     select: { id: true, firstName: true, lastName: true, role: true },
-    take: 20
+    take: 30
   });
 }
 

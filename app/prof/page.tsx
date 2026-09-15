@@ -7,6 +7,8 @@ import { formatInTimeZone } from 'date-fns-tz';
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 
+import { getEffectiveTeacherId, getEffectiveTeacherUser } from "@/lib/teacher-utils";
+
 export const dynamic = 'force-dynamic';
 
 export const metadata = {
@@ -17,10 +19,29 @@ export default async function ProfHomePage() {
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) redirect("/login");
 
-  const data = await loadTeacherDashboardPayload(session.user.id);
+  const effectiveTeacherId = await getEffectiveTeacherId(session.user.id);
+  const teacherUser = await getEffectiveTeacherUser(session.user.id);
+  const data = await loadTeacherDashboardPayload(effectiveTeacherId);
+
+  const isLinkedAdmin = teacherUser?.isLinkedAdmin;
 
   return (
     <div className="min-h-[80vh] flex flex-col gap-6 font-sans text-slate-900 pb-10">
+      {isLinkedAdmin && (
+        <div className="bg-indigo-600 text-white rounded-2xl p-4 flex items-center justify-between shadow-md">
+          <div className="flex items-center gap-3">
+            <span className="text-xl">👨‍🏫</span>
+            <div>
+              <p className="text-xs font-bold uppercase tracking-wider">Compte Professeur Lié</p>
+              <p className="text-xs opacity-90">Vous êtes connecté en tant qu'administrateur et vous accédez aux cours et notifications de <strong>{teacherUser?.firstName} {teacherUser?.lastName}</strong>.</p>
+            </div>
+          </div>
+          <Link href="/admin" className="px-3 py-1.5 bg-white text-indigo-700 text-xs font-black rounded-xl uppercase tracking-widest hover:bg-indigo-50 transition shrink-0">
+            Retour Admin
+          </Link>
+        </div>
+      )}
+
       {/* Hero Welcome Mini */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 shrink-0">
         <div>

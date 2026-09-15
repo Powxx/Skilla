@@ -4,6 +4,8 @@ import { redirect } from "next/navigation";
 import prisma from "@/lib/prisma";
 import GradeEntryClient from "./grade-entry-client";
 
+import { getEffectiveTeacherId } from "@/lib/teacher-utils";
+
 export const dynamic = 'force-dynamic';
 
 export const metadata = {
@@ -14,7 +16,7 @@ export default async function TeacherGradesPage() {
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) redirect("/login");
 
-  const teacherId = session.user.id;
+  const teacherId = await getEffectiveTeacherId(session.user.id);
 
   const [classes, subjects, teacherGrades, semesters] = await Promise.all([
     prisma.class.findMany({

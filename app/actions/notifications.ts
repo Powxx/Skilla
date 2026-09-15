@@ -6,28 +6,48 @@ import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { sendPushNotification } from "./push";
 
+async function getUserNotificationIds(userId: string): Promise<string[]> {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { id: true, role: true, linkedTeacherId: true }
+  });
+
+  const ids = [userId];
+  if (user && (user.role === "ADMIN" || user.role === "SUPER_ADMIN") && user.linkedTeacherId) {
+    ids.push(user.linkedTeacherId);
+  }
+  return ids;
+}
+
 /**
- * Récupère la liste paginée des notifications in-app d'un utilisateur.
+ * Récupère la liste paginée des notifications in-app d'un utilisateur (incluant son prof lié si admin).
  * 
  * @param userId ID de l'utilisateur.
  * @param page Numéro de la page (indexé à 1).
  * @param pageSize Nombre de notifications par page.
  */
 export async function getNotifications(userId: string, page: number = 1, pageSize: number = 20) {
-  return await prisma.notification.findMany({
-    where: { userId },
+  const ids = await getUserNotificationIds(userId);
+  const notifications = await prisma.notification.findMany({
+    where: { userId: { in: ids } },
     orderBy: { createdAt: "desc" },
     skip: (page - 1) * pageSize,
     take: pageSize,
   });
+
+  return notifications.map(n => ({
+    ...n,
+    isLinkedNotification: n.userId !== userId
+  }));
 }
 
 /**
- * Compte le nombre de notifications non lues pour un utilisateur.
+ * Compte le nombre de notifications non lues pour un utilisateur (et son compte prof lié si admin).
  */
 export async function getUnreadCount(userId: string) {
+  const ids = await getUserNotificationIds(userId);
   return await prisma.notification.count({
-    where: { userId, isRead: false },
+    where: { userId: { in: ids }, isRead: false },
   });
 }
 
@@ -54,8 +74,9 @@ export async function markAllAsRead(userId: string) {
   const session = await getServerSession(authOptions);
   if (!session?.user?.id || session.user.id !== userId) throw new Error("Non autorisé");
 
+  const ids = await getUserNotificationIds(userId);
   await prisma.notification.updateMany({
-    where: { userId, isRead: false },
+    where: { userId: { in: ids }, isRead: false },
     data: { isRead: true },
   });
   revalidatePath("/", "layout");

@@ -4,13 +4,15 @@ import { authOptions } from "@/lib/auth-options";
 import { redirect } from "next/navigation";
 import SanctionsProfClient from "./sanctions-prof-client";
 
+import { getEffectiveTeacherId } from "@/lib/teacher-utils";
+
 export default async function ProfSanctionsDataFetcher() {
   const session = await getServerSession(authOptions);
-  if (!session?.user?.id || session.user.role !== "TEACHER") {
+  if (!session?.user?.id || (session.user.role !== "TEACHER" && session.user.role !== "ADMIN" && session.user.role !== "SUPER_ADMIN")) {
     redirect("/login");
   }
 
-  const teacherId = session.user.id;
+  const teacherId = await getEffectiveTeacherId(session.user.id);
 
   const teacherLessons = await prisma.lesson.findMany({
     where: { teacherId, isFreeLesson: false },

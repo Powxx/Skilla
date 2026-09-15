@@ -14,6 +14,8 @@ import {
   MessageSquare
 } from "lucide-react";
 
+import { getEffectiveTeacherId } from "@/lib/teacher-utils";
+
 export const dynamic = 'force-dynamic';
 
 export const metadata = {
@@ -27,16 +29,18 @@ interface PageProps {
 export default async function ProfClassesPage(props: PageProps) {
   const session = await getServerSession(authOptions);
 
-  if (!session?.user || session.user.role !== "TEACHER") {
+  if (!session?.user || (session.user.role !== "TEACHER" && session.user.role !== "ADMIN" && session.user.role !== "SUPER_ADMIN")) {
     redirect("/login");
   }
+
+  const effectiveTeacherId = await getEffectiveTeacherId(session.user.id);
 
   const searchParams = await props.searchParams;
   const rawClassId = searchParams?.classId;
   const classId = Array.isArray(rawClassId) ? rawClassId[0] : rawClassId;
 
   // Fetch only classes that the teacher possesses (teaches lessons in)
-  const teacherClasses = await getTeacherClasses(session.user.id);
+  const teacherClasses = await getTeacherClasses(effectiveTeacherId);
 
   // Validate that the selected class belongs to the teacher
   const isAuthorizedClass = classId ? teacherClasses.some(c => c.id === classId) : false;

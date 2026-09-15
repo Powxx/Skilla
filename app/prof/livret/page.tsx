@@ -4,26 +4,30 @@ import { redirect } from "next/navigation";
 import prisma from "@/lib/prisma";
 import ProfLivretClient from "./prof-livret-client";
 
+import { getEffectiveTeacherId } from "@/lib/teacher-utils";
+
 export const dynamic = 'force-dynamic';
 
 export default async function ProfLivretPage({ searchParams }: { searchParams?: { studentId?: string, semesterId?: string } }) {
   const session = await getServerSession(authOptions);
-  if (!session?.user?.id || session.user.role !== "TEACHER") {
+  if (!session?.user?.id || (session.user.role !== "TEACHER" && session.user.role !== "ADMIN" && session.user.role !== "SUPER_ADMIN")) {
     redirect("/login");
   }
+
+  const effectiveTeacherId = await getEffectiveTeacherId(session.user.id);
 
   // Vérification DB directe en cas de changement d'habilitation sans reconnexion
   const dbUser = await prisma.user.findUnique({
     where: { id: session.user.id },
-    select: { canAccessLivrets: true }
+    select: { canAccessLivrets: true, role: true }
   });
-  if (!dbUser?.canAccessLivrets) {
+  if (session.user.role === "TEACHER" && !dbUser?.canAccessLivrets) {
     redirect("/prof?access=denied");
   }
 
   // 1. Get my students (those in my classes) and semesters
   const teacherLessons = await prisma.lesson.findMany({
-    where: { teacherId: session.user.id, isFreeLesson: false },
+    where: { teacherId: effectiveTeacherId, isFreeLesson: false },
     select: { classId: true }
   });
   const classIds = [...new Set(teacherLessons.map(l => l.classId))];
