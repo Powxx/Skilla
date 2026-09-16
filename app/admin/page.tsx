@@ -91,6 +91,7 @@ export default async function AdminHomePage() {
     { href: "/admin/livret", label: "Livrets", sub: "Suivi & Exploitation", icon: ClipboardList, color: "text-rose-600", bg: "bg-rose-50" },
     { href: "/admin/recap/competencies", label: "Compétences", sub: "Suivi global", icon: LayoutDashboard, color: "text-violet-600", bg: "bg-violet-50" },
     { href: "/admin/absences", label: "Absences", icon: FileWarning, color: "text-orange-600", bg: "bg-orange-50" },
+    { href: "/admin/notes", label: "Dernières Notes", sub: "Flux des saisies", icon: BookOpen, color: "text-blue-600", bg: "bg-blue-50" },
     { href: "/admin/dispenses", label: "Dispenses", icon: ShieldCheck, color: "text-red-600", bg: "bg-red-50" },
     { href: "/admin/report-cards", label: "Bulletins", icon: GraduationCap, color: "text-violet-600", bg: "bg-violet-50" },
     { href: "/admin/teachers/subjects", label: "Habilitations", sub: "Profs & Matières", icon: ShieldCheck, color: "text-amber-600", bg: "bg-amber-50" },

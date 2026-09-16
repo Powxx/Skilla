@@ -360,6 +360,7 @@ model Attendance {
   status       AttendanceStatus @default(PRESENT)
   lateDuration Int?             /// Durée du retard en minutes (si status == LATE)
   reason       String?          /// Motif du retard ou de l'absence
+  isConfirmed  Boolean          @default(false) /// Confirmation par l'administration pour le suivi
   lessonId     String
   lesson       Lesson           @relation(fields: [lessonId], references: [id], onDelete: Cascade)
   studentId    String

@@ -1,15 +1,19 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
+import { useSearchParams } from "next/navigation";
+import { ABSENCE_MOTIFS } from "@/lib/absence-motifs";
 import { 
   LessonWithAttendancePayload, 
   updateStudentAttendance, 
   markAllStudentsPresent, 
   addStudentToCourseCard, 
   createAdminLessonRollCall,
-  searchStudentsForCourseCard
+  searchStudentsForCourseCard,
+  toggleConfirmAttendance,
+  updateAttendanceJustification
 } from "./actions";
 import { 
   CheckCircle2, 
@@ -26,7 +30,10 @@ import {
   BookOpen, 
   X,
   Filter,
-  Check
+  Check,
+  FileText,
+  ShieldCheck,
+  ShieldAlert
 } from "lucide-react";
 
 type Props = {
@@ -44,14 +51,28 @@ export default function AdminAbsencesClient({
   teachers,
   rooms
 }: Props) {
+  const searchParams = useSearchParams();
+  const initialStatusFilter = searchParams.get("status") || "ALL";
+
   const [lessons, setLessons] = useState<LessonWithAttendancePayload[]>(initialLessons);
   const [expandedCardId, setExpandedCardId] = useState<string | null>(initialLessons[0]?.id || null);
 
   // Filters
   const [selectedClassId, setSelectedClassId] = useState<string>("");
-  const [selectedStatusFilter, setSelectedStatusFilter] = useState<string>("ALL");
+  const [selectedStatusFilter, setSelectedStatusFilter] = useState<string>(initialStatusFilter);
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [dateFilter, setDateFilter] = useState<string>("");
+
+  // Modal State: Justification avec Motifs
+  const [justificationModal, setJustificationModal] = useState<{
+    lessonId: string;
+    studentId: string;
+    studentName: string;
+    currentReason?: string | null;
+  } | null>(null);
+  const [selectedMotif, setSelectedMotif] = useState<string>(ABSENCE_MOTIFS[0]);
+  const [customDetails, setCustomDetails] = useState<string>("");
+  const [justificationLoading, setJustificationLoading] = useState(false);
 
   // Modal State: Create Roll Call
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -78,6 +99,8 @@ export default function AdminAbsencesClient({
     if (selectedStatusFilter === "VALIDATED" && !lesson.isAttendanceValidated) return false;
     if (selectedStatusFilter === "PENDING" && lesson.isAttendanceValidated) return false;
     if (selectedStatusFilter === "WITH_ABSENCES" && lesson.absentCount === 0 && lesson.lateCount === 0) return false;
+    if (selectedStatusFilter === "UNCONFIRMED" && !lesson.students.some(s => (s.status === "ABSENT" || s.status === "EXCUSED") && !s.isConfirmed)) return false;
+    if (selectedStatusFilter === "CONFIRMED" && !lesson.students.some(s => (s.status === "ABSENT" || s.status === "EXCUSED") && s.isConfirmed)) return false;
 
     if (dateFilter) {
       const lessonDate = format(new Date(lesson.startTime), "yyyy-MM-dd");
@@ -103,9 +126,115 @@ export default function AdminAbsencesClient({
   const totalAbsences = lessons.reduce((acc, l) => acc + l.absentCount, 0);
   const totalLates = lessons.reduce((acc, l) => acc + l.lateCount, 0);
 
+  // Compteur global des absences non confirmées par l'admin
+  const unconfirmedAbsencesCount = lessons.reduce((acc, l) => {
+    return acc + l.students.filter(s => (s.status === "ABSENT" || s.status === "EXCUSED") && !s.isConfirmed).length;
+  }, 0);
+
   // Toggle card expansion
   const toggleExpand = (id: string) => {
     setExpandedCardId(prev => (prev === id ? null : id));
+  };
+
+  const handleToggleConfirm = async (lessonId: string, studentId: string, currentConfirmed: boolean) => {
+    const newConfirmed = !currentConfirmed;
+    
+    setLessons(prev => prev.map(l => {
+      if (l.id !== lessonId) return l;
+      const updatedStudents = l.students.map(s => {
+        if (s.studentId !== studentId) return s;
+        return { ...s, isConfirmed: newConfirmed };
+      });
+      return { ...l, students: updatedStudents };
+    }));
+
+    try {
+      await toggleConfirmAttendance(lessonId, studentId, newConfirmed);
+    } catch (e: any) {
+      alert("Erreur lors de la confirmation: " + e.message);
+    }
+  };
+
+  const handleOpenJustificationModal = (lessonId: string, studentId: string, studentName: string, currentReason?: string | null) => {
+    let initialMotif: string = ABSENCE_MOTIFS[0];
+    let initialDetails = "";
+
+    if (currentReason) {
+      const foundMotif = ABSENCE_MOTIFS.find(m => currentReason.startsWith(m));
+      if (foundMotif) {
+        initialMotif = foundMotif;
+        initialDetails = currentReason.replace(foundMotif, "").replace(/^\s*[—:-]\s*/, "").trim();
+      } else {
+        initialMotif = ABSENCE_MOTIFS[ABSENCE_MOTIFS.length - 1];
+        initialDetails = currentReason;
+      }
+    }
+
+    setSelectedMotif(initialMotif);
+    setCustomDetails(initialDetails);
+    setJustificationModal({ lessonId, studentId, studentName, currentReason });
+  };
+
+  const handleSaveJustification = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!justificationModal) return;
+
+    setJustificationLoading(true);
+    const fullReason = customDetails.trim() 
+      ? `${selectedMotif} — ${customDetails.trim()}`
+      : selectedMotif;
+
+    try {
+      await updateAttendanceJustification(
+        justificationModal.lessonId,
+        justificationModal.studentId,
+        fullReason,
+        "EXCUSED",
+        true
+      );
+
+      setLessons(prev => prev.map(l => {
+        if (l.id !== justificationModal.lessonId) return l;
+
+        const updatedStudents = l.students.map(s => {
+          if (s.studentId !== justificationModal.studentId) return s;
+          return {
+            ...s,
+            status: "EXCUSED" as const,
+            reason: fullReason,
+            isConfirmed: true
+          };
+        });
+
+        let presentCount = 0;
+        let absentCount = 0;
+        let lateCount = 0;
+        let excusedCount = 0;
+
+        updatedStudents.forEach(s => {
+          if (s.status === "PRESENT") presentCount++;
+          else if (s.status === "ABSENT") absentCount++;
+          else if (s.status === "LATE") lateCount++;
+          else if (s.status === "EXCUSED") excusedCount++;
+        });
+
+        return {
+          ...l,
+          isAttendanceValidated: true,
+          presentCount,
+          absentCount,
+          lateCount,
+          excusedCount,
+          students: updatedStudents
+        };
+      }));
+
+      setJustificationModal(null);
+    } catch (e: any) {
+      alert("Erreur lors de l'enregistrement: " + e.message);
+    } finally {
+      setJustificationLoading(false);
+    }
   };
 
   // Status Change for a Student inside a Card
@@ -359,6 +488,18 @@ export default function AdminAbsencesClient({
             >
               Absences
             </button>
+            <button
+              onClick={() => setSelectedStatusFilter("UNCONFIRMED")}
+              className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition ${selectedStatusFilter === "UNCONFIRMED" ? "bg-amber-600 text-white shadow-sm" : "text-slate-500 hover:text-slate-900"}`}
+            >
+              À valider admin ({unconfirmedAbsencesCount})
+            </button>
+            <button
+              onClick={() => setSelectedStatusFilter("CONFIRMED")}
+              className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition ${selectedStatusFilter === "CONFIRMED" ? "bg-emerald-600 text-white shadow-sm" : "text-slate-500 hover:text-slate-900"}`}
+            >
+              Confirmées
+            </button>
           </div>
         </div>
 
@@ -484,17 +625,42 @@ export default function AdminAbsencesClient({
                               key={student.studentId}
                               className="p-3 bg-slate-50/90 hover:bg-slate-100/90 rounded-2xl border border-slate-200/60 flex flex-col gap-2 transition shadow-sm"
                             >
-                              {/* Nom de l'élève (au-dessus) */}
-                              <div className="flex items-center gap-2.5">
-                                <div className="h-7 w-7 rounded-full bg-blue-100 text-blue-700 font-black text-xs flex items-center justify-center shrink-0 uppercase border border-blue-200">
-                                  {student.formattedName ? student.formattedName.charAt(0) : '?'}
+                              {/* Nom de l'élève & Statut d'administration */}
+                              <div className="flex items-center justify-between gap-2">
+                                <div className="flex items-center gap-2.5">
+                                  <div className="h-7 w-7 rounded-full bg-blue-100 text-blue-700 font-black text-xs flex items-center justify-center shrink-0 uppercase border border-blue-200">
+                                    {student.formattedName ? student.formattedName.charAt(0) : '?'}
+                                  </div>
+                                  <span className="text-xs font-black text-slate-900 tracking-wide">
+                                    {student.formattedName}
+                                  </span>
                                 </div>
-                                <span className="text-xs font-black text-slate-900 tracking-wide">
-                                  {student.formattedName}
-                                </span>
+
+                                {/* Badge de confirmation administrative pour absence / retard */}
+                                {(student.status === "ABSENT" || student.status === "EXCUSED" || student.status === "LATE") && (
+                                  <div className="flex items-center gap-1.5">
+                                    {student.isConfirmed ? (
+                                      <span className="text-[9px] font-black uppercase bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded-md border border-emerald-200 flex items-center gap-1 shrink-0">
+                                        <ShieldCheck className="h-3 w-3" /> Confirmée admin
+                                      </span>
+                                    ) : (
+                                      <span className="text-[9px] font-black uppercase bg-amber-50 text-amber-700 px-2 py-0.5 rounded-md border border-amber-200 flex items-center gap-1 shrink-0">
+                                        <ShieldAlert className="h-3 w-3" /> Non confirmée
+                                      </span>
+                                    )}
+                                  </div>
+                                )}
                               </div>
 
-                              {/* Boutons de statut (en-dessous) */}
+                              {/* Affichage du motif de justification s'il existe */}
+                              {student.reason && (
+                                <p className="text-[10px] text-slate-600 bg-slate-100 px-2.5 py-1 rounded-xl font-medium italic border border-slate-200/60 flex items-center gap-1.5">
+                                  <FileText className="h-3 w-3 text-blue-500 shrink-0" />
+                                  <span className="truncate">{student.reason}</span>
+                                </p>
+                              )}
+
+                              {/* Boutons de statut principal */}
                               <div className="grid grid-cols-4 gap-1.5 w-full">
                                 <button
                                   onClick={() => handleStatusChange(lesson.id, student.studentId, "PRESENT")}
@@ -515,12 +681,38 @@ export default function AdminAbsencesClient({
                                   Retard
                                 </button>
                                 <button
-                                  onClick={() => handleStatusChange(lesson.id, student.studentId, "EXCUSED")}
+                                  onClick={() => handleOpenJustificationModal(lesson.id, student.studentId, student.formattedName || `${student.lastName} ${student.firstName}`, student.reason)}
                                   className={`py-1.5 px-2 rounded-xl text-[10px] font-black transition uppercase text-center ${student.status === "EXCUSED" ? "bg-blue-600 text-white shadow-sm ring-1 ring-blue-600" : "bg-white text-slate-600 border border-slate-200 hover:bg-blue-50 hover:text-blue-700"}`}
                                 >
-                                  Justifié
+                                  {student.status === "EXCUSED" ? "Justifié" : "Justifier"}
                                 </button>
                               </div>
+
+                              {/* Actions de suivi et justification pour l'administration */}
+                              {(student.status === "ABSENT" || student.status === "EXCUSED" || student.status === "LATE") && (
+                                <div className="flex items-center justify-between gap-2 pt-1 border-t border-slate-200/50">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleOpenJustificationModal(lesson.id, student.studentId, student.formattedName || `${student.lastName} ${student.firstName}`, student.reason)}
+                                    className="text-[10px] font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1"
+                                  >
+                                    <FileText className="h-3 w-3" />
+                                    {student.reason ? "Modifier motif" : "+ Motif justification"}
+                                  </button>
+
+                                  <button
+                                    type="button"
+                                    onClick={() => handleToggleConfirm(lesson.id, student.studentId, student.isConfirmed ?? false)}
+                                    className={`px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-wider transition ${
+                                      student.isConfirmed 
+                                        ? "bg-slate-200 hover:bg-slate-300 text-slate-700" 
+                                        : "bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm"
+                                    }`}
+                                  >
+                                    {student.isConfirmed ? "Déconfirmer" : "✓ Confirmer l'absence"}
+                                  </button>
+                                </div>
+                              )}
                             </div>
                           ))
                         )}
@@ -699,6 +891,71 @@ export default function AdminAbsencesClient({
                     className="w-full py-3 bg-blue-600 text-white rounded-2xl text-xs font-black uppercase tracking-widest hover:bg-blue-700 transition shadow-md shadow-blue-500/20 disabled:opacity-50"
                   >
                     {addStudentLoading ? "Ajout..." : "Ajouter au cours"}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* Modal: Justification d'absence avec Motifs */}
+        {justificationModal && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
+            <div className="bg-white rounded-3xl p-6 w-full max-w-md shadow-2xl relative border border-slate-100">
+              <button
+                onClick={() => setJustificationModal(null)}
+                className="absolute top-5 right-5 text-slate-400 hover:text-slate-600 p-1 rounded-full hover:bg-slate-100"
+              >
+                <X className="h-5 w-5" />
+              </button>
+
+              <div className="flex items-center gap-2 mb-1">
+                <FileText className="h-5 w-5 text-blue-600" />
+                <h2 className="text-lg font-black text-slate-900 uppercase tracking-wider">Justifier une absence</h2>
+              </div>
+              <p className="text-xs text-slate-500 font-medium mb-4">
+                Sélectionnez le motif et saisissez un commentaire pour <strong className="text-slate-900">{justificationModal.studentName}</strong>.
+              </p>
+
+              <form onSubmit={handleSaveJustification} className="space-y-4">
+                <div>
+                  <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Motif de justification</label>
+                  <select
+                    value={selectedMotif}
+                    onChange={e => setSelectedMotif(e.target.value)}
+                    className="w-full p-3 bg-slate-50 border border-slate-200 rounded-2xl text-xs font-bold text-slate-800 outline-none focus:ring-2 focus:ring-blue-500/20"
+                  >
+                    {ABSENCE_MOTIFS.map(m => (
+                      <option key={m} value={m}>{m}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Précisions ou commentaire (Optionnel)</label>
+                  <textarea
+                    rows={3}
+                    placeholder="Ex: Certificat médical fourni par le médecin..."
+                    value={customDetails}
+                    onChange={e => setCustomDetails(e.target.value)}
+                    className="w-full p-3 bg-slate-50 border border-slate-200 rounded-2xl text-xs font-bold text-slate-800 outline-none focus:ring-2 focus:ring-blue-500/20 resize-none"
+                  />
+                </div>
+
+                <div className="pt-2 flex items-center justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setJustificationModal(null)}
+                    className="px-4 py-2.5 bg-slate-100 text-slate-600 rounded-2xl text-xs font-black uppercase tracking-widest hover:bg-slate-200 transition"
+                  >
+                    Annuler
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={justificationLoading}
+                    className="px-4 py-2.5 bg-blue-600 text-white rounded-2xl text-xs font-black uppercase tracking-widest hover:bg-blue-700 transition shadow-md shadow-blue-500/20 disabled:opacity-50"
+                  >
+                    {justificationLoading ? "Enregistrement..." : "Valider & Justifier"}
                   </button>
                 </div>
               </form>

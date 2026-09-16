@@ -304,6 +304,7 @@ export async function loadAdminDashboardPayload(
     pendingMeetings,
     pendingSubstitutions,
     pendingRollCalls,
+    unconfirmedAbsencesCount,
     conductAtRisk,
     annualLessonsForTeachers,
   ] = await Promise.all([
@@ -418,6 +419,13 @@ export async function loadAdminDashboardPayload(
         startTime: { lt: now },
         isCancelled: false,
         isAttendanceValidated: false, // Cours passés dont l'appel n'a pas été validé
+      },
+    }),
+    prisma.attendance.count({
+      where: {
+        status: { in: ["ABSENT", "EXCUSED"] },
+        isConfirmed: false,
+        ...(selectedClassId ? { student: { classId: selectedClassId } } : {}),
       },
     }),
     prisma.user.count({
@@ -713,6 +721,15 @@ export async function loadAdminDashboardPayload(
       label: "Appels non validés",
       count: pendingRollCalls,
       href: "/admin/absences",
+    });
+  }
+  if (unconfirmedAbsencesCount > 0) {
+    alerts.push({
+      id: "unconfirmed-absences",
+      severity: "warning",
+      label: "Absences non confirmées (suivi admin)",
+      count: unconfirmedAbsencesCount,
+      href: "/admin/absences?status=UNCONFIRMED",
     });
   }
   if (missingReportCards > 0) {

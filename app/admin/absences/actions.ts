@@ -38,6 +38,8 @@ export type LessonWithAttendancePayload = {
     attendanceId: string | null;
     status: "PRESENT" | "ABSENT" | "LATE" | "EXCUSED" | "UNSET";
     lateDuration?: number | null;
+    reason?: string | null;
+    isConfirmed?: boolean;
   }>;
 };
 
@@ -131,9 +133,9 @@ export async function getAdminLessonsWithAttendance(filters?: {
     const isAttendanceValidated = lesson.isAttendanceValidated || lesson.attendances.length > 0;
 
     // Map d'émargement existant
-    const attendanceMap = new Map<string, { id: string; status: AttendanceStatus; lateDuration?: number | null }>();
+    const attendanceMap = new Map<string, { id: string; status: AttendanceStatus; lateDuration?: number | null; reason?: string | null; isConfirmed: boolean }>();
     lesson.attendances.forEach((att) => {
-      attendanceMap.set(att.studentId, { id: att.id, status: att.status, lateDuration: att.lateDuration });
+      attendanceMap.set(att.studentId, { id: att.id, status: att.status, lateDuration: att.lateDuration, reason: att.reason, isConfirmed: att.isConfirmed ?? false });
     });
 
     // Combiner les élèves de la classe + tout élève supplémentaire qui aurait une présence enregistrée sur cette leçon
@@ -158,6 +160,8 @@ export async function getAdminLessonsWithAttendance(filters?: {
       attendanceId: string | null;
       status: "PRESENT" | "ABSENT" | "LATE" | "EXCUSED" | "UNSET";
       lateDuration?: number | null;
+      reason?: string | null;
+      isConfirmed?: boolean;
     }> = [];
 
     allStudentsMap.forEach((info, studentId) => {
@@ -185,7 +189,9 @@ export async function getAdminLessonsWithAttendance(filters?: {
         formattedName,
         attendanceId: existing?.id || null,
         status: status as any,
-        lateDuration: existing?.lateDuration
+        lateDuration: existing?.lateDuration,
+        reason: existing?.reason || null,
+        isConfirmed: existing?.isConfirmed ?? false
       });
     });
 
@@ -228,7 +234,9 @@ export async function updateStudentAttendance(
   lessonId: string,
   studentId: string,
   status: "PRESENT" | "ABSENT" | "LATE" | "EXCUSED",
-  lateDuration?: number
+  lateDuration?: number,
+  reason?: string | null,
+  isConfirmed?: boolean
 ) {
   await requireAdmin();
 
@@ -236,13 +244,17 @@ export async function updateStudentAttendance(
     where: { lessonId, studentId }
   });
 
+  const updateData: any = {
+    status: status as AttendanceStatus,
+    lateDuration: status === "LATE" ? (lateDuration || 15) : null,
+  };
+  if (reason !== undefined) updateData.reason = reason;
+  if (isConfirmed !== undefined) updateData.isConfirmed = isConfirmed;
+
   if (existing) {
     await prisma.attendance.update({
       where: { id: existing.id },
-      data: {
-        status: status as AttendanceStatus,
-        lateDuration: status === "LATE" ? (lateDuration || 15) : null
-      }
+      data: updateData
     });
   } else {
     await prisma.attendance.create({
@@ -250,7 +262,9 @@ export async function updateStudentAttendance(
         lessonId,
         studentId,
         status: status as AttendanceStatus,
-        lateDuration: status === "LATE" ? (lateDuration || 15) : null
+        lateDuration: status === "LATE" ? (lateDuration || 15) : null,
+        reason: reason || null,
+        isConfirmed: isConfirmed ?? false
       }
     });
   }
@@ -285,7 +299,78 @@ export async function updateStudentAttendance(
   }
 
   revalidatePath("/admin/absences");
+  revalidatePath("/admin/dashboard");
   revalidatePath("/prof/appel");
+  return { ok: true };
+}
+
+/**
+ * Confirme ou disconfirme une absence côté administration pour le suivi.
+ */
+export async function toggleConfirmAttendance(
+  lessonId: string,
+  studentId: string,
+  isConfirmed: boolean
+) {
+  await requireAdmin();
+
+  const existing = await prisma.attendance.findFirst({
+    where: { lessonId, studentId }
+  });
+
+  if (!existing) {
+    return { ok: false, error: "Émargement introuvable" };
+  }
+
+  await prisma.attendance.update({
+    where: { id: existing.id },
+    data: { isConfirmed }
+  });
+
+  revalidatePath("/admin/absences");
+  revalidatePath("/admin/dashboard");
+  return { ok: true };
+}
+
+/**
+ * Justifie une absence avec un motif prédéfini et des explications.
+ */
+export async function updateAttendanceJustification(
+  lessonId: string,
+  studentId: string,
+  reason: string,
+  status: "EXCUSED" | "ABSENT" = "EXCUSED",
+  isConfirmed: boolean = true
+) {
+  await requireAdmin();
+
+  const existing = await prisma.attendance.findFirst({
+    where: { lessonId, studentId }
+  });
+
+  if (existing) {
+    await prisma.attendance.update({
+      where: { id: existing.id },
+      data: {
+        status: status as AttendanceStatus,
+        reason,
+        isConfirmed
+      }
+    });
+  } else {
+    await prisma.attendance.create({
+      data: {
+        lessonId,
+        studentId,
+        status: status as AttendanceStatus,
+        reason,
+        isConfirmed
+      }
+    });
+  }
+
+  revalidatePath("/admin/absences");
+  revalidatePath("/admin/dashboard");
   return { ok: true };
 }
 
