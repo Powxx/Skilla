@@ -26,8 +26,8 @@ export async function getConversations() {
       ]
     },
     include: {
-      participant1: { select: { id: true, firstName: true, lastName: true, role: true } },
-      participant2: { select: { id: true, firstName: true, lastName: true, role: true } },
+      participant1: { select: { id: true, firstName: true, lastName: true, role: true, phone: true } },
+      participant2: { select: { id: true, firstName: true, lastName: true, role: true, phone: true } },
       messages: {
         orderBy: { createdAt: 'desc' },
         take: 1
@@ -332,7 +332,7 @@ export async function getAuthorizedContacts(search: string = "") {
                 { lastName: { contains: search, mode: 'insensitive' } }
             ]
         },
-        select: { id: true, firstName: true, lastName: true, role: true },
+        select: { id: true, firstName: true, lastName: true, role: true, phone: true },
         take: 30
       });
       return allUsers;
@@ -347,7 +347,7 @@ export async function getAuthorizedContacts(search: string = "") {
           { lastName: { contains: search, mode: 'insensitive' } }
       ]
     },
-    select: { id: true, firstName: true, lastName: true, role: true },
+    select: { id: true, firstName: true, lastName: true, role: true, phone: true },
     take: 30
   });
 }

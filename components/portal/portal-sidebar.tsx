@@ -30,7 +30,7 @@ type NavItem = {
 };
 
 type Props = {
-  variant: "prof" | "student" | "parent" | "admin" | "employer";
+  variant: "prof" | "student" | "parent" | "admin" | "employer" | string;
   resolvedChildId?: string;
   schoolName?: string;
   arcadeEnabled?: boolean;
@@ -43,7 +43,14 @@ export default function PortalSidebar({ variant, resolvedChildId, schoolName = "
 
   const navItems: NavItem[] = [];
 
-  switch (variant) {
+  // Normaliser le variant pour gérer les alias
+  let resolvedVariant = String(variant || "").toLowerCase();
+  if (resolvedVariant === "teacher") resolvedVariant = "prof";
+  if (resolvedVariant === "responsible") resolvedVariant = "parent";
+  if (resolvedVariant === "company_tutor") resolvedVariant = "employer";
+  if (resolvedVariant === "super_admin") resolvedVariant = "admin";
+
+  switch (resolvedVariant) {
     case "admin":
       navItems.push(
         { href: "/admin/dashboard", label: "Tour de contrôle", icon: LayoutDashboard },
@@ -59,6 +66,7 @@ export default function PortalSidebar({ variant, resolvedChildId, schoolName = "
         ...(qualiopiEnabled ? [{ href: "/admin/qualiopi", label: "Qualiopi", icon: FileText }] : []),
         { href: "/admin/notifications", label: "Notifications", icon: FileText },
         { href: "/admin/connexion-docs", label: "Connexion Docs", icon: Key },
+        { href: "/admin/impersonate", label: "Impersonnalisation", icon: UserCircle },
         { href: "/admin/settings", label: "Config", icon: Settings },
         { href: "/messages", label: "Messages", icon: MessageSquare },
         { href: "/settings/password", label: "Mot de passe", icon: Key }

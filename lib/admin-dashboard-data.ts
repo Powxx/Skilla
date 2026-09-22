@@ -174,7 +174,13 @@ export type AdminDashboardPayload = {
     sanctionsByType: { type: string; count: number }[];
     hrHoursWeekly: { week: string; planned: number; realized: number; gap: number }[];
     satisfactionMonthly: { month: string; avg: number; count: number }[];
-    teacherWorkloadByTeacher: { teacherName: string; realized: number; planned: number }[];
+    teacherWorkloadByTeacher: {
+      teacherName: string;
+      realized: number;
+      planned: number;
+      total: number;
+      percentage: number;
+    }[];
   };
   miniTables: {
     topClasses: { classId: string; className: string; average: number }[];
@@ -662,13 +668,19 @@ export async function loadAdminDashboardPayload(
     .map((t) => {
       const realized = calculateSingleTeacherMergedHours(t.realizedIntervals);
       const planned = calculateSingleTeacherMergedHours(t.plannedIntervals);
+      const realizedRounded = Math.round(realized * 10) / 10;
+      const plannedRounded = Math.round(planned * 10) / 10;
+      const total = Math.round((realized + planned) * 10) / 10;
+      const percentage = total > 0 ? Math.round((realized / total) * 100) : 0;
       return {
-        teacherName: t.name,
-        realized: Math.round(realized * 10) / 10,
-        planned: Math.round(planned * 10) / 10,
+        teacherName: t.name || "Enseignant",
+        realized: realizedRounded,
+        planned: plannedRounded,
+        total,
+        percentage,
       };
     })
-    .sort((a, b) => b.realized + b.planned - (a.realized + a.planned));
+    .sort((a, b) => b.total - a.total);
 
   // Taux de présence global des professeurs (cours assurés / total planifié)
   const totalAnnualLessons = annualLessonsForTeachers.length;

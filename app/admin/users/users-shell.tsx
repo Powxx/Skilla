@@ -8,7 +8,7 @@ import { useRouter } from "next/navigation";
 import { createUser, deleteUserSafe, updateUser, importUsersAction, updateAdminPermissions } from "./actions";
 import { useRef } from "react";
 import { useSession } from "next-auth/react";
-import { Shield, ShieldAlert, ShieldCheck, Key, FileText, X, MessageSquare } from "lucide-react";
+import { Shield, ShieldAlert, ShieldCheck, Key, FileText, X, MessageSquare, Phone, Eye } from "lucide-react";
 import { MessageButton } from "@/components/chat/MessageButton";
 
 const inputClass =
@@ -31,6 +31,7 @@ export type ListedUserRow = {
   canManagePlanning: boolean;
   canManageRH: boolean;
   canImpersonate: boolean;
+  isGeneralAdmin?: boolean;
   isActive: boolean;
   username: string | null;
   phone: string | null;
@@ -88,8 +89,30 @@ function canDeleteListedUser(u: ListedUserRow): boolean {
 export default function UsersShell(props: Props) {
   const { users, total, page, pageSize, classes, initialQuery, initialRole } = props;
   const router = useRouter();
-  const { data: session } = useSession();
-  const isSuperAdmin = session?.user?.role === Role.SUPER_ADMIN;
+  const { data: session, update: updateSession } = useSession();
+  const isSuperAdmin = session?.user?.role === Role.SUPER_ADMIN || (session?.user as any)?.isGeneralAdmin === true;
+  const canImpersonate = isSuperAdmin || (session?.user as any)?.canImpersonate === true;
+
+  const handleQuickImpersonate = async (u: ListedUserRow) => {
+    try {
+      await updateSession({
+        impersonateUser: {
+          id: u.id,
+          role: u.role,
+          name: `${u.firstName} ${u.lastName}`.trim()
+        }
+      });
+      const destination = 
+        u.role === Role.SUPER_ADMIN || u.role === Role.ADMIN ? "/admin" :
+        u.role === Role.TEACHER ? "/prof" :
+        u.role === Role.STUDENT ? "/student" :
+        u.role === Role.RESPONSIBLE ? "/parent" :
+        u.role === Role.COMPANY_TUTOR ? "/employer" : "/";
+      window.location.href = destination;
+    } catch {
+      alert("Erreur lors de l'impersonnalisation");
+    }
+  };
 
   const [running, transition] = useTransition();
   const [flash, setFlash] = useState<{ type: "ok" | "err"; msg: string } | null>(null);
@@ -232,7 +255,7 @@ export default function UsersShell(props: Props) {
             <thead className="sticky top-0 bg-white border-b border-slate-100 z-10">
               <tr>
                 <th className="px-5 py-3 font-black text-slate-400 uppercase tracking-widest text-[9px]">Nom</th>
-                <th className="px-5 py-3 font-black text-slate-400 uppercase tracking-widest text-[9px]">Email</th>
+                <th className="px-5 py-3 font-black text-slate-400 uppercase tracking-widest text-[9px]">Contact (Email / Tél)</th>
                 <th className="px-5 py-3 font-black text-slate-400 uppercase tracking-widest text-[9px]">Rôle</th>
                 <th className="hidden px-5 py-3 font-black text-slate-400 uppercase tracking-widest text-[9px] lg:table-cell">Profil</th>
                 <th className="px-5 py-3 font-black text-slate-400 uppercase tracking-widest text-[9px] text-right">Actions</th>
@@ -251,7 +274,17 @@ export default function UsersShell(props: Props) {
                       <div className="text-[9px] text-slate-400 font-medium mb-1">ID: {u.username}</div>
                       {u.hasStudentProfile && <span className="text-[8px] font-bold text-blue-500 uppercase tracking-tighter">Élève</span>}
                     </td>
-                    <td className="px-5 py-3 text-slate-500 font-medium">{u.email}</td>
+                    <td className="px-5 py-3">
+                      <div className="text-slate-800 font-medium">{u.email}</div>
+                      <div className="text-[11px] text-slate-500 font-mono mt-0.5 flex items-center gap-1">
+                        <Phone className="h-3 w-3 text-slate-400 shrink-0" />
+                        {u.phone ? (
+                          <span className="font-semibold text-slate-700">{u.phone}</span>
+                        ) : (
+                          <span className="text-slate-400 italic font-sans text-[10px]">Non renseigné</span>
+                        )}
+                      </div>
+                    </td>
                     <td className="px-5 py-3">
                       <span className={`inline-flex px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-widest border ${roleBadgeClasses(u.role)}`}>
                         {ROLE_EDIT_OPTIONS.find((r) => r.value === u.role)?.label ?? u.role}
@@ -263,6 +296,15 @@ export default function UsersShell(props: Props) {
                     <td className="px-5 py-3 text-right">
                       <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition">
                         <MessageButton recipientId={u.id} recipientName={`${u.lastName} ${u.firstName}`} />
+                        {canImpersonate && u.id !== session?.user?.id && (
+                          <button
+                            onClick={() => handleQuickImpersonate(u)}
+                            className="px-2 py-1 bg-white border border-slate-200 rounded-lg text-[9px] font-black text-blue-600 uppercase tracking-widest hover:bg-blue-50"
+                            title="S'impersonnaliser (se connecter sous cette identité)"
+                          >
+                            <Eye className="h-3 w-3" />
+                          </button>
+                        )}
                         {isSuperAdmin && u.role === Role.ADMIN && (
                             <button
                                 onClick={() => setManagingPermissions(u)}
@@ -833,6 +875,8 @@ function AdminPermissionsModal({
     canManagePlanning: user.canManagePlanning,
     canManageRH: user.canManageRH,
     canAccessLivrets: user.canAccessLivrets,
+    canImpersonate: user.canImpersonate,
+    isGeneralAdmin: user.isGeneralAdmin ?? false,
   });
 
   return (
@@ -849,6 +893,8 @@ function AdminPermissionsModal({
             { key: 'canManagePlanning', label: 'Gestion de l\'Emploi du temps', icon: ShieldCheck },
             { key: 'canManageRH', label: 'Gestion RH & Contrats', icon: Shield },
             { key: 'canAccessLivrets', label: 'Accès aux Livrets', icon: ShieldCheck },
+            { key: 'canImpersonate', label: 'Impersonnalisation des rôles', icon: Eye },
+            { key: 'isGeneralAdmin', label: 'Administrateur Général (Impersonnalisation dans tous les rôles & Tous droits)', icon: Key },
           ].map((item) => (
             <label key={item.key} className="flex items-center justify-between p-3 rounded-xl border border-slate-100 hover:bg-slate-50 transition cursor-pointer">
               <div className="flex items-center gap-3">

@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { getConversations, getMessages, sendMessage, markAsRead, getAuthorizedContacts, getChatRetentionDays } from "@/app/actions/chat";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
-import { Send, UserCircle, Plus, X } from "lucide-react";
+import { Send, UserCircle, Plus, X, MessageSquare } from "lucide-react";
 
 export default function ChatClient() {
   const [conversations, setConversations] = useState<any[]>([]);
@@ -122,37 +122,62 @@ export default function ChatClient() {
                 <input 
                     autoFocus
                     placeholder="Rechercher un contact..."
-                    className="w-full p-2 border rounded-xl"
+                    className="w-full p-2.5 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
                     value={search}
                     onChange={e => setSearch(e.target.value)}
                 />
-                {contacts.map(c => (
+                {contacts.length === 0 ? (
+                  <p className="text-xs text-slate-400 text-center py-6">Aucun contact trouvé.</p>
+                ) : (
+                  contacts.map(c => (
                     <button key={c.id} onClick={() => { 
                         setShowContacts(false);
                         setSelectedConversation({ otherParticipant: c });
                         setMessages([]);
-                    }} className="w-full p-2 hover:bg-slate-50 rounded text-left">
-                        {c.firstName} {c.lastName} <span className="text-xs text-slate-400">({c.role})</span>
+                    }} className="w-full p-2.5 hover:bg-slate-50 rounded-xl text-left transition border border-transparent hover:border-slate-100">
+                        <div className="flex items-center justify-between">
+                          <span className="font-semibold text-slate-800 text-sm">{c.firstName} {c.lastName}</span>
+                          <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider bg-slate-100 px-1.5 py-0.5 rounded">{c.role}</span>
+                        </div>
                     </button>
-                ))}
+                  ))
+                )}
             </div>
         ) : (
             <div className="flex-1 overflow-y-auto">
-              {conversations.map(conv => (
-                <button 
-                    key={conv.id} 
-                    onClick={() => { setSelectedConversation(conv); loadMessages(conv.id); }} 
-                    className={`w-full p-4 text-left border-b border-slate-50 flex items-center gap-3 hover:bg-slate-50 transition ${selectedConversation?.id === conv.id ? 'bg-blue-50/50' : ''}`}
-                >
-                  <div className="h-10 w-10 rounded-full bg-slate-200 flex items-center justify-center font-bold text-slate-500">
-                    {conv.otherParticipant.firstName[0]}
+              {conversations.length === 0 ? (
+                <div className="p-8 text-center">
+                  <div className="h-12 w-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center mx-auto mb-3">
+                    <MessageSquare className="h-6 w-6" />
                   </div>
-                  <div>
-                    <div className="font-bold">{conv.otherParticipant.firstName} {conv.otherParticipant.lastName}</div>
-                    <div className="text-xs text-slate-400 truncate">{conv.lastMessage?.content || "Aucun message"}</div>
-                  </div>
-                </button>
-              ))}
+                  <h3 className="font-bold text-slate-800 text-sm">Aucune discussion</h3>
+                  <p className="text-xs text-slate-400 mt-1 mb-4 leading-relaxed">
+                    Démarrez une nouvelle conversation avec un enseignant, élève ou responsable.
+                  </p>
+                  <button 
+                    onClick={() => setShowContacts(true)}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-xl text-xs font-bold hover:bg-blue-700 transition shadow-sm"
+                  >
+                    Nouveau message
+                  </button>
+                </div>
+              ) : (
+                conversations.map(conv => (
+                  <button 
+                      key={conv.id} 
+                      onClick={() => { setSelectedConversation(conv); loadMessages(conv.id); }} 
+                      className={`w-full p-4 text-left border-b border-slate-50 flex items-center gap-3 hover:bg-slate-50 transition ${selectedConversation?.id === conv.id ? 'bg-blue-50/50' : ''}`}
+                  >
+                    <div className="h-10 w-10 rounded-full bg-slate-200 flex items-center justify-center font-bold text-slate-500 shrink-0">
+                      {conv.otherParticipant?.firstName?.[0] || "?"}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="font-bold text-slate-900 truncate text-sm">{conv.otherParticipant?.firstName} {conv.otherParticipant?.lastName}</div>
+                      <div className="text-xs text-slate-400 truncate mt-0.5">{conv.lastMessage?.content || "Aucun message"}</div>
+                    </div>
+                  </button>
+                ))
+              )}
             </div>
         )}
       </div>
@@ -161,14 +186,25 @@ export default function ChatClient() {
       <div className={`flex-1 flex flex-col bg-slate-50/50 ${selectedConversation || showContacts ? 'flex' : 'hidden lg:flex'}`}>
         {selectedConversation ? (
             <>
-                <div className="p-4 border-b border-slate-200 bg-white flex items-center gap-3">
-                    <button onClick={() => setSelectedConversation(null)} className="lg:hidden p-1 mr-2 rounded-full hover:bg-slate-100">
+                <div className="p-4 border-b border-slate-200 bg-white flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <button onClick={() => setSelectedConversation(null)} className="lg:hidden p-1 mr-1 rounded-full hover:bg-slate-100">
                         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
                             <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
                         </svg>
                     </button>
-                    <UserCircle className="h-8 w-8 text-slate-300" />
-                    <span className="font-bold">{selectedConversation.otherParticipant.firstName} {selectedConversation.otherParticipant.lastName}</span>
+                    <UserCircle className="h-9 w-9 text-slate-300" />
+                    <div>
+                      <div className="font-bold text-slate-900 text-sm leading-tight">
+                        {selectedConversation.otherParticipant?.firstName} {selectedConversation.otherParticipant?.lastName}
+                      </div>
+                    </div>
+                  </div>
+                  {selectedConversation.otherParticipant?.role && (
+                    <span className="text-[10px] uppercase font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full">
+                      {selectedConversation.otherParticipant.role}
+                    </span>
+                  )}
                 </div>
                 
                 <div className="flex-1 p-6 overflow-y-auto space-y-4">

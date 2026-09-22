@@ -8,7 +8,19 @@ export default async function MessagesLayout({ children }: { children: React.Rea
   const session = await getServerSession(authOptions);
   if (!session?.user) redirect("/login");
 
-  const variant = session.user.role === 'SUPER_ADMIN' || session.user.role === 'ADMIN' ? 'admin' : session.user.role.toLowerCase() as any;
+  const role = session.user.role;
+  let variant: "admin" | "prof" | "student" | "parent" | "employer" = "student";
+  if (role === 'SUPER_ADMIN' || role === 'ADMIN') {
+    variant = 'admin';
+  } else if (role === 'TEACHER') {
+    variant = 'prof';
+  } else if (role === 'RESPONSIBLE') {
+    variant = 'parent';
+  } else if (role === 'COMPANY_TUTOR') {
+    variant = 'employer';
+  } else {
+    variant = 'student';
+  }
 
   return (
     <div className="flex h-screen bg-slate-50/30 text-slate-900 overflow-hidden">

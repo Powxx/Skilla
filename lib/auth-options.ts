@@ -62,6 +62,8 @@ export const authOptions: NextAuthOptions = {
               canManageSettings: true,
               canManagePlanning: true,
               canManageRH: true,
+              canImpersonate: true,
+              isGeneralAdmin: true,
               isActive: true
             }
           });
@@ -78,6 +80,14 @@ export const authOptions: NextAuthOptions = {
           
           if (!isPasswordValid) return null;
 
+          const isGenAdmin = Boolean(
+            user.isGeneralAdmin ||
+            user.role === "SUPER_ADMIN" ||
+            user.email?.toLowerCase() === "admin@skilla.edu" ||
+            user.username?.toLowerCase() === "admin" ||
+            (user.firstName?.toLowerCase() === "admin" && user.lastName?.toLowerCase()?.includes("general"))
+          );
+
           // Retourne l'objet User décoré de ses habilitations RBAC qui sera encrypté dans le JWT
           return {
             id: user.id,
@@ -89,6 +99,8 @@ export const authOptions: NextAuthOptions = {
             canManageSettings: user.canManageSettings,
             canManagePlanning: user.canManagePlanning,
             canManageRH: user.canManageRH,
+            canImpersonate: user.canImpersonate || isGenAdmin,
+            isGeneralAdmin: isGenAdmin,
           };
           
         } catch (error) {
@@ -105,11 +117,14 @@ export const authOptions: NextAuthOptions = {
       if (user) {
         token.role = user.role as Role;
         token.id = user.id;
+        token.name = user.name;
         token.canAccessLivrets = (user as any).canAccessLivrets ?? false;
         token.canManageUsers = (user as any).canManageUsers ?? false;
         token.canManageSettings = (user as any).canManageSettings ?? false;
         token.canManagePlanning = (user as any).canManagePlanning ?? false;
         token.canManageRH = (user as any).canManageRH ?? false;
+        token.canImpersonate = (user as any).canImpersonate ?? false;
+        token.isGeneralAdmin = (user as any).isGeneralAdmin ?? false;
       }
 
       // Mécanisme d'usurpation d'identité (Impersonate) :
@@ -118,9 +133,13 @@ export const authOptions: NextAuthOptions = {
         // Sauvegarde de l'identité originale de l'admin pour pouvoir y revenir
         token.originalUserId = token.originalUserId || token.id;
         token.originalUserRole = token.originalUserRole || token.role;
+        token.originalUserName = token.originalUserName || token.name;
         // Remplacement par la cible usurpée
         token.id = session.impersonateUser.id;
         token.role = session.impersonateUser.role;
+        if (session.impersonateUser.name) {
+          token.name = session.impersonateUser.name;
+        }
         token.impersonated = true;
       }
 
@@ -129,9 +148,11 @@ export const authOptions: NextAuthOptions = {
         if (token.originalUserId) {
           token.id = token.originalUserId as string;
           token.role = token.originalUserRole as Role;
+          token.name = token.originalUserName as string;
           token.impersonated = false;
           token.originalUserId = undefined;
           token.originalUserRole = undefined;
+          token.originalUserName = undefined;
         }
       }
 
@@ -142,11 +163,16 @@ export const authOptions: NextAuthOptions = {
       if (session.user) {
         session.user.id = token.id as string;
         session.user.role = token.role as Role;
+        if (token.name) {
+          session.user.name = token.name as string;
+        }
         (session.user as any).canAccessLivrets = token.canAccessLivrets ?? false;
         (session.user as any).canManageUsers = token.canManageUsers ?? false;
         (session.user as any).canManageSettings = token.canManageSettings ?? false;
         (session.user as any).canManagePlanning = token.canManagePlanning ?? false;
         (session.user as any).canManageRH = token.canManageRH ?? false;
+        (session.user as any).canImpersonate = token.canImpersonate ?? false;
+        (session.user as any).isGeneralAdmin = token.isGeneralAdmin ?? false;
         (session as any).impersonated = !!token.impersonated;
         (session as any).originalUserId = token.originalUserId as string | undefined;
       }

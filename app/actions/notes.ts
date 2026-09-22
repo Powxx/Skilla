@@ -13,6 +13,7 @@ export type GradeBatchEntry = {
   coefficient?: number;
   comment?: string | null;
   date?: string | Date;
+  semesterId?: string;
 };
 
 export type SaveGradeBatchSuccess = { ok: true; count: number };
@@ -113,7 +114,7 @@ export async function saveGradesBatch(
             if (!sem) throw new Error("Aucun semestre défini en base.");
             semCache.set(dateKey, sem.id);
         }
-        return { ...e, semesterId: semCache.get(dateKey)!, noteDate };
+        return { ...e, semesterId: e.semesterId || semCache.get(dateKey)!, noteDate };
     }));
 
     await prisma.$transaction(

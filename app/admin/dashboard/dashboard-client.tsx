@@ -17,6 +17,7 @@ import {
   Tooltip,
   ResponsiveContainer,
   Legend,
+  LabelList,
 } from "recharts";
 import {
   Users,
@@ -327,22 +328,153 @@ export default function AdminDashboardClient({ payload }: Props) {
       {/* Teacher Workload Chart */}
       <section>
         <div className="bg-white rounded-3xl border border-slate-200 shadow-sm p-6">
-          <h2 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-4">
-            Charge de travail des professeurs (année) — réalisées vs planifiées
-          </h2>
-          <div className="h-64">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-5">
+            <div>
+              <h2 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">
+                Charge de travail des professeurs (année) — Réalisé vs Prévu
+              </h2>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Taux de réalisation des heures d&apos;enseignement effectuées sur le volume annuel prévisionnel
+              </p>
+            </div>
+            {charts.teacherWorkloadByTeacher.length > 0 && (
+              <div className="flex items-center gap-2 bg-blue-50 border border-blue-100 px-3.5 py-1.5 rounded-xl self-start sm:self-auto">
+                <span className="text-[10px] font-bold text-blue-700 uppercase tracking-wider">
+                  Réalisation moyenne :
+                </span>
+                <span className="text-xs font-black text-blue-700">
+                  {Math.round(
+                    charts.teacherWorkloadByTeacher.reduce((acc, t) => acc + (t.percentage ?? 0), 0) /
+                      charts.teacherWorkloadByTeacher.length,
+                  )}
+                  %
+                </span>
+              </div>
+            )}
+          </div>
+
+          <div
+            style={{
+              height: Math.max(260, charts.teacherWorkloadByTeacher.length * 44),
+            }}
+          >
             {charts.teacherWorkloadByTeacher.length === 0 ? (
-              <div className="h-full flex items-center justify-center text-[10px] text-slate-400 font-bold uppercase">Aucune donnée</div>
+              <div className="h-full flex items-center justify-center text-[10px] text-slate-400 font-bold uppercase">
+                Aucune donnée
+              </div>
             ) : (
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={charts.teacherWorkloadByTeacher} layout="vertical" margin={{ top: 5, right: 20, bottom: 5, left: 100 }}>
+                <BarChart
+                  data={charts.teacherWorkloadByTeacher}
+                  layout="vertical"
+                  margin={{ top: 5, right: 45, bottom: 5, left: 140 }}
+                >
                   <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" horizontal={false} />
                   <XAxis type="number" stroke="#94a3b8" fontSize={9} unit="h" />
-                  <YAxis type="category" dataKey="teacherName" stroke="#94a3b8" fontSize={9} width={90} tickLine={false} />
-                  <Tooltip contentStyle={{ borderRadius: 12, border: "none", fontSize: 11 }} formatter={(v: any) => `${v}h`} />
+                  <YAxis
+                    type="category"
+                    dataKey="teacherName"
+                    stroke="#94a3b8"
+                    fontSize={10}
+                    width={130}
+                    tickLine={false}
+                    tick={({ x, y, payload }) => {
+                      const item = charts.teacherWorkloadByTeacher.find(
+                        (t) => t.teacherName === payload.value,
+                      );
+                      const pct = item?.percentage ?? 0;
+                      return (
+                        <g transform={`translate(${x},${y})`}>
+                          <text
+                            x={-8}
+                            y={0}
+                            dy={4}
+                            textAnchor="end"
+                            fill="#1e293b"
+                            fontSize={10}
+                            fontWeight={600}
+                          >
+                            <tspan>{payload.value}</tspan>
+                            <tspan fill="#2563eb" fontWeight={800} dx={6}>
+                              ({pct}%)
+                            </tspan>
+                          </text>
+                        </g>
+                      );
+                    }}
+                  />
+                  <Tooltip
+                    content={({ active, payload }) => {
+                      if (!active || !payload || !payload.length) return null;
+                      const data = payload[0].payload as {
+                        teacherName: string;
+                        realized: number;
+                        planned: number;
+                        total: number;
+                        percentage: number;
+                      };
+                      return (
+                        <div className="bg-slate-900 text-white p-3.5 rounded-2xl shadow-xl border border-slate-800 text-xs min-w-[220px]">
+                          <p className="font-bold text-slate-100 mb-2 border-b border-slate-800 pb-1.5 flex items-center justify-between">
+                            <span>{data.teacherName}</span>
+                            <span className="text-emerald-400 font-black text-sm">
+                              {data.percentage}%
+                            </span>
+                          </p>
+                          <div className="space-y-1.5 text-[11px]">
+                            <div className="flex justify-between items-center text-blue-400">
+                              <span>Heures réalisées :</span>
+                              <span className="font-bold">{data.realized}h</span>
+                            </div>
+                            <div className="flex justify-between items-center text-slate-400">
+                              <span>Heures restantes :</span>
+                              <span className="font-bold">{data.planned}h</span>
+                            </div>
+                            <div className="flex justify-between items-center text-slate-300 pt-1 border-t border-slate-800">
+                              <span>Total annuel prévu :</span>
+                              <span className="font-bold">{data.total}h</span>
+                            </div>
+                            <div className="mt-2 pt-1 border-t border-slate-800">
+                              <div className="flex justify-between text-[10px] text-slate-400 mb-1">
+                                <span>Taux de réalisation</span>
+                                <span className="font-bold text-emerald-400">
+                                  {data.percentage}% réalisé
+                                </span>
+                              </div>
+                              <div className="w-full bg-slate-800 rounded-full h-1.5 overflow-hidden">
+                                <div
+                                  className="bg-emerald-400 h-full rounded-full transition-all"
+                                  style={{ width: `${Math.min(100, data.percentage)}%` }}
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    }}
+                  />
                   <Legend wrapperStyle={{ fontSize: 10 }} />
-                  <Bar dataKey="realized" name="Réalisées" fill="#3b82f6" radius={[0, 4, 4, 0]} barSize={12} />
-                  <Bar dataKey="planned" name="Planifiées" fill="#cbd5e1" radius={[0, 4, 4, 0]} barSize={12} />
+                  <Bar
+                    dataKey="realized"
+                    name="Heures réalisées"
+                    fill="#3b82f6"
+                    radius={[0, 4, 4, 0]}
+                    barSize={14}
+                  >
+                    <LabelList
+                      dataKey="percentage"
+                      position="right"
+                      formatter={(v: any) => `${v}%`}
+                      style={{ fontSize: 10, fontWeight: 800, fill: "#2563eb" }}
+                    />
+                  </Bar>
+                  <Bar
+                    dataKey="planned"
+                    name="Planifiées restantes"
+                    fill="#cbd5e1"
+                    radius={[0, 4, 4, 0]}
+                    barSize={14}
+                  />
                 </BarChart>
               </ResponsiveContainer>
             )}

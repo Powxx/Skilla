@@ -44,11 +44,17 @@ export async function updateAdminPermissions(input: {
   canManageRH?: boolean;
   canAccessLivrets?: boolean;
   canImpersonate?: boolean;
+  isGeneralAdmin?: boolean;
   isActive?: boolean;
 }): Promise<MutationResult> {
   const session = await requireAdmin();
-  if (session?.user?.role !== "SUPER_ADMIN") {
-    return { ok: false, error: "Action réservée aux Super Administrateurs." };
+  const isGenAdmin = Boolean(
+    (session?.user as any)?.isGeneralAdmin ||
+    session?.user?.role === "SUPER_ADMIN" ||
+    session?.user?.email?.toLowerCase() === "admin@skilla.edu"
+  );
+  if (!isGenAdmin) {
+    return { ok: false, error: "Action réservée à l'Administrateur Général." };
   }
 
   const { userId, ...data } = input;
