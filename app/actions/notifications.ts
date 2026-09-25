@@ -90,8 +90,9 @@ export async function markAllAsRead(userId: string) {
  * @param data Cible (classe ou école entière), ID de classe optionnel, titre, message et type visuel.
  */
 export async function sendAdminNotification(data: {
-  target: 'CLASS' | 'SCHOOL';
+  target: 'CLASS' | 'SCHOOL' | 'ALL_TEACHERS' | 'TEACHER';
   classId?: string;
+  teacherId?: string;
   title: string;
   message: string;
   type?: "INFO" | "WARNING" | "SUCCESS" | "ERROR";
@@ -101,8 +102,85 @@ export async function sendAdminNotification(data: {
     throw new Error("Non autorisé");
   
   const senderName = "Administration";
+  const notifType = data.type || "INFO";
 
-  // Cible par défaut : tous les étudiants actifs de l'école
+  // Cas 1 : Envoi groupé à tous les professeurs actifs
+  if (data.target === 'ALL_TEACHERS') {
+    const teachers = await prisma.user.findMany({
+      where: { role: "TEACHER", isActive: true },
+      select: { id: true, firstName: true, lastName: true }
+    });
+
+    if (teachers.length === 0) {
+      return { ok: true, count: 0, message: "Aucun professeur actif trouvé." };
+    }
+
+    await prisma.notification.createMany({
+      data: teachers.map(t => ({
+        userId: t.id,
+        title: data.title,
+        message: data.message,
+        type: notifType,
+        senderName: senderName,
+        link: "/prof"
+      }))
+    });
+
+    for (const teacher of teachers) {
+      sendPushNotification(teacher.id, {
+        title: data.title,
+        body: data.message,
+        url: "/prof"
+      }).catch(err => console.error("Push failed for teacher", teacher.id, err));
+    }
+
+    revalidatePath("/", "layout");
+    revalidatePath("/admin/notifications");
+    revalidatePath("/prof/notifications");
+    return { ok: true, count: teachers.length, recipient: "Tous les professeurs" };
+  }
+
+  // Cas 2 : Envoi individuel à un professeur spécifique
+  if (data.target === 'TEACHER') {
+    if (!data.teacherId) {
+      throw new Error("Veuillez sélectionner un professeur destinataire.");
+    }
+
+    const teacher = await prisma.user.findUnique({
+      where: { id: data.teacherId, role: "TEACHER" },
+      select: { id: true, firstName: true, lastName: true }
+    });
+
+    if (!teacher) {
+      throw new Error("Professeur introuvable ou inactif.");
+    }
+
+    const recipientLabel = `${teacher.lastName ?? ""} ${teacher.firstName ?? ""}`.trim() || "Professeur";
+
+    await prisma.notification.create({
+      data: {
+        userId: teacher.id,
+        title: data.title,
+        message: data.message,
+        type: notifType,
+        senderName: senderName,
+        link: "/prof"
+      }
+    });
+
+    sendPushNotification(teacher.id, {
+      title: data.title,
+      body: data.message,
+      url: "/prof"
+    }).catch(err => console.error("Push failed for teacher", teacher.id, err));
+
+    revalidatePath("/", "layout");
+    revalidatePath("/admin/notifications");
+    revalidatePath("/prof/notifications");
+    return { ok: true, count: 1, recipient: recipientLabel };
+  }
+
+  // Cas 3 : Cible élèves (Toute l'école ou Classe spécifique)
   const whereClause: any = { role: "STUDENT", isActive: true };
   if (data.target === 'CLASS' && data.classId) {
     whereClause.classId = data.classId;
@@ -119,10 +197,23 @@ export async function sendAdminNotification(data: {
       userId: s.id,
       title: data.title,
       message: data.message,
-      type: data.type || "INFO",
-      senderName: senderName
+      type: notifType,
+      senderName: senderName,
+      link: "/"
     }))
   });
+
+  // Si envoi à une classe, consigner également dans ClassNotificationLog pour traçabilité
+  if (data.target === 'CLASS' && data.classId) {
+    await prisma.classNotificationLog.create({
+      data: {
+        senderId: session.user.id,
+        classId: data.classId,
+        title: data.title,
+        message: data.message,
+      }
+    }).catch(err => console.error("Failed to create class log", err));
+  }
   
   // Envoi asynchrone des pushs à tous les étudiants de la liste
   for (const student of students) {
@@ -134,7 +225,25 @@ export async function sendAdminNotification(data: {
   }
 
   revalidatePath("/", "layout");
+  revalidatePath("/admin/notifications");
   return { ok: true, count: students.length };
+}
+
+/**
+ * Server Action : Supprime une notification spécifique (admin).
+ */
+export async function deleteAdminNotification(notificationId: string) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.id || (session.user.role !== "ADMIN" && session.user.role !== "SUPER_ADMIN")) 
+    throw new Error("Non autorisé");
+
+  await prisma.notification.delete({
+    where: { id: notificationId }
+  });
+
+  revalidatePath("/", "layout");
+  revalidatePath("/admin/notifications");
+  return { ok: true };
 }
 
 /**
