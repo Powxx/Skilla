@@ -19,7 +19,8 @@ import {
   Key,
   Gamepad2,
   MessageSquare,
-  ShieldAlert
+  ShieldAlert,
+  FileCheck
 } from "lucide-react";
 
 type NavItem = {
@@ -60,6 +61,7 @@ export default function PortalSidebar({ variant, resolvedChildId, schoolName = "
         { href: "/admin/planning", label: "Emploi du temps", icon: Calendar },
         { href: "/admin/report-cards", label: "Bulletins", icon: FileText },
         { href: "/admin/livret", label: "Livret", icon: BookOpen },
+        { href: "/admin/documents", label: "Attestations", icon: FileCheck },
         { href: "/admin/recap", label: "Récapitulatif", icon: BarChart },
         { href: "/admin/absences", label: "Absences", icon: Clock },
         { href: "/admin/sanctions", label: "Sanctions", icon: ShieldAlert },

@@ -35,13 +35,21 @@ export default async function QualiopiPage() {
           <span className="mx-2 text-slate-300">/</span>
           <span className="text-slate-800">Qualiopi</span>
         </nav>
-        <header className="mb-8">
-          <h1 className="text-2xl font-black uppercase tracking-wider text-slate-900 sm:text-3xl">
-            Qualiopi — Satisfaction & Réclamations
-          </h1>
-          <p className="mt-2 text-sm text-slate-500 font-medium">
-            Diffusez des enquêtes de satisfaction et suivez les indicateurs qualité.
-          </p>
+        <header className="mb-8 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <div>
+            <h1 className="text-2xl font-black uppercase tracking-wider text-slate-900 sm:text-3xl">
+              Qualiopi — Satisfaction & Réclamations
+            </h1>
+            <p className="mt-2 text-sm text-slate-500 font-medium">
+              Diffusez des enquêtes de satisfaction et suivez les indicateurs qualité.
+            </p>
+          </div>
+          <Link
+            href="/admin/qualiopi/audit"
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold shadow-lg shadow-blue-500/20 transition active:scale-95 shrink-0"
+          >
+            <span>📊 Dossier d'Audit 1-Click</span>
+          </Link>
         </header>
         <QualiopiClient
           complaints={complaints as any}
