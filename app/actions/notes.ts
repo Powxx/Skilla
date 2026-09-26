@@ -34,7 +34,13 @@ export async function saveGradesBatch(
   entries: GradeBatchEntry[],
 ): Promise<SaveGradeBatchResult> {
   const session = await getServerSession(authOptions);
-  const teacherId = session?.user?.role === "TEACHER" ? (session.user as any).id : null;
+  if (!session?.user || (session.user.role !== "TEACHER" && session.user.role !== "ADMIN" && session.user.role !== "SUPER_ADMIN")) {
+    return {
+      ok: false,
+      error: "Non autorisé. Accès réservé aux professeurs et administrateurs.",
+    };
+  }
+  const teacherId = session.user.role === "TEACHER" ? session.user.id : null;
 
   try {
     if (!entries.length) {
@@ -167,11 +173,16 @@ export async function saveGradesBatch(
 
 export async function updateGrade(id: string, value: number, coefficient: number, comment?: string | null) {
   const session = await getServerSession(authOptions);
-  if (session?.user?.role !== "TEACHER") throw new Error("Non autorisé");
+  if (!session?.user || (session.user.role !== "TEACHER" && session.user.role !== "ADMIN" && session.user.role !== "SUPER_ADMIN")) {
+    throw new Error("Non autorisé");
+  }
+
+  const isAdmin = session.user.role === "ADMIN" || session.user.role === "SUPER_ADMIN";
+  const whereClause = isAdmin ? { id } : { id, teacherId: session.user.id };
 
   try {
     await prisma.grade.update({
-      where: { id, teacherId: (session.user as any).id }, // Sécurité: seulement si c'est son propre grade
+      where: whereClause,
       data: {
         value,
         coefficient,
@@ -187,11 +198,16 @@ export async function updateGrade(id: string, value: number, coefficient: number
 
 export async function deleteGrade(id: string) {
   const session = await getServerSession(authOptions);
-  if (session?.user?.role !== "TEACHER") throw new Error("Non autorisé");
+  if (!session?.user || (session.user.role !== "TEACHER" && session.user.role !== "ADMIN" && session.user.role !== "SUPER_ADMIN")) {
+    throw new Error("Non autorisé");
+  }
+
+  const isAdmin = session.user.role === "ADMIN" || session.user.role === "SUPER_ADMIN";
+  const whereClause = isAdmin ? { id } : { id, teacherId: session.user.id };
 
   try {
     await prisma.grade.delete({
-      where: { id, teacherId: (session.user as any).id }
+      where: whereClause
     });
     revalidatePath("/prof/notes");
     return { ok: true };
@@ -201,6 +217,11 @@ export async function deleteGrade(id: string) {
 }
 
 export async function getTeacherGrades(teacherId: string) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.id) throw new Error("Non autorisé");
+  const isAuthorized = session.user.id === teacherId || session.user.role === "ADMIN" || session.user.role === "SUPER_ADMIN";
+  if (!isAuthorized) throw new Error("Non autorisé");
+
   return await prisma.grade.findMany({
     where: { teacherId },
     include: {

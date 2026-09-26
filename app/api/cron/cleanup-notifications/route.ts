@@ -10,8 +10,8 @@ import { subMonths } from "date-fns";
 export async function GET(request: Request) {
   const authHeader = request.headers.get('authorization');
   
-  // Vérification de la clé secrète CRON (à définir dans .env)
-  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+  // Vérification stricte de la clé secrète CRON (doit être configurée et correspondre)
+  if (!process.env.CRON_SECRET || authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
     return new NextResponse('Non autorisé', { status: 401 });
   }
 

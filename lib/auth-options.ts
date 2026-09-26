@@ -128,19 +128,29 @@ export const authOptions: NextAuthOptions = {
       }
 
       // Mécanisme d'usurpation d'identité (Impersonate) :
-      // Permet à un admin d'endosser le rôle d'un autre utilisateur
+      // Permet UNIQUEMENT à un utilisateur autorisé d'endosser le rôle d'un autre utilisateur
       if (trigger === "update" && session?.impersonateUser) {
-        // Sauvegarde de l'identité originale de l'admin pour pouvoir y revenir
-        token.originalUserId = token.originalUserId || token.id;
-        token.originalUserRole = token.originalUserRole || token.role;
-        token.originalUserName = token.originalUserName || token.name;
-        // Remplacement par la cible usurpée
-        token.id = session.impersonateUser.id;
-        token.role = session.impersonateUser.role;
-        if (session.impersonateUser.name) {
-          token.name = session.impersonateUser.name;
+        const canUserImpersonate = Boolean(
+          token.canImpersonate ||
+          token.role === "SUPER_ADMIN" ||
+          token.originalUserRole === "SUPER_ADMIN"
+        );
+        if (canUserImpersonate && session.impersonateUser.id) {
+          const target = await prisma.user.findUnique({
+            where: { id: session.impersonateUser.id },
+            select: { id: true, role: true, firstName: true, lastName: true, isActive: true }
+          });
+          if (target && target.isActive) {
+            token.originalUserId = token.originalUserId || token.id;
+            token.originalUserRole = token.originalUserRole || token.role;
+            token.originalUserName = token.originalUserName || token.name;
+
+            token.id = target.id;
+            token.role = target.role;
+            token.name = `${target.firstName ?? ""} ${target.lastName ?? ""}`.trim();
+            token.impersonated = true;
+          }
         }
-        token.impersonated = true;
       }
 
       // Arrêt de l'usurpation d'identité : restauration de l'identité d'origine

@@ -27,6 +27,12 @@ async function getUserNotificationIds(userId: string): Promise<string[]> {
  * @param pageSize Nombre de notifications par page.
  */
 export async function getNotifications(userId: string, page: number = 1, pageSize: number = 20) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.id) throw new Error("Non autorisé");
+  if (session.user.id !== userId && session.user.role !== "ADMIN" && session.user.role !== "SUPER_ADMIN") {
+    throw new Error("Non autorisé");
+  }
+
   const ids = await getUserNotificationIds(userId);
   const notifications = await prisma.notification.findMany({
     where: { userId: { in: ids } },
@@ -45,6 +51,12 @@ export async function getNotifications(userId: string, page: number = 1, pageSiz
  * Compte le nombre de notifications non lues pour un utilisateur (et son compte prof lié si admin).
  */
 export async function getUnreadCount(userId: string) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.id) return 0;
+  if (session.user.id !== userId && session.user.role !== "ADMIN" && session.user.role !== "SUPER_ADMIN") {
+    return 0;
+  }
+
   const ids = await getUserNotificationIds(userId);
   return await prisma.notification.count({
     where: { userId: { in: ids }, isRead: false },
@@ -58,6 +70,16 @@ export async function markAsRead(notificationId: string) {
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) throw new Error("Non autorisé");
   
+  const userNotificationIds = await getUserNotificationIds(session.user.id);
+  const notif = await prisma.notification.findUnique({
+    where: { id: notificationId },
+    select: { userId: true }
+  });
+  if (!notif) return;
+  if (!userNotificationIds.includes(notif.userId) && session.user.role !== "ADMIN" && session.user.role !== "SUPER_ADMIN") {
+    throw new Error("Non autorisé");
+  }
+
   await prisma.notification.update({
     where: { id: notificationId },
     data: { isRead: true },

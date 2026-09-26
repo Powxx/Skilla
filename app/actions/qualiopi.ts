@@ -133,19 +133,24 @@ export async function createSurveyCampaign(data: {
   const notifTitle = "📋 Enquête de satisfaction";
   const notifBody = `L'établissement vous invite à répondre : « ${title} »`;
 
-  for (const user of recipients) {
-    await prisma.notification.create({
-      data: {
-        userId: user.id,
-        title: notifTitle,
-        message: notifBody,
-        type: "INFO",
-        link,
-        senderName: "Qualiopi",
-      },
-    });
-    sendPushNotification(user.id, { title: notifTitle, body: notifBody, url: link }).catch(console.error);
-  }
+  // Insertion groupée rapide en une seule requête SQL
+  await prisma.notification.createMany({
+    data: recipients.map((user) => ({
+      userId: user.id,
+      title: notifTitle,
+      message: notifBody,
+      type: "INFO",
+      link,
+      senderName: "Qualiopi",
+    })),
+  });
+
+  // Envoi Web Push asynchrone parallélisé
+  Promise.allSettled(
+    recipients.map((user) =>
+      sendPushNotification(user.id, { title: notifTitle, body: notifBody, url: link })
+    )
+  ).catch((err) => console.error("[createSurveyCampaign] Push notifications error:", err));
 
   revalidatePath("/admin/qualiopi");
   revalidatePath("/admin/dashboard");

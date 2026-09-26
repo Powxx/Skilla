@@ -105,7 +105,7 @@ export default function PortalSidebar({ variant, resolvedChildId, schoolName = "
       break;
     case "parent":
     case "employer":
-      const prefix = `/${variant}`;
+      const prefix = `/${resolvedVariant}`;
       const suffix = resolvedChildId ? `?studentId=${resolvedChildId}` : "";
       navItems.push(
         { href: `${prefix}/dashboard${suffix}`, label: "Synthèse", icon: LayoutDashboard },

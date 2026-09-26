@@ -12,13 +12,12 @@ export async function proxy(req: NextRequest) {
   const token = await getToken({ 
     req, 
     secret: process.env.NEXTAUTH_SECRET,
-    // On force la détection sécurisée si on est sur Vercel
-    secureCookie: process.env.NODE_ENV === "production" 
+    // Détection automatique du cookie sécurisé pour éviter les faux négatifs
+    secureCookie: sessionCookie?.name?.startsWith("__Secure-") ?? (process.env.NODE_ENV === "production")
   });
 
 
   if (!token) {
-    // Si on a le cookie mais pas de token, le SECRET est en cause
     if (sessionCookie) {
       console.error("ERREUR : Cookie présent mais indéchiffrable. Vérifiez NEXTAUTH_SECRET.");
     }
@@ -62,5 +61,17 @@ export async function proxy(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/", "/login", "/admin/:path*", "/prof/:path*", "/student/:path*", "/parent/:path*", "/employer/:path*"],
+  matcher: [
+    "/", 
+    "/login", 
+    "/admin/:path*", 
+    "/prof/:path*", 
+    "/student/:path*", 
+    "/parent/:path*", 
+    "/employer/:path*",
+    "/messages/:path*",
+    "/meetings/:path*",
+    "/settings/:path*",
+    "/survey/:path*"
+  ],
 };

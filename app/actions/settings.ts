@@ -29,6 +29,10 @@ export const getGlobalSettings = unstable_cache(
 );
 
 export async function updateGlobalSetting(key: string, value: string) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user || (session.user.role !== "ADMIN" && session.user.role !== "SUPER_ADMIN")) {
+    throw new Error("Non autorisé.");
+  }
   await prisma.globalSetting.upsert({
     where: { key },
     update: { value },
@@ -38,12 +42,21 @@ export async function updateGlobalSetting(key: string, value: string) {
 }
 
 export async function updateTeacherLivretAccess(teacherId: string, canAccess: boolean) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user || (session.user.role !== "ADMIN" && session.user.role !== "SUPER_ADMIN")) {
+    throw new Error("Non autorisé.");
+  }
   await prisma.user.update({ where: { id: teacherId }, data: { canAccessLivrets: canAccess } });
 }
 
 export async function getCalendarToken(userId: string) {
-    const user = await prisma.user.findUnique({ where: { id: userId }, select: { calendarToken: true } });
-    return user?.calendarToken;
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.id) throw new Error("Non autorisé.");
+  if (session.user.id !== userId && session.user.role !== "ADMIN" && session.user.role !== "SUPER_ADMIN") {
+    throw new Error("Non autorisé.");
+  }
+  const user = await prisma.user.findUnique({ where: { id: userId }, select: { calendarToken: true } });
+  return user?.calendarToken;
 }
 
 export async function changePassword(formData: FormData) {

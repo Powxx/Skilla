@@ -3,6 +3,16 @@
 import { AIPlanningService } from "@/src/services/ai-planning.service";
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
+import { getServerSession } from "next-auth/next";
+import { authOptions } from "@/lib/auth-options";
+
+async function assertPlanningAccess() {
+  const session = await getServerSession(authOptions);
+  if (!session?.user || (session.user.role !== "ADMIN" && session.user.role !== "SUPER_ADMIN" && !session.user.canManagePlanning)) {
+    throw new Error("Non autorisé. Droit de gestion du planning requis.");
+  }
+  return session;
+}
 
 /**
  * Server Action : Déclenche l'algorithme d'optimisation hebdomadaire par IA.
@@ -17,6 +27,7 @@ export async function runOptimization(params: {
   allowFullDay: boolean;
   maxConsecutiveLessons: number;
 }) {
+  await assertPlanningAccess();
   try {
     const result = await AIPlanningService.optimizeWeek(params);
     return result;
@@ -36,6 +47,7 @@ export async function runOptimization(params: {
  * @returns Un objet de succès ou lève une exception en cas d'échec.
  */
 export async function saveOptimizedSchedule(lessons: any[]) {
+  await assertPlanningAccess();
   try {
     await prisma.$transaction(
       lessons.map(lesson => {
@@ -74,6 +86,7 @@ export async function saveOptimizedSchedule(lessons: any[]) {
  * @param cycleWeeks Nombre de semaines composant un cycle d'alternance.
  */
 export async function updateClassCycle(classId: string, cycleWeeks: number) {
+  await assertPlanningAccess();
   await prisma.class.update({
     where: { id: classId },
     data: { cycleWeeks }

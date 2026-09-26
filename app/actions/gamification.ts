@@ -39,7 +39,20 @@ export async function updateLoginStreak(userId: string) {
   return newStreak;
 }
 
+import { getServerSession } from "next-auth/next";
+import { authOptions } from "@/lib/auth-options";
+
 export async function saveGameScore(userId: string, gameKey: string, score: number) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.id || (session.user.id !== userId && session.user.role !== "ADMIN" && session.user.role !== "SUPER_ADMIN")) {
+    throw new Error("Non autorisé");
+  }
+
+  // Empêcher les scores négatifs ou aberrants
+  if (!Number.isFinite(score) || score < 0 || score > 10_000_000) {
+    throw new Error("Score invalide");
+  }
+
   const currentBest = await prisma.gameScore.findUnique({
     where: { userId_gameKey: { userId, gameKey } },
     select: { score: true }
@@ -56,6 +69,22 @@ export async function saveGameScore(userId: string, gameKey: string, score: numb
 }
 
 export async function getStudentStats(userId: string) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.id) throw new Error("Non autorisé");
+
+  const isSelf = session.user.id === userId;
+  const isStaff = session.user.role === "ADMIN" || session.user.role === "SUPER_ADMIN" || session.user.role === "TEACHER";
+
+  if (!isSelf && !isStaff) {
+    const isLinked = await prisma.user.findFirst({
+      where: {
+        id: session.user.id,
+        students: { some: { id: userId } }
+      }
+    });
+    if (!isLinked) throw new Error("Non autorisé");
+  }
+
   const [user, grades] = await Promise.all([
     prisma.user.findUnique({
       where: { id: userId },
@@ -111,6 +140,12 @@ export async function getLeaderboard(gameKey: string, classId?: string) {
 }
 
 export async function getPersonalBest(userId: string, gameKey: string) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.id) return 0;
+  if (session.user.id !== userId && session.user.role !== "ADMIN" && session.user.role !== "SUPER_ADMIN") {
+    return 0;
+  }
+
   const best = await prisma.gameScore.findFirst({
     where: { userId, gameKey },
     orderBy: { score: "desc" },

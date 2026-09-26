@@ -343,6 +343,9 @@ model Lesson {
 
   @@index([startTime, endTime])
   @@index([recurrenceId])
+  @@index([teacherId])
+  @@index([classId])
+  @@index([roomId])
 }
 
 /// Feuille d'émargement journalière regroupant plusieurs leçons pour une classe.
@@ -365,6 +368,10 @@ model Attendance {
   lesson       Lesson           @relation(fields: [lessonId], references: [id], onDelete: Cascade)
   studentId    String
   student      User             @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@index([lessonId])
+  @@index([studentId])
+  @@index([status])
 }
 
 // ==========================================
@@ -391,6 +398,11 @@ model Grade {
 
   semesterId String
   semester   Semester @relation(fields: [semesterId], references: [id], onDelete: Cascade)
+
+  @@index([studentId])
+  @@index([semesterId])
+  @@index([subjectId])
+  @@index([teacherId])
 }
 
 /// Bulletin semestriel d'un étudiant (validations et appréciations).
@@ -421,6 +433,9 @@ model CompanyContract {
   student     User           @relation("StudentInCompany", fields: [studentId], references: [id])
   tutorId     String
   tutor       User           @relation("TutorInCompany", fields: [tutorId], references: [id])
+
+  @@index([studentId])
+  @@index([tutorId])
 }
 
 /// Spécificités du contrat de travail d'un professeur.
@@ -448,6 +463,9 @@ model Evaluation {
   semesterId String?
   semester   Semester? @relation(fields: [semesterId], references: [id])
   updatedAt  DateTime @updatedAt
+
+  @@index([studentId])
+  @@index([semesterId])
 }
 
 /// Compétence requise définie pour une classe d'étudiants.
@@ -502,6 +520,9 @@ model MeetingRequest {
   requestedAt DateTime      @default(now())
   scheduledAt DateTime?     /// Date et heure validée et planifiée pour l'entretien
   adminNotes  String?       @db.Text
+
+  @@index([senderId])
+  @@index([status])
 }
 
 /// Campagne de sondage de satisfaction Qualiopi.
@@ -589,6 +610,10 @@ model Notification {
   link       String?                   /// Lien optionnel vers lequel rediriger l'utilisateur au clic
   senderName String   @default("Système")
   createdAt  DateTime @default(now())
+
+  @@index([userId])
+  @@index([userId, isRead])
+  @@index([createdAt])
 }
 
 /// Journal des notifications collectives envoyées à une classe.

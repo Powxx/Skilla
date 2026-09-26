@@ -245,6 +245,10 @@ export async function deleteSanctionType(id: string) {
  * Utilise une pagination par curseur (Cursor-based pagination) pour de meilleures performances.
  */
 export async function getSanctions(cursor?: string, pageSize = 50) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user || (session.user.role !== "ADMIN" && session.user.role !== "SUPER_ADMIN" && session.user.role !== "TEACHER")) {
+    throw new Error("Non autorisé.");
+  }
   const take = pageSize;
   const sanctions = await prisma.sanction.findMany({
     take: take + 1, // Récupère un élément supplémentaire pour détecter s'il y a une page suivante
@@ -279,6 +283,21 @@ export async function getSanctions(cursor?: string, pageSize = 50) {
 export async function getStudentSanctions(studentId: string) {
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) throw new Error("Non autorisé");
+
+  const isSelf = session.user.id === studentId;
+  const isStaff = session.user.role === "ADMIN" || session.user.role === "SUPER_ADMIN" || session.user.role === "TEACHER";
+
+  if (!isSelf && !isStaff) {
+    const isLinked = await prisma.user.findFirst({
+      where: {
+        id: session.user.id,
+        students: { some: { id: studentId } }
+      }
+    });
+    if (!isLinked) {
+      throw new Error("Non autorisé");
+    }
+  }
 
   const commentsEnabled = await isCommentsEnabled();
 

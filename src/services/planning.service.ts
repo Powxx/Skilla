@@ -19,7 +19,19 @@ export class PlanningService {
     // Si le rythme est hebdomadaire, il y a cours toutes les semaines.
     if (rhythm === RhythmType.WEEKLY) return true;
 
-    // Rythme alternance 1/4 (1 semaine école / 4 semaines entreprise)
+    // Rythme alternance 1/3 (1 semaine école toutes les 3 semaines)
+    if (rhythm === RhythmType.ALTERNANCE_1_3) {
+      const start = startOfWeek(startDate, { weekStartsOn: 1 });
+      const current = startOfWeek(date, { weekStartsOn: 1 });
+      
+      const diffInWeeks = Math.round(
+        (current.getTime() - start.getTime()) / (7 * 24 * 60 * 60 * 1000)
+      );
+
+      return diffInWeeks >= 0 && diffInWeeks % 3 === 0;
+    }
+
+    // Rythme alternance 1/4 (1 semaine école toutes les 4 semaines)
     if (rhythm === RhythmType.ALTERNANCE_1_4) {
       const start = startOfWeek(startDate, { weekStartsOn: 1 });
       const current = startOfWeek(date, { weekStartsOn: 1 });
@@ -30,7 +42,7 @@ export class PlanningService {
       );
 
       // Rythme 1/4 : La semaine de cours est programmée toutes les 4 semaines (semaine 0, 4, 8...)
-      return diffInWeeks % 4 === 0;
+      return diffInWeeks >= 0 && diffInWeeks % 4 === 0;
     }
 
     // Par défaut, s'il s'agit d'un rythme non géré, renvoie faux.

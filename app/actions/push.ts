@@ -11,8 +11,9 @@ const vapidKeys = {
 };
 
 if (vapidKeys.publicKey && vapidKeys.privateKey) {
+  const vapidSubject = process.env.VAPID_SUBJECT || "mailto:contact@skilla.edu";
   webpush.setVapidDetails(
-    "mailto:example@yourdomain.com",
+    vapidSubject,
     vapidKeys.publicKey,
     vapidKeys.privateKey
   );

@@ -76,23 +76,34 @@ export async function getChatRetentionDays() {
   return setting ? parseInt(setting.value, 10) : 7; // 7 jours par défaut
 }
 
-async function cleanupOldMessages() {
-  const days = await getChatRetentionDays();
-  const thresholdDate = new Date();
-  thresholdDate.setDate(thresholdDate.getDate() - days);
-  
-  await prisma.chatMessage.deleteMany({
-    where: {
-      createdAt: { lt: thresholdDate }
-    }
-  });
+let lastCleanupTime = 0;
+const CLEANUP_INTERVAL_MS = 6 * 60 * 60 * 1000; // Toutes les 6 heures maximum
+
+async function cleanupOldMessagesThrottled() {
+  const now = Date.now();
+  if (now - lastCleanupTime < CLEANUP_INTERVAL_MS) return;
+  lastCleanupTime = now;
+
+  try {
+    const days = await getChatRetentionDays();
+    const thresholdDate = new Date();
+    thresholdDate.setDate(thresholdDate.getDate() - days);
+    
+    await prisma.chatMessage.deleteMany({
+      where: {
+        createdAt: { lt: thresholdDate }
+      }
+    });
+  } catch (err) {
+    console.error("[cleanupOldMessagesThrottled] Error:", err);
+  }
 }
 
 export async function getMessages(conversationId: string, page: number = 1, pageSize: number = 50) {
   if (!(await isChatEnabled())) throw new Error("Le chat est désactivé");
   
-  // Appliquer la rétention avant de récupérer
-  await cleanupOldMessages();
+  // Exécuté de manière asynchrone et throttlée (ne bloque plus la lecture de messages)
+  cleanupOldMessagesThrottled().catch(() => {});
 
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) throw new Error("Non autorisé");
@@ -134,6 +145,10 @@ export async function sendMessage(recipientId: string, content: string) {
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) throw new Error("Non autorisé");
   if (session.user.id === recipientId) throw new Error("Impossible de s'envoyer un message");
+
+  const trimmed = content?.trim();
+  if (!trimmed) throw new Error("Le message ne peut pas être vide.");
+  if (trimmed.length > 5000) throw new Error("Le message ne doit pas dépasser 5000 caractères.");
 
   const sender = await prisma.user.findUnique({ 
     where: { id: session.user.id },
