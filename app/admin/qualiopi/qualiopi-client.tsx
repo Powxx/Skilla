@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Star, MessageSquareWarning, Trash2, Send, ClipboardList, Power } from "lucide-react";
+import { Star, MessageSquareWarning, Trash2, Send, ClipboardList, Power, ShieldCheck, CheckCircle2, Sparkles, AlertCircle } from "lucide-react";
 import {
   updateComplaintStatus,
   deleteComplaint,
@@ -9,8 +9,9 @@ import {
   createSurveyCampaign,
   toggleSurveyCampaign,
   deleteSurveyCampaign,
+  recordCorrectiveAction,
 } from "@/app/actions/qualiopi";
-import { SURVEY_TARGET_LABELS, ROLE_LABELS } from "@/lib/qualiopi";
+import { SURVEY_TARGET_LABELS, ROLE_LABELS, COMPLAINT_STATUS_LABELS } from "@/lib/qualiopi";
 import type { SatisfactionSurveyTarget } from "@prisma/client";
 
 type Complaint = {
@@ -89,6 +90,10 @@ export default function QualiopiClient({
     classId: "",
   });
 
+  const [selectedComplaintForAction, setSelectedComplaintForAction] = useState<Complaint | null>(null);
+  const [actionNote, setActionNote] = useState("");
+  const [actionSuccess, setActionSuccess] = useState<string | null>(null);
+
   const handleStatusChange = (id: string, status: string) => {
     setComplaints((prev) => prev.map((c) => (c.id === id ? { ...c, status } : c)));
     startTransition(async () => {
@@ -96,6 +101,40 @@ export default function QualiopiClient({
         await updateComplaintStatus(id, status);
       } catch {
         setComplaints(initialComplaints);
+      }
+    });
+  };
+
+  const handleSaveAction = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedComplaintForAction || !actionNote.trim()) return;
+    const complaintId = selectedComplaintForAction.id;
+    startTransition(async () => {
+      try {
+        await recordCorrectiveAction({
+          complaintId,
+          actionNote,
+          status: "RESOLVED",
+        });
+        setActionSuccess("Mesure corrective enregistrée et notifiée à l'usager.");
+        setComplaints((prev) =>
+          prev.map((c) =>
+            c.id === complaintId
+              ? {
+                  ...c,
+                  status: "RESOLVED",
+                  description: `${c.description}\n\n--- [ACTION CORRECTIVE QUALIOPI — ${new Date().toLocaleDateString("fr-FR")}] ---\n${actionNote.trim()}`,
+                }
+              : c
+          )
+        );
+        setActionNote("");
+        setTimeout(() => {
+          setSelectedComplaintForAction(null);
+          setActionSuccess(null);
+        }, 1500);
+      } catch (err) {
+        console.error(err);
       }
     });
   };
@@ -341,6 +380,82 @@ export default function QualiopiClient({
 
       {tab === "complaints" && (
         <div className="space-y-4">
+          {selectedComplaintForAction && (
+            <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in">
+              <div className="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-8 shadow-2xl border border-slate-200 space-y-4">
+                <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                  <div className="flex items-center gap-2">
+                    <ShieldCheck className="h-5 w-5 text-violet-600" />
+                    <h3 className="font-bold text-sm text-slate-900">
+                      Mesure Corrective — Indicateur 32
+                    </h3>
+                  </div>
+                  <button
+                    onClick={() => {
+                      setSelectedComplaintForAction(null);
+                      setActionSuccess(null);
+                    }}
+                    className="text-slate-400 hover:text-slate-600 font-bold text-xs"
+                  >
+                    Fermer
+                  </button>
+                </div>
+
+                <div className="bg-slate-50 p-3 rounded-2xl border border-slate-100 text-xs">
+                  <span className="font-bold text-slate-700 block mb-0.5">
+                    Réclamation : {selectedComplaintForAction.subject}
+                  </span>
+                  <span className="text-[11px] text-slate-500">
+                    Déposée par {selectedComplaintForAction.sender.firstName} {selectedComplaintForAction.sender.lastName}
+                  </span>
+                </div>
+
+                {actionSuccess ? (
+                  <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold flex items-center gap-2">
+                    <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
+                    <span>{actionSuccess}</span>
+                  </div>
+                ) : (
+                  <form onSubmit={handleSaveAction} className="space-y-4">
+                    <div>
+                      <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1.5">
+                        Analyse de cause & Solution corrective mise en œuvre *
+                      </label>
+                      <textarea
+                        required
+                        rows={4}
+                        value={actionNote}
+                        onChange={(e) => setActionNote(e.target.value)}
+                        placeholder="Ex : Réunion avec l'intervenant pour réajuster le planning. Prise de contact avec l'entreprise. Décision de doubler le créneau de tutorat..."
+                        className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-3.5 text-xs focus:outline-none focus:border-violet-500 focus:bg-white resize-none"
+                      />
+                      <p className="text-[10px] text-slate-400 mt-1">
+                        Cette mesure sera consignée dans le registre officiel RNQ et un avis de résolution sera notifié au déclarant.
+                      </p>
+                    </div>
+
+                    <div className="flex items-center justify-end gap-2 pt-2">
+                      <button
+                        type="button"
+                        onClick={() => setSelectedComplaintForAction(null)}
+                        className="px-4 py-2 text-xs font-bold text-slate-500 hover:text-slate-700"
+                      >
+                        Annuler
+                      </button>
+                      <button
+                        type="submit"
+                        disabled={isPending}
+                        className="px-5 py-2.5 bg-violet-600 hover:bg-violet-700 text-white rounded-xl text-xs font-bold shadow-md shadow-violet-600/20 disabled:opacity-50"
+                      >
+                        {isPending ? "Enregistrement..." : "Enregistrer & Résoudre"}
+                      </button>
+                    </div>
+                  </form>
+                )}
+              </div>
+            </div>
+          )}
+
           {complaints.length === 0 ? (
             <p className="text-center py-12 text-slate-400 text-sm font-bold uppercase italic">Aucune réclamation.</p>
           ) : complaints.map((c) => (
@@ -356,7 +471,20 @@ export default function QualiopiClient({
                     {c.sender.lastName} {c.sender.firstName} · {new Date(c.createdAt).toLocaleString("fr-FR")}
                   </p>
                 </div>
-                <div className="flex items-center gap-2 shrink-0">
+                <div className="flex flex-col sm:flex-row items-end sm:items-center gap-2 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedComplaintForAction(c);
+                      setActionNote("");
+                      setActionSuccess(null);
+                    }}
+                    className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider bg-violet-50 text-violet-700 border border-violet-200 hover:bg-violet-100 transition shadow-sm"
+                  >
+                    <ShieldCheck className="h-3.5 w-3.5 text-violet-600" />
+                    <span>Mesure corrective (Ind. 32)</span>
+                  </button>
+
                   <select
                     value={c.status}
                     onChange={(e) => handleStatusChange(c.id, e.target.value)}

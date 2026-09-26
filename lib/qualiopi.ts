@@ -9,13 +9,13 @@ export const QUALIOPI_ENABLED_KEY = "QUALIOPI_ENABLED";
 
 /**
  * Vérifie si le module Qualiopi est activé au niveau de l'établissement.
- * Par défaut, s'il n'y a pas de réglage enregistré, le module est considéré comme actif.
+ * Le module est désactivé par défaut jusqu'à activation explicite dans les paramètres ("true").
  * 
  * @returns true si Qualiopi est activé, false sinon.
  */
 export async function isQualiopiEnabled(): Promise<boolean> {
   const setting = await prisma.globalSetting.findUnique({ where: { key: QUALIOPI_ENABLED_KEY } });
-  return setting?.value !== "false";
+  return setting?.value === "true";
 }
 
 /**
@@ -42,6 +42,30 @@ export const ROLE_LABELS: Record<string, string> = {
 };
 
 /**
+ * Catégories normées pour le recueil des réclamations (Qualiopi Indicateur 31).
+ */
+export const COMPLAINT_CATEGORIES = [
+  { id: "PEDAGOGIE", label: "Pédagogie & Enseignement", icon: "GraduationCap" },
+  { id: "ORGANISATION", label: "Organisation & Planning", icon: "Calendar" },
+  { id: "LOCAUX_MATERIEL", label: "Locaux, Outils & Matériel", icon: "Building" },
+  { id: "ADMINISTRATIF", label: "Administratif & Contrat d'apprentissage", icon: "FileText" },
+  { id: "RELATIONNEL", label: "Climat & Relationnel", icon: "Users" },
+  { id: "AUTRE", label: "Autre demande", icon: "HelpCircle" },
+] as const;
+
+export type ComplaintCategory = typeof COMPLAINT_CATEGORIES[number]["id"];
+
+/**
+ * Statuts officiels de traitement d'une réclamation.
+ */
+export const COMPLAINT_STATUS_LABELS: Record<string, { label: string; color: string; badgeBg: string }> = {
+  OPEN: { label: "Reçue & En attente", color: "text-amber-700", badgeBg: "bg-amber-50 border-amber-200" },
+  IN_PROGRESS: { label: "En cours d'instruction", color: "text-blue-700", badgeBg: "bg-blue-50 border-blue-200" },
+  RESOLVED: { label: "Mesure prise / Résolue", color: "text-emerald-700", badgeBg: "bg-emerald-50 border-emerald-200" },
+  CLOSED: { label: "Clôturée", color: "text-slate-600", badgeBg: "bg-slate-100 border-slate-200" },
+};
+
+/**
  * Génère le lien d'accès public à un questionnaire de satisfaction Qualiopi.
  * 
  * @param campaignId ID unique de la campagne de satisfaction.
@@ -50,3 +74,4 @@ export const ROLE_LABELS: Record<string, string> = {
 export function surveyLinkForRole(campaignId: string): string {
   return `/survey/${campaignId}`;
 }
+

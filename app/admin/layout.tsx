@@ -7,7 +7,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   const settings = await getGlobalSettings() || [];
   const getSetting = (key: string) => settings.find(s => s.key === key)?.value;
   const schoolName = getSetting("SCHOOL_SHORT_NAME") || getSetting("SCHOOL_NAME") || "Skilla";
-  const qualiopiEnabled = getSetting(QUALIOPI_ENABLED_KEY) !== "false";
+  const qualiopiEnabled = getSetting(QUALIOPI_ENABLED_KEY) === "true";
 
   return (
     <div className="flex h-screen bg-slate-50/30 text-slate-900 overflow-hidden">

@@ -274,7 +274,7 @@ export async function loadAdminDashboardPayload(
     globalSettings.find((s) => s.key === "SCHOOL_NAME")?.value ?? "ECM Académie";
 
   const qualiopiEnabled =
-    globalSettings.find((s) => s.key === QUALIOPI_ENABLED_KEY)?.value !== "false";
+    globalSettings.find((s) => s.key === QUALIOPI_ENABLED_KEY)?.value === "true";
 
   // Filtre réutilisable pour cibler uniquement les étudiants actifs de la classe filtrée
   const studentWhere = {

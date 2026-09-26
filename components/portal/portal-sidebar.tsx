@@ -19,6 +19,7 @@ import {
   Key,
   Gamepad2,
   MessageSquare,
+  MessageSquareWarning,
   ShieldAlert,
   FileCheck
 } from "lucide-react";
@@ -38,7 +39,7 @@ type Props = {
   qualiopiEnabled?: boolean;
 };
 
-export default function PortalSidebar({ variant, resolvedChildId, schoolName = "Skilla", arcadeEnabled = true, qualiopiEnabled = true }: Props) {
+export default function PortalSidebar({ variant, resolvedChildId, schoolName = "Skilla", arcadeEnabled = true, qualiopiEnabled = false }: Props) {
   const pathname = usePathname() ?? "";
   const [isOpen, setIsOpen] = useState(false);
 
@@ -84,6 +85,7 @@ export default function PortalSidebar({ variant, resolvedChildId, schoolName = "
         { href: "/prof/livret", label: "Livret", icon: BookOpen },
         { href: "/prof/notifications", label: "Notifications", icon: FileText },
         { href: "/prof/sanctions", label: "Sanctions", icon: ShieldAlert },
+        ...(qualiopiEnabled ? [{ href: "/reclamation", label: "Qualité & Réclamations", icon: MessageSquareWarning }] : []),
         { href: "/messages", label: "Messages", icon: MessageSquare },
         { href: "/settings/password", label: "Mot de passe", icon: Key }
       );
@@ -101,6 +103,7 @@ export default function PortalSidebar({ variant, resolvedChildId, schoolName = "
         { href: "/student/livret", label: "Livret", icon: BookOpen },
         { href: "/student/absences", label: "Absences", icon: Clock },
         { href: "/student/sanctions", label: "Sanctions", icon: ShieldAlert },
+        ...(qualiopiEnabled ? [{ href: "/reclamation", label: "Qualité & Réclamations", icon: MessageSquareWarning }] : []),
         { href: "/messages", label: "Messages", icon: MessageSquare },
         { href: "/settings/password", label: "Mot de passe", icon: Key }
       );
@@ -116,6 +119,7 @@ export default function PortalSidebar({ variant, resolvedChildId, schoolName = "
         { href: `${prefix}/livret${suffix}`, label: "Livret", icon: BookOpen },
         { href: `${prefix}/absences${suffix}`, label: "Absences", icon: Clock },
         { href: `${prefix}/sanctions${suffix}`, label: "Sanctions", icon: ShieldAlert },
+        ...(qualiopiEnabled ? [{ href: "/reclamation", label: "Qualité & Réclamations", icon: MessageSquareWarning }] : []),
         { href: "/messages", label: "Messages", icon: MessageSquare },
         { href: "/settings/password", label: "Mot de passe", icon: Key }
       );

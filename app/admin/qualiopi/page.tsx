@@ -44,12 +44,20 @@ export default async function QualiopiPage() {
               Diffusez des enquêtes de satisfaction et suivez les indicateurs qualité.
             </p>
           </div>
-          <Link
-            href="/admin/qualiopi/audit"
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold shadow-lg shadow-blue-500/20 transition active:scale-95 shrink-0"
-          >
-            <span>📊 Dossier d'Audit 1-Click</span>
-          </Link>
+          <div className="flex items-center gap-3 shrink-0">
+            <Link
+              href="/admin/qualiopi/referentiel"
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-violet-600 hover:bg-violet-500 text-white text-xs font-bold shadow-lg shadow-violet-500/20 transition active:scale-95 shrink-0"
+            >
+              <span>📖 Guide des 32 Indicateurs</span>
+            </Link>
+            <Link
+              href="/admin/qualiopi/audit"
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold shadow-lg transition active:scale-95 shrink-0"
+            >
+              <span>📊 Dossier d'Audit 1-Click</span>
+            </Link>
+          </div>
         </header>
         <QualiopiClient
           complaints={complaints as any}

@@ -73,7 +73,7 @@ export default async function AdminHomePage() {
   ]);
 
   const schoolName = globalSettings.find(s => s.key === "SCHOOL_NAME")?.value || "ECM Academie";
-  const qualiopiEnabled = globalSettings.find(s => s.key === QUALIOPI_ENABLED_KEY)?.value !== "false";
+  const qualiopiEnabled = globalSettings.find(s => s.key === QUALIOPI_ENABLED_KEY)?.value === "true";
   const meetingsEnabled = globalSettings.find(s => s.key === "MEETINGS_ENABLED")?.value !== "false";
 
   const mainActions = [

@@ -51,7 +51,7 @@ export default function CoreSettingsClient({
   const [chatRetentionDays, setChatRetentionDays] = useState(parseInt(globalSettings.CHAT_RETENTION_DAYS || "7", 10));
   const [enableSanctionPoints, setEnableSanctionPoints] = useState(globalSettings.SANCTIONS_POINTS_ENABLED === "true");
   const [enableSanctionComments, setEnableSanctionComments] = useState(globalSettings.SANCTIONS_COMMENTS_ENABLED === "true");
-  const [enableQualiopi, setEnableQualiopi] = useState(globalSettings.QUALIOPI_ENABLED !== "false");
+  const [enableQualiopi, setEnableQualiopi] = useState(globalSettings.QUALIOPI_ENABLED === "true");
   const [enableMeetings, setEnableMeetings] = useState(globalSettings.MEETINGS_ENABLED !== "false");
 
   // Sync with props
@@ -62,7 +62,7 @@ export default function CoreSettingsClient({
     setChatRetentionDays(parseInt(globalSettings.CHAT_RETENTION_DAYS || "7", 10));
     setEnableSanctionPoints(globalSettings.SANCTIONS_POINTS_ENABLED === "true");
     setEnableSanctionComments(globalSettings.SANCTIONS_COMMENTS_ENABLED === "true");
-    setEnableQualiopi(globalSettings.QUALIOPI_ENABLED !== "false");
+    setEnableQualiopi(globalSettings.QUALIOPI_ENABLED === "true");
     setEnableMeetings(globalSettings.MEETINGS_ENABLED !== "false");
   }, [teachers, globalSettings]);
 
