@@ -47,11 +47,21 @@ export async function subscribeToPush(subscription: any) {
 }
 
 export async function sendPushNotification(userId: string, payload: { title: string; body: string; url?: string }) {
+  return sendPushNotificationBatch([userId], payload);
+}
+
+export async function sendPushNotificationBatch(userIds: string[], payload: { title: string; body: string; url?: string }) {
+  if (!userIds || userIds.length === 0) return;
+
   const subscriptions = await prisma.pushSubscription.findMany({
-    where: { userId },
+    where: { userId: { in: userIds } },
   });
 
-  const notifications = subscriptions.map((sub) => {
+  if (subscriptions.length === 0) return;
+
+  const expiredIds: string[] = [];
+
+  const promises = subscriptions.map(async (sub) => {
     const pushSubscription = {
       endpoint: sub.endpoint,
       keys: {
@@ -60,15 +70,23 @@ export async function sendPushNotification(userId: string, payload: { title: str
       },
     };
 
-    return webpush.sendNotification(pushSubscription, JSON.stringify(payload)).catch(async (err) => {
+    try {
+      await webpush.sendNotification(pushSubscription, JSON.stringify(payload));
+    } catch (err: any) {
       if (err.statusCode === 404 || err.statusCode === 410) {
-        // Subscription has expired or is no longer valid
-        await prisma.pushSubscription.delete({ where: { id: sub.id } });
+        expiredIds.push(sub.id);
       } else {
-        console.error("Error sending push notification:", err);
+        console.error("[sendPushNotificationBatch] Error sending push notification:", err);
       }
-    });
+    }
   });
 
-  await Promise.all(notifications);
+  await Promise.allSettled(promises);
+
+  if (expiredIds.length > 0) {
+    await prisma.pushSubscription.deleteMany({
+      where: { id: { in: expiredIds } }
+    }).catch(err => console.error("[sendPushNotificationBatch] Error cleaning expired subscriptions:", err));
+  }
 }
+

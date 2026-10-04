@@ -31,6 +31,16 @@ export async function getConversations() {
       messages: {
         orderBy: { createdAt: 'desc' },
         take: 1
+      },
+      _count: {
+        select: {
+          messages: {
+            where: {
+              isRead: false,
+              senderId: { not: session.user.id }
+            }
+          }
+        }
       }
     },
     orderBy: { updatedAt: 'desc' }
@@ -65,7 +75,8 @@ export async function getConversations() {
   return conversations.map(c => ({
     ...c,
     otherParticipant: c.participant1Id === session.user.id ? c.participant2 : c.participant1,
-    lastMessage: c.messages[0]
+    lastMessage: c.messages[0],
+    unreadCount: (c as any)._count?.messages || 0
   }));
 }
 
@@ -382,3 +393,27 @@ export async function markAsRead(conversationId: string) {
   });
   revalidatePath("/messages");
 }
+
+export async function getUnreadChatCount(): Promise<number> {
+  try {
+    if (!(await isChatEnabled())) return 0;
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.id) return 0;
+
+    return await prisma.chatMessage.count({
+      where: {
+        isRead: false,
+        senderId: { not: session.user.id },
+        conversation: {
+          OR: [
+            { participant1Id: session.user.id },
+            { participant2Id: session.user.id }
+          ]
+        }
+      }
+    });
+  } catch (err) {
+    return 0;
+  }
+}
+

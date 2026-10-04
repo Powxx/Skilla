@@ -4,6 +4,7 @@ import Providers from "@/app/providers";
 import { Analytics } from '@vercel/analytics/react';
 import { SpeedInsights } from '@vercel/speed-insights/next';
 import { Inter } from "next/font/google";
+import Script from "next/script";
 
 const inter = Inter({ subsets: ["latin"], display: 'swap' });
 
@@ -19,14 +20,16 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="fr" className={inter.className}>
-      <body>
+    <html lang="fr" className={inter.className} suppressHydrationWarning>
+      <body suppressHydrationWarning>
         <Providers>
           {children}
           <Analytics />
           <SpeedInsights />
         </Providers>
-        <script
+        <Script
+          id="sw-register"
+          strategy="afterInteractive"
           dangerouslySetInnerHTML={{
             __html: `
               if ('serviceWorker' in navigator) {

@@ -10,10 +10,17 @@ import AdminNotificationsHistory, {
 } from "@/components/notifications/AdminNotificationsHistory";
 import { GraduationCap, Users, Bell, School } from "lucide-react";
 
+import { cancelScheduledNotification } from "@/app/actions/notifications";
+
 async function deleteLog(id: string) {
   "use server";
   await prisma.classNotificationLog.delete({ where: { id } });
   revalidatePath("/admin/notifications");
+}
+
+async function cancelScheduledLog(id: string) {
+  "use server";
+  await cancelScheduledNotification(id);
 }
 
 export default async function AdminNotificationsPage() {
@@ -23,7 +30,7 @@ export default async function AdminNotificationsPage() {
     redirect("/login");
   }
 
-  const [logs, classes, teachers, adminNotifsRaw] = await Promise.all([
+  const [logs, classes, teachers, adminNotifsRaw, scheduledRaw] = await Promise.all([
     prisma.classNotificationLog.findMany({
       include: {
         sender: { select: { firstName: true, lastName: true } },
@@ -47,7 +54,14 @@ export default async function AdminNotificationsPage() {
         user: { select: { id: true, firstName: true, lastName: true, email: true, role: true } }
       },
       orderBy: { createdAt: "desc" },
-      take: 200
+      take: 250
+    }),
+    prisma.scheduledNotification.findMany({
+      where: { status: "PENDING" },
+      include: {
+        sender: { select: { firstName: true, lastName: true } }
+      },
+      orderBy: { scheduledFor: "asc" }
     })
   ]);
 
@@ -62,11 +76,12 @@ export default async function AdminNotificationsPage() {
     senderName: string;
     roles: Set<string>;
     users: { firstName: string | null; lastName: string | null; email: string | null; role: string }[];
+    readCount: number;
   }>();
 
   for (const n of adminNotifsRaw) {
     const timeKey = n.createdAt.toISOString().slice(0, 16);
-    const key = `${n.title}___${n.message}___${timeKey}`;
+    const key = n.broadcastId || `${n.title}___${n.message}___${timeKey}`;
 
     if (!groupedMap.has(key)) {
       groupedMap.set(key, {
@@ -78,18 +93,22 @@ export default async function AdminNotificationsPage() {
         createdAt: n.createdAt.toISOString(),
         senderName: n.senderName,
         roles: new Set([n.user.role]),
-        users: [n.user]
+        users: [n.user],
+        readCount: n.isRead ? 1 : 0
       });
     } else {
       const existing = groupedMap.get(key)!;
       existing.ids.push(n.id);
       existing.roles.add(n.user.role);
       existing.users.push(n.user);
+      if (n.isRead) existing.readCount++;
     }
   }
 
   const adminLogs: AdminNotificationRecord[] = Array.from(groupedMap.values()).map((g) => {
     const isTeacherOnly = g.roles.size === 1 && g.roles.has("TEACHER");
+    const isParentOnly = g.roles.size === 1 && g.roles.has("RESPONSIBLE");
+    const isTutorOnly = g.roles.size === 1 && g.roles.has("COMPANY_TUTOR");
     const count = g.ids.length;
 
     let recipientLabel = "";
@@ -104,9 +123,15 @@ export default async function AdminNotificationsPage() {
         recipientLabel = `Prof. ${u?.lastName ?? ""} ${u?.firstName ?? ""}`.trim() || u?.email || "Enseignant";
         recipientType = "TEACHER_SINGLE";
       }
+    } else if (isParentOnly) {
+      recipientLabel = `Parents d'élèves (${count})`;
+      recipientType = "PARENT_GROUP";
+    } else if (isTutorOnly) {
+      recipientLabel = `Tuteurs d'entreprise (${count})`;
+      recipientType = "TUTOR_GROUP";
     } else {
       if (count > 1) {
-        recipientLabel = `Tous les élèves (${count})`;
+        recipientLabel = `Élèves & familles (${count})`;
         recipientType = "STUDENT_GROUP";
       } else {
         const u = g.users[0];
@@ -125,7 +150,9 @@ export default async function AdminNotificationsPage() {
       senderName: g.senderName,
       recipientLabel,
       recipientCount: count,
-      recipientType
+      recipientType,
+      readCount: g.readCount,
+      readRate: count > 0 ? Math.round((g.readCount / count) * 100) : 0,
     };
   });
 
@@ -138,6 +165,18 @@ export default async function AdminNotificationsPage() {
     message: l.message
   }));
 
+  const scheduledLogs = scheduledRaw.map((s) => ({
+    id: s.id,
+    title: s.title,
+    message: s.message,
+    type: s.type,
+    target: s.target,
+    scheduledFor: s.scheduledFor.toISOString(),
+    createdAt: s.createdAt.toISOString(),
+    status: s.status,
+    senderName: `${s.sender.firstName ?? ""} ${s.sender.lastName ?? ""}`.trim() || "Admin",
+  }));
+
   return (
     <div className="p-6 sm:p-8 max-w-7xl mx-auto space-y-8">
       {/* En-tête */}
@@ -148,7 +187,7 @@ export default async function AdminNotificationsPage() {
             Module Notifications
           </h1>
           <p className="text-sm text-slate-500 mt-1">
-            Gérez et diffusez les communications vers les professeurs (groupé ou individuel) et les étudiants.
+            Gérez et diffusez les communications vers les professeurs, étudiants, parents et tuteurs avec accusés de réception.
           </p>
         </div>
 
@@ -169,11 +208,13 @@ export default async function AdminNotificationsPage() {
       {/* Module d'envoi principal */}
       <AdminNotificationSender classes={classes} teachers={teachers} />
 
-      {/* Historique complet des notifications */}
+      {/* Historique complet des notifications avec accusés et programmation */}
       <AdminNotificationsHistory 
         adminLogs={adminLogs} 
-        classLogs={classLogs} 
+        classLogs={classLogs}
+        scheduledLogs={scheduledLogs}
         onDeleteClassLog={deleteLog}
+        onCancelScheduledLog={cancelScheduledLog}
       />
     </div>
   );

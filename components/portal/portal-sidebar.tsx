@@ -1,13 +1,15 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { getUnreadChatCount } from "@/app/actions/chat";
 import { 
   LayoutDashboard, 
   Calendar, 
   GraduationCap, 
   BookOpen, 
+  BookMarked,
   Clock, 
   Users, 
   Settings, 
@@ -21,7 +23,8 @@ import {
   MessageSquare,
   MessageSquareWarning,
   ShieldAlert,
-  FileCheck
+  FileCheck,
+  Lightbulb
 } from "lucide-react";
 
 type NavItem = {
@@ -42,6 +45,23 @@ type Props = {
 export default function PortalSidebar({ variant, resolvedChildId, schoolName = "Skilla", arcadeEnabled = true, qualiopiEnabled = false }: Props) {
   const pathname = usePathname() ?? "";
   const [isOpen, setIsOpen] = useState(false);
+  const [unreadChatCount, setUnreadChatCount] = useState(0);
+
+  useEffect(() => {
+    let isMounted = true;
+    const updateCount = () => {
+      if (typeof document !== "undefined" && document.hidden) return;
+      getUnreadChatCount().then(c => {
+        if (isMounted) setUnreadChatCount(c);
+      }).catch(() => {});
+    };
+    updateCount();
+    const interval = setInterval(updateCount, 25000);
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+    };
+  }, []);
 
   const navItems: NavItem[] = [];
 
@@ -60,6 +80,7 @@ export default function PortalSidebar({ variant, resolvedChildId, schoolName = "
         { href: "/admin/users", label: "Utilisateurs", icon: Users },
         { href: "/admin/classes", label: "Classes", icon: BookOpen },
         { href: "/admin/planning", label: "Emploi du temps", icon: Calendar },
+        { href: "/admin/devoirs", label: "Devoirs", icon: BookMarked },
         { href: "/admin/report-cards", label: "Bulletins", icon: FileText },
         { href: "/admin/livret", label: "Livret", icon: BookOpen },
         { href: "/admin/documents", label: "Attestations", icon: FileCheck },
@@ -68,6 +89,7 @@ export default function PortalSidebar({ variant, resolvedChildId, schoolName = "
         { href: "/admin/sanctions", label: "Sanctions", icon: ShieldAlert },
         ...(qualiopiEnabled ? [{ href: "/admin/qualiopi", label: "Qualiopi", icon: FileText }] : []),
         { href: "/admin/notifications", label: "Notifications", icon: FileText },
+        { href: "/admin/idees", label: "Boîte à idées", icon: Lightbulb },
         { href: "/admin/connexion-docs", label: "Connexion Docs", icon: Key },
         { href: "/admin/impersonate", label: "Impersonnalisation", icon: UserCircle },
         { href: "/admin/settings", label: "Config", icon: Settings },
@@ -80,6 +102,7 @@ export default function PortalSidebar({ variant, resolvedChildId, schoolName = "
         { href: "/prof", label: "Dashboard", icon: LayoutDashboard },
         { href: "/prof/classes", label: "Classes", icon: BookOpen },
         { href: "/prof/planning", label: "Emploi du temps", icon: Calendar },
+        { href: "/prof/devoirs", label: "Devoirs", icon: BookMarked },
         { href: "/prof/appel", label: "Appel", icon: Clock },
         { href: "/prof/notes", label: "Notes", icon: GraduationCap },
         { href: "/prof/livret", label: "Livret", icon: BookOpen },
@@ -94,6 +117,7 @@ export default function PortalSidebar({ variant, resolvedChildId, schoolName = "
       navItems.push(
         { href: "/student/dashboard", label: "Synthèse", icon: LayoutDashboard },
         { href: "/student/planning", label: "Emploi du temps", icon: Calendar },
+        { href: "/student/devoirs", label: "Devoirs", icon: BookMarked },
         { href: "/student/grades", label: "Notes", icon: GraduationCap }
       );
       if (arcadeEnabled) {
@@ -115,6 +139,7 @@ export default function PortalSidebar({ variant, resolvedChildId, schoolName = "
       navItems.push(
         { href: `${prefix}/dashboard${suffix}`, label: "Synthèse", icon: LayoutDashboard },
         { href: `${prefix}/planning${suffix}`, label: "Emploi du temps", icon: Calendar },
+        { href: `${prefix}/devoirs${suffix}`, label: "Devoirs", icon: BookMarked },
         { href: `${prefix}/grades${suffix}`, label: "Notes", icon: GraduationCap },
         { href: `${prefix}/livret${suffix}`, label: "Livret", icon: BookOpen },
         { href: `${prefix}/absences${suffix}`, label: "Absences", icon: Clock },
@@ -164,7 +189,12 @@ export default function PortalSidebar({ variant, resolvedChildId, schoolName = "
                 }`}
               >
                 <item.icon className={`h-5 w-5 transition-colors ${isActive ? 'text-white' : 'text-slate-500 group-hover:text-slate-300'}`} />
-                {item.label}
+                <span className="flex-1 truncate">{item.label}</span>
+                {item.href === "/messages" && unreadChatCount > 0 && (
+                  <span className="px-2 py-0.5 text-[10px] font-black rounded-full bg-blue-500 text-white shadow-xs ring-1 ring-white/20 shrink-0">
+                    {unreadChatCount > 9 ? "9+" : unreadChatCount}
+                  </span>
+                )}
               </Link>
             );
           })}

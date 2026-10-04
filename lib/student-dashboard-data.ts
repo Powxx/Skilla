@@ -103,6 +103,7 @@ export async function loadStudentDashboardPayload(
   console.log(`Debug Homework: Student ${student.id}, Class ${student.class?.id}, Found ${homeworkLessons.length} lessons with homework from ${now.toISOString()}.`);
 
   const homeworks = homeworkLessons.map(l => ({
+    id: l.id,
     subjectName: l.isFreeLesson ? (l.customSubject || "Cours libre") : (l.subject?.name || "Sans matière"),
     content: l.homework!,
     date: l.startTime.toISOString()
@@ -117,6 +118,12 @@ export async function loadStudentDashboardPayload(
       subjectName: g.subjectName ?? "Inconnue",
     };
   });
+
+  const completions = await prisma.homeworkCompletion.findMany({
+    where: { studentId: student.id },
+    select: { lessonId: true },
+  });
+  const initialDoneLessonIds = completions.map((c) => c.lessonId);
 
   return {
     studentDisplayName: `${student.lastName} ${student.firstName}`,
@@ -139,6 +146,7 @@ export async function loadStudentDashboardPayload(
       startTime: nextLesson.startTime.toISOString(),
       roomName: nextLesson.room?.name ?? "Salle TBD"
     } : null,
-    upcomingHomework: homeworks
+    upcomingHomework: homeworks,
+    initialDoneLessonIds,
   };
 }

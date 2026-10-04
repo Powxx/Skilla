@@ -30,28 +30,28 @@ export default async function ProfNotificationsPage() {
           badge: "bg-amber-50 text-amber-700 border-amber-200",
           icon: AlertTriangle,
           border: "border-l-amber-500",
-          label: "Important"
+          label: "Avertissement / Important"
         };
       case "SUCCESS":
         return {
           badge: "bg-emerald-50 text-emerald-700 border-emerald-200",
           icon: CheckCircle2,
           border: "border-l-emerald-500",
-          label: "Succès"
+          label: "Succès / Félicitations"
         };
       case "ERROR":
         return {
           badge: "bg-rose-50 text-rose-700 border-rose-200",
           icon: AlertCircle,
           border: "border-l-rose-500",
-          label: "Urgent"
+          label: "Urgent / Alerte"
         };
       default:
         return {
           badge: "bg-blue-50 text-blue-700 border-blue-200",
           icon: Info,
           border: "border-l-blue-500",
-          label: "Info"
+          label: "Information"
         };
     }
   };
@@ -96,7 +96,7 @@ export default async function ProfNotificationsPage() {
             )}
           </div>
 
-          <div className="divide-y divide-slate-100 max-h-[600px] overflow-y-auto">
+          <div className="divide-y divide-slate-100 max-h-[600px] min-h-[250px] overflow-y-auto custom-scrollbar">
             {receivedNotifications.length === 0 ? (
               <div className="p-12 text-center">
                 <Inbox className="h-8 w-8 text-slate-300 mx-auto mb-2" />
@@ -118,7 +118,7 @@ export default async function ProfNotificationsPage() {
                       !notif.isRead ? "bg-indigo-50/20" : ""
                     }`}
                   >
-                    <div className="flex items-center justify-between gap-2 mb-1.5">
+                    <div className="flex items-center justify-between gap-2 mb-1.5 flex-wrap">
                       <div className="flex items-center gap-2">
                         <span className="text-xs font-bold text-slate-800">
                           {notif.senderName || "Administration"}
@@ -137,13 +137,18 @@ export default async function ProfNotificationsPage() {
                       </div>
                     </div>
 
-                    <h4 className="text-sm font-bold text-slate-900 mb-1">
+                    <h4 className="text-sm font-bold text-slate-900 mb-1 break-words">
                       {notif.title}
                     </h4>
 
-                    <p className="text-xs text-slate-600 whitespace-pre-wrap leading-relaxed">
+                    <p className="text-xs text-slate-600 whitespace-pre-wrap break-words leading-relaxed select-text">
                       {notif.message}
                     </p>
+
+                    <div className="pt-2 mt-2 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-400">
+                      <span>Push Web & In-app</span>
+                      <span>{notif.isRead ? "✓ Lu" : "Nouveau"}</span>
+                    </div>
                   </div>
                 );
               })

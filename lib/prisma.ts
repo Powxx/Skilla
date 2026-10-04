@@ -4,14 +4,31 @@ const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined;
 };
 
-// Optimisation Serverless : on s'assure qu'en production, le client ne logge que les erreurs critiques
-// La gestion du Pool de Connexion est déjà parfaitement déléguée à l'URL Supabase (pgbouncer=true)
-export const prisma = globalForPrisma.prisma ?? new PrismaClient({
-  log: process.env.NODE_ENV === "development" ? ["warn", "error"] : ["error"],
-});
-
-if (process.env.NODE_ENV !== "production") {
-  globalForPrisma.prisma = prisma;
+function createClient(): PrismaClient {
+  return new PrismaClient({
+    log: process.env.NODE_ENV === "development" ? ["warn", "error"] : ["error"],
+  });
 }
+
+export function getPrisma(): PrismaClient {
+  if (
+    !globalForPrisma.prisma ||
+    (process.env.NODE_ENV !== "production" && !(globalForPrisma.prisma as any).adminIdea)
+  ) {
+    globalForPrisma.prisma = createClient();
+  }
+  return globalForPrisma.prisma;
+}
+
+export const prisma = new Proxy({} as PrismaClient, {
+  get(target, prop, receiver) {
+    const client = getPrisma();
+    const value = Reflect.get(client, prop, receiver);
+    if (typeof value === "function") {
+      return value.bind(client);
+    }
+    return value;
+  },
+});
 
 export default prisma;

@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import WeeklyCalendar from '@/components/WeeklyCalendar';
 import { startOfWeek, format } from 'date-fns';
 import { fr } from 'date-fns/locale';
@@ -14,8 +15,14 @@ export default function TeacherPlanningClient({ teacherId, teachers }: { teacher
   const [subjectId, setSubjectId] = useState("");
   const [summary, setSummary] = useState("");
   const [homework, setHomework] = useState("");
+  const [notifyStudents, setNotifyStudents] = useState(true);
   const [activeTab, setActiveTab] = useState<'info' | 'substitute' | 'content'>('info');
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error', text: string } | null>(null);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const fetchLessons = async (date: Date) => {
     setLoading(true);
@@ -58,11 +65,17 @@ export default function TeacherPlanningClient({ teacherId, teachers }: { teacher
         body: JSON.stringify({
           id: selectedEvent.id,
           summary,
-          homework
+          homework,
+          notifyStudents: notifyStudents && Boolean(homework.trim())
         })
       });
       if (res.ok) {
-        setFeedback({ type: 'success', text: "Contenu du cours enregistré." });
+        setFeedback({ 
+          type: 'success', 
+          text: notifyStudents && homework.trim() 
+            ? "Contenu enregistré & élèves notifiés !" 
+            : "Contenu du cours enregistré." 
+        });
         fetchLessons(currentDate);
       } else {
         setFeedback({ type: 'error', text: "Erreur lors de l'enregistrement." });
@@ -123,18 +136,24 @@ export default function TeacherPlanningClient({ teacherId, teachers }: { teacher
         }}
       />
 
-      {selectedEvent && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden border border-white/20">
-            <div className="px-6 py-5 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+      {mounted && selectedEvent && createPortal(
+        <div className="fixed inset-0 z-[9999] overflow-y-auto custom-scrollbar flex min-h-screen items-center justify-center p-4 sm:p-6 bg-black/60 backdrop-blur-sm animate-in fade-in duration-150">
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg min-w-[320px] max-h-[85vh] my-auto flex flex-col overflow-hidden border border-white/20">
+            <div className="px-6 py-5 border-b border-slate-100 flex justify-between items-center bg-slate-50/50 shrink-0">
               <div>
                 <h2 className="text-lg font-bold text-slate-900">{selectedEvent.extendedProps?.subject}</h2>
                 <p className="text-xs text-slate-500 font-medium">Classe : {selectedEvent.extendedProps?.class}</p>
               </div>
-              <button onClick={() => setSelectedEvent(null)} className="h-8 w-8 rounded-full flex items-center justify-center bg-slate-200/50 text-slate-500 hover:bg-slate-200 transition">&times;</button>
+              <button 
+                onClick={() => setSelectedEvent(null)} 
+                className="h-8 w-8 rounded-full flex items-center justify-center bg-slate-200/50 text-slate-500 hover:bg-slate-200 transition"
+                title="Fermer"
+              >
+                &times;
+              </button>
             </div>
 
-            <div className="flex border-b border-slate-100">
+            <div className="flex border-b border-slate-100 shrink-0">
               <button
                 onClick={() => setActiveTab('info')}
                 className={`flex-1 py-3 text-xs font-bold uppercase tracking-wider transition ${activeTab === 'info' ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50/30' : 'text-slate-400 hover:text-slate-600'}`}
@@ -155,7 +174,7 @@ export default function TeacherPlanningClient({ teacherId, teachers }: { teacher
               </button>
             </div>
 
-            <div className="p-6">
+            <div className="p-6 flex-1 overflow-y-auto custom-scrollbar">
               {feedback && (
                 <div className={`mb-4 p-3 rounded-xl text-xs font-bold ${feedback.type === 'success' ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' : 'bg-red-50 text-red-700 border border-red-100'}`}>
                   {feedback.text}
@@ -188,7 +207,7 @@ export default function TeacherPlanningClient({ teacherId, teachers }: { teacher
                   <div>
                     <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Résumé du cours (fait)</label>
                     <textarea
-                      className="w-full text-sm rounded-xl border-slate-200 focus:border-blue-500 focus:ring-blue-500 min-h-[100px]"
+                      className="w-full text-sm rounded-xl border-slate-200 focus:border-blue-500 focus:ring-blue-500 min-h-[110px] max-h-[220px] custom-scrollbar leading-relaxed"
                       placeholder="Qu'avez-vous fait pendant ce cours ?"
                       value={summary}
                       onChange={(e) => setSummary(e.target.value)}
@@ -197,12 +216,26 @@ export default function TeacherPlanningClient({ teacherId, teachers }: { teacher
                   <div>
                     <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Devoirs (à faire pour le prochain cours)</label>
                     <textarea
-                      className="w-full text-sm rounded-xl border-slate-200 focus:border-blue-500 focus:ring-blue-500 min-h-[80px]"
+                      className="w-full text-sm rounded-xl border-slate-200 focus:border-blue-500 focus:ring-blue-500 min-h-[90px] max-h-[200px] custom-scrollbar leading-relaxed"
                       placeholder="Exercices, révisions..."
                       value={homework}
                       onChange={(e) => setHomework(e.target.value)}
                     />
                   </div>
+
+                  <div className="flex items-center gap-2 p-2.5 rounded-xl bg-slate-50 border border-slate-200/80">
+                    <input
+                      type="checkbox"
+                      id="notifyStudentsHomework"
+                      checked={notifyStudents}
+                      onChange={(e) => setNotifyStudents(e.target.checked)}
+                      className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                    />
+                    <label htmlFor="notifyStudentsHomework" className="text-xs font-semibold text-slate-700 cursor-pointer select-none">
+                      Notifier les élèves de la classe (in-app & push)
+                    </label>
+                  </div>
+
                   <button type="submit" disabled={loading} className="w-full py-3 bg-slate-900 text-white rounded-xl text-sm font-bold shadow-lg hover:bg-slate-800 transition disabled:opacity-50">
                     {loading ? "Enregistrement..." : "Enregistrer le cahier de texte"}
                   </button>
@@ -263,7 +296,8 @@ export default function TeacherPlanningClient({ teacherId, teachers }: { teacher
               )}
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

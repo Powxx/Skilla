@@ -1,5 +1,6 @@
 import type { NextConfig } from "next";
 
+// Next.js configuration - updated for admin features
 const nextConfig: NextConfig = {
   async headers() {
     return [

@@ -152,6 +152,8 @@ model User {
   pushSubscriptions   PushSubscription[]     /// Tokens de notifications Web Push
   gameScores          GameScore[]            /// Scores de mini-jeux pédagogiques
   assignedGrades      Grade[]                @relation("TeacherGrades") /// Notes saisies par ce professeur
+  homeworkCompletions HomeworkCompletion[]   @relation("StudentHomeworkCompletions")
+  scheduledNotifications ScheduledNotification[] @relation("ScheduledNotificationSender")
 
   // Gamification & Assiduité
   loginStreak    Int                   @default(0)  /// Série de connexions quotidiennes consécutives
@@ -188,6 +190,8 @@ model User {
   sanctionComments   SanctionComment[]     @relation("SanctionCommentAuthor")
   sanctionEvents     SanctionActionEvent[] @relation("SanctionEventStudent")
   surveyCampaigns    SatisfactionSurveyCampaign[] @relation("SurveyCampaignCreator")
+  adminIdeas         AdminIdea[]           @relation("AdminIdeaAuthor")
+  adminIdeaVotes     AdminIdeaVote[]
 
   @@index([role])
   @@index([lastName, firstName])
@@ -340,6 +344,7 @@ model Lesson {
 
   summary  String? @db.Text                                     /// Résumé du cours / Cahier de texte
   homework String? @db.Text                                     /// Devoirs / Travail à faire
+  homeworkCompletions HomeworkCompletion[]
 
   @@index([startTime, endTime])
   @@index([recurrenceId])
@@ -600,20 +605,58 @@ model ChatMessage {
 
 /// Notification in-app destinée à un utilisateur spécifique.
 model Notification {
-  id         String   @id @default(cuid())
-  userId     String
-  user       User     @relation(fields: [userId], references: [id])
-  title      String
-  message    String
-  type       String   @default("INFO") /// "INFO", "WARNING", "SUCCESS", "ERROR"
-  isRead     Boolean  @default(false)
-  link       String?                   /// Lien optionnel vers lequel rediriger l'utilisateur au clic
-  senderName String   @default("Système")
-  createdAt  DateTime @default(now())
+  id          String    @id @default(cuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id])
+  title       String
+  message     String
+  type        String    @default("INFO") /// "INFO", "WARNING", "SUCCESS", "ERROR"
+  isRead      Boolean   @default(false)
+  readAt      DateTime?                   /// Date et heure de lecture pour accusé de réception
+  link        String?                     /// Lien optionnel vers lequel rediriger l'utilisateur au clic
+  senderName  String    @default("Système")
+  broadcastId String?                     /// Identifiant de diffusion groupée pour regrouper les envois collectifs
+  createdAt   DateTime  @default(now())
 
   @@index([userId])
   @@index([userId, isRead])
+  @@index([broadcastId])
   @@index([createdAt])
+}
+
+/// Statut de devoir terminé / fait par un élève.
+model HomeworkCompletion {
+  id          String   @id @default(cuid())
+  lessonId    String
+  lesson      Lesson   @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  studentId   String
+  student     User     @relation("StudentHomeworkCompletions", fields: [studentId], references: [id], onDelete: Cascade)
+  completedAt DateTime @default(now())
+
+  @@unique([lessonId, studentId])
+  @@index([lessonId])
+  @@index([studentId])
+}
+
+/// Notification programmée pour un envoi différé automatique.
+model ScheduledNotification {
+  id             String    @id @default(cuid())
+  title          String
+  message        String
+  type           String    @default("INFO")
+  target         String    /// ALL_STUDENTS, ALL_TEACHERS, ALL_PARENTS, ALL_TUTORS, CLASS, INDIVIDUAL
+  targetClassId  String?
+  targetUserId   String?
+  includeParents Boolean   @default(false)
+  scheduledFor   DateTime
+  status         String    @default("PENDING") /// PENDING, SENT, CANCELLED
+  createdAt      DateTime  @default(now())
+  sentAt         DateTime?
+  senderId       String
+  sender         User      @relation("ScheduledNotificationSender", fields: [senderId], references: [id])
+
+  @@index([status, scheduledFor])
+  @@index([senderId])
 }
 
 /// Journal des notifications collectives envoyées à une classe.
@@ -739,3 +782,64 @@ model SanctionActionEvent {
 
   @@index([studentId])
 }
+
+// ==========================================
+// --- BOÎTE À IDÉES ADMINISTRATION ---
+// ==========================================
+
+/// Statut d'une idée soumise dans la boîte à idées de l'administration.
+enum AdminIdeaStatus {
+  SUBMITTED     // Soumise / Nouvelle
+  UNDER_REVIEW  // En cours d'étude par l'administrateur général
+  ACCEPTED      // Retenue / Planifiée
+  REJECTED      // Non retenue
+  IMPLEMENTED   // Réalisée / Déployée
+}
+
+/// Catégorie d'une idée soumise.
+enum AdminIdeaCategory {
+  PEDAGOGY          // Pédagogie & Évaluations
+  SCHOOL_LIFE       // Vie Scolaire & Quotidien
+  COMMUNICATION     // Communication & Familles
+  TOOLS_ERGONOMICS  // Outils & Ergonomie
+  ADMIN_PROCESS     // Processus Administratifs & RH
+  OTHER             // Autre suggestion
+}
+
+/// Boîte à idées pour l'équipe administrative avec arbitrage de l'Administrateur Général.
+model AdminIdea {
+  id            String            @id @default(cuid())
+  title         String
+  description   String            @db.Text
+  category      AdminIdeaCategory @default(OTHER)
+  status        AdminIdeaStatus   @default(SUBMITTED)
+  adminResponse String?           @db.Text   /// Réponse / Décision de l'administrateur général
+  respondedAt   DateTime?                  /// Date de réponse de l'admin général
+
+  authorId      String
+  author        User              @relation("AdminIdeaAuthor", fields: [authorId], references: [id], onDelete: Cascade)
+
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+
+  votes         AdminIdeaVote[]
+
+  @@index([authorId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+/// Vote / Soutien apporté à une idée par un administrateur.
+model AdminIdeaVote {
+  id        String    @id @default(cuid())
+  ideaId    String
+  idea      AdminIdea @relation(fields: [ideaId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime  @default(now())
+
+  @@unique([ideaId, userId])
+  @@index([ideaId])
+  @@index([userId])
+}
+

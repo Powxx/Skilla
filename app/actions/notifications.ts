@@ -4,7 +4,7 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
-import { sendPushNotification } from "./push";
+import { sendPushNotification, sendPushNotificationBatch } from "./push";
 
 async function getUserNotificationIds(userId: string): Promise<string[]> {
   const user = await prisma.user.findUnique({
@@ -82,7 +82,7 @@ export async function markAsRead(notificationId: string) {
 
   await prisma.notification.update({
     where: { id: notificationId },
-    data: { isRead: true },
+    data: { isRead: true, readAt: new Date() },
   });
   
   // Revalide la mise en page racine pour mettre à jour la cloche de notification
@@ -99,7 +99,7 @@ export async function markAllAsRead(userId: string) {
   const ids = await getUserNotificationIds(userId);
   await prisma.notification.updateMany({
     where: { userId: { in: ids }, isRead: false },
-    data: { isRead: true },
+    data: { isRead: true, readAt: new Date() },
   });
   revalidatePath("/", "layout");
 }
@@ -112,12 +112,14 @@ export async function markAllAsRead(userId: string) {
  * @param data Cible (classe ou école entière), ID de classe optionnel, titre, message et type visuel.
  */
 export async function sendAdminNotification(data: {
-  target: 'CLASS' | 'SCHOOL' | 'ALL_TEACHERS' | 'TEACHER';
+  target: 'CLASS' | 'SCHOOL' | 'ALL_TEACHERS' | 'TEACHER' | 'ALL_PARENTS' | 'ALL_TUTORS';
   classId?: string;
   teacherId?: string;
   title: string;
   message: string;
   type?: "INFO" | "WARNING" | "SUCCESS" | "ERROR";
+  includeParents?: boolean;
+  scheduledFor?: string; // Point 7: Date de programmation différée (format ISO ou datetime-local)
 }) {
   const session = await getServerSession(authOptions);
   if (!session?.user?.id || (session.user.role !== "ADMIN" && session.user.role !== "SUPER_ADMIN")) 
@@ -125,6 +127,44 @@ export async function sendAdminNotification(data: {
   
   const senderName = "Administration";
   const notifType = data.type || "INFO";
+
+  // Point 7 : Si une date de programmation est spécifiée dans le futur
+  if (data.scheduledFor) {
+    const scheduledDate = new Date(data.scheduledFor);
+    if (isNaN(scheduledDate.getTime())) {
+      throw new Error("Date de programmation invalide.");
+    }
+    if (scheduledDate.getTime() <= Date.now()) {
+      throw new Error("La date de programmation doit être située dans le futur.");
+    }
+
+    const scheduled = await prisma.scheduledNotification.create({
+      data: {
+        title: data.title,
+        message: data.message,
+        type: notifType,
+        target: data.target,
+        targetClassId: data.classId || null,
+        targetUserId: data.teacherId || null,
+        includeParents: Boolean(data.includeParents),
+        scheduledFor: scheduledDate,
+        status: "PENDING",
+        senderId: session.user.id,
+      },
+    });
+
+    revalidatePath("/admin/notifications");
+    return {
+      ok: true,
+      scheduled: true,
+      id: scheduled.id,
+      scheduledFor: scheduled.scheduledFor.toISOString(),
+      recipient: `Envoi planifié pour le ${scheduledDate.toLocaleDateString("fr-FR")} à ${scheduledDate.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}`,
+    };
+  }
+
+  // Point 2 : Identifiant unique de diffusion pour le suivi des accusés de lecture
+  const broadcastId = `bc_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
 
   // Cas 1 : Envoi groupé à tous les professeurs actifs
   if (data.target === 'ALL_TEACHERS') {
@@ -144,17 +184,16 @@ export async function sendAdminNotification(data: {
         message: data.message,
         type: notifType,
         senderName: senderName,
+        broadcastId: broadcastId,
         link: "/prof"
       }))
     });
 
-    for (const teacher of teachers) {
-      sendPushNotification(teacher.id, {
-        title: data.title,
-        body: data.message,
-        url: "/prof"
-      }).catch(err => console.error("Push failed for teacher", teacher.id, err));
-    }
+    sendPushNotificationBatch(teachers.map(t => t.id), {
+      title: data.title,
+      body: data.message,
+      url: "/prof"
+    }).catch(err => console.error("Batch push failed for teachers", err));
 
     revalidatePath("/", "layout");
     revalidatePath("/admin/notifications");
@@ -186,6 +225,7 @@ export async function sendAdminNotification(data: {
         message: data.message,
         type: notifType,
         senderName: senderName,
+        broadcastId: broadcastId,
         link: "/prof"
       }
     });
@@ -202,7 +242,75 @@ export async function sendAdminNotification(data: {
     return { ok: true, count: 1, recipient: recipientLabel };
   }
 
-  // Cas 3 : Cible élèves (Toute l'école ou Classe spécifique)
+  // Cas 3 : Envoi à tous les parents (RESPONSIBLE)
+  if (data.target === 'ALL_PARENTS') {
+    const parents = await prisma.user.findMany({
+      where: { role: "RESPONSIBLE", isActive: true },
+      select: { id: true }
+    });
+
+    if (parents.length === 0) {
+      return { ok: true, count: 0, message: "Aucun parent trouvé." };
+    }
+
+    await prisma.notification.createMany({
+      data: parents.map(p => ({
+        userId: p.id,
+        title: data.title,
+        message: data.message,
+        type: notifType,
+        senderName: senderName,
+        broadcastId: broadcastId,
+        link: "/parent/dashboard"
+      }))
+    });
+
+    sendPushNotificationBatch(parents.map(p => p.id), {
+      title: data.title,
+      body: data.message,
+      url: "/parent/dashboard"
+    }).catch(err => console.error("Push failed for parents", err));
+
+    revalidatePath("/", "layout");
+    revalidatePath("/admin/notifications");
+    return { ok: true, count: parents.length, recipient: "Tous les parents" };
+  }
+
+  // Cas 4 : Envoi à tous les tuteurs d'entreprise (COMPANY_TUTOR)
+  if (data.target === 'ALL_TUTORS') {
+    const tutors = await prisma.user.findMany({
+      where: { role: "COMPANY_TUTOR", isActive: true },
+      select: { id: true }
+    });
+
+    if (tutors.length === 0) {
+      return { ok: true, count: 0, message: "Aucun tuteur d'entreprise trouvé." };
+    }
+
+    await prisma.notification.createMany({
+      data: tutors.map(t => ({
+        userId: t.id,
+        title: data.title,
+        message: data.message,
+        type: notifType,
+        senderName: senderName,
+        broadcastId: broadcastId,
+        link: "/employer/dashboard"
+      }))
+    });
+
+    sendPushNotificationBatch(tutors.map(t => t.id), {
+      title: data.title,
+      body: data.message,
+      url: "/employer/dashboard"
+    }).catch(err => console.error("Push failed for tutors", err));
+
+    revalidatePath("/", "layout");
+    revalidatePath("/admin/notifications");
+    return { ok: true, count: tutors.length, recipient: "Tous les tuteurs d'entreprise" };
+  }
+
+  // Cas 5 : Cible élèves (Toute l'école ou Classe spécifique) + optionnellement parents
   const whereClause: any = { role: "STUDENT", isActive: true };
   if (data.target === 'CLASS' && data.classId) {
     whereClause.classId = data.classId;
@@ -210,22 +318,33 @@ export async function sendAdminNotification(data: {
 
   const students = await prisma.user.findMany({
     where: whereClause,
-    select: { id: true }
+    select: { 
+      id: true,
+      responsibles: { select: { id: true } }
+    }
   });
 
-  // Création en masse dans la base de données
+  const targetUserIds = new Set<string>(students.map(s => s.id));
+  if (data.includeParents) {
+    students.forEach(s => {
+      s.responsibles?.forEach(r => targetUserIds.add(r.id));
+    });
+  }
+
+  const recipientIds = Array.from(targetUserIds);
+
   await prisma.notification.createMany({
-    data: students.map(s => ({
-      userId: s.id,
+    data: recipientIds.map(uid => ({
+      userId: uid,
       title: data.title,
       message: data.message,
       type: notifType,
       senderName: senderName,
+      broadcastId: broadcastId,
       link: "/"
     }))
   });
 
-  // Si envoi à une classe, consigner également dans ClassNotificationLog pour traçabilité
   if (data.target === 'CLASS' && data.classId) {
     await prisma.classNotificationLog.create({
       data: {
@@ -236,19 +355,17 @@ export async function sendAdminNotification(data: {
       }
     }).catch(err => console.error("Failed to create class log", err));
   }
-  
-  // Envoi asynchrone des pushs à tous les étudiants de la liste
-  for (const student of students) {
-    sendPushNotification(student.id, {
-      title: data.title,
-      body: data.message,
-      url: "/"
-    }).catch(err => console.error("Push failed", student.id, err));
-  }
+
+  // Envoi asynchrone groupé des pushs (1 seule requête SQL au lieu de N requêtes !)
+  sendPushNotificationBatch(recipientIds, {
+    title: data.title,
+    body: data.message,
+    url: "/"
+  }).catch(err => console.error("Batch push failed", err));
 
   revalidatePath("/", "layout");
   revalidatePath("/admin/notifications");
-  return { ok: true, count: students.length };
+  return { ok: true, count: recipientIds.length };
 }
 
 /**
@@ -301,7 +418,8 @@ export async function sendClassNotification(data: {
         title: data.title,
         message: data.message,
         type: data.type || "INFO",
-        senderName: senderName
+        senderName: senderName,
+        link: "/"
       }))
     }),
     prisma.classNotificationLog.create({
@@ -314,14 +432,12 @@ export async function sendClassNotification(data: {
     })
   ]);
   
-  // Envoi individuel des notifications push
-  for (const student of students) {
-    sendPushNotification(student.id, {
-      title: data.title,
-      body: data.message,
-      url: "/"
-    }).catch(err => console.error("Push failed for student", student.id, err));
-  }
+  // Envoi asynchrone groupé des pushs
+  sendPushNotificationBatch(students.map(s => s.id), {
+    title: data.title,
+    body: data.message,
+    url: "/"
+  }).catch(err => console.error("Push failed for class", data.classId, err));
 
   revalidatePath("/");
   return { notifications, log };
@@ -330,7 +446,7 @@ export async function sendClassNotification(data: {
 /**
  * Fonction utilitaire interne : Crée une notification unique et envoie un push de navigateur.
  * 
- * @param data Destinataire, titre, message, type esthétique et lien de redirection optionnel.
+ * @param data Destinataire, titre, message, type esthétique, lien de redirection et nom de l'expéditeur optionnel.
  * @returns La notification créée.
  */
 export async function createNotification(data: {
@@ -339,6 +455,7 @@ export async function createNotification(data: {
   message: string;
   type?: "INFO" | "WARNING" | "SUCCESS" | "ERROR";
   link?: string;
+  senderName?: string;
 }) {
   const notification = await prisma.notification.create({
     data: {
@@ -347,6 +464,7 @@ export async function createNotification(data: {
       message: data.message,
       type: data.type || "INFO",
       link: data.link,
+      senderName: data.senderName || "Système",
     },
   });
 
@@ -469,3 +587,144 @@ export async function checkEventEnabled(event: string) {
   });
   return config?.isEnabled ?? true;
 }
+
+/**
+ * Point 2 : Récupère les accusés de réception détaillés pour une diffusion administrative.
+ */
+export async function getAdminNotificationReceipts(notificationIds: string[]) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user || (session.user.role !== "ADMIN" && session.user.role !== "SUPER_ADMIN")) {
+    throw new Error("Non autorisé");
+  }
+
+  const notifications = await prisma.notification.findMany({
+    where: { id: { in: notificationIds } },
+    include: {
+      user: {
+        select: {
+          id: true,
+          firstName: true,
+          lastName: true,
+          role: true,
+          class: { select: { name: true } },
+        },
+      },
+    },
+    orderBy: [
+      { isRead: "desc" },
+      { user: { lastName: "asc" } },
+    ],
+  });
+
+  const total = notifications.length;
+  const readCount = notifications.filter((n) => n.isRead).length;
+  const readRate = total > 0 ? Math.round((readCount / total) * 100) : 0;
+
+  return {
+    total,
+    readCount,
+    readRate,
+    recipients: notifications.map((n) => ({
+      id: n.id,
+      userId: n.user.id,
+      name: `${n.user.lastName || ""} ${n.user.firstName || ""}`.trim() || "Utilisateur",
+      role: n.user.role,
+      className: n.user.class?.name || null,
+      isRead: n.isRead,
+      readAt: n.readAt ? n.readAt.toISOString() : null,
+    })),
+  };
+}
+
+/**
+ * Point 7 : Récupère la liste des notifications programmées en attente ou récentes.
+ */
+export async function getScheduledNotifications() {
+  const session = await getServerSession(authOptions);
+  if (!session?.user || (session.user.role !== "ADMIN" && session.user.role !== "SUPER_ADMIN")) {
+    throw new Error("Non autorisé");
+  }
+
+  const list = await prisma.scheduledNotification.findMany({
+    where: { status: "PENDING" },
+    orderBy: { scheduledFor: "asc" },
+    include: {
+      sender: {
+        select: { firstName: true, lastName: true },
+      },
+    },
+  });
+
+  return list.map((item) => ({
+    id: item.id,
+    title: item.title,
+    message: item.message,
+    type: item.type,
+    target: item.target,
+    scheduledFor: item.scheduledFor.toISOString(),
+    createdAt: item.createdAt.toISOString(),
+    status: item.status,
+    senderName: `${item.sender.firstName || ""} ${item.sender.lastName || ""}`.trim() || "Admin",
+  }));
+}
+
+/**
+ * Point 7 : Annule une notification programmée en attente.
+ */
+export async function cancelScheduledNotification(id: string) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user || (session.user.role !== "ADMIN" && session.user.role !== "SUPER_ADMIN")) {
+    throw new Error("Non autorisé");
+  }
+
+  await prisma.scheduledNotification.update({
+    where: { id },
+    data: { status: "CANCELLED" },
+  });
+
+  revalidatePath("/admin/notifications");
+  return { ok: true };
+}
+
+/**
+ * Point 7 : Traite et expédie les notifications programmées dont l'échéance est atteinte.
+ */
+export async function processDueScheduledNotifications() {
+  const now = new Date();
+  const due = await prisma.scheduledNotification.findMany({
+    where: {
+      status: "PENDING",
+      scheduledFor: { lte: now },
+    },
+  });
+
+  if (due.length === 0) return { processed: 0 };
+
+  let count = 0;
+  for (const item of due) {
+    try {
+      // Envoi de la notification sans paramètre scheduledFor pour déclencher l'envoi immédiat
+      await sendAdminNotification({
+        target: item.target as any,
+        classId: item.targetClassId || undefined,
+        teacherId: item.targetUserId || undefined,
+        title: item.title,
+        message: item.message,
+        type: item.type as any,
+        includeParents: item.includeParents,
+      });
+
+      await prisma.scheduledNotification.update({
+        where: { id: item.id },
+        data: { status: "SENT", sentAt: new Date() },
+      });
+      count++;
+    } catch (err) {
+      console.error(`[processDueScheduledNotifications] Error processing ${item.id}:`, err);
+    }
+  }
+
+  revalidatePath("/admin/notifications");
+  return { processed: count };
+}
+

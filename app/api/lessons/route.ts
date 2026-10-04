@@ -3,8 +3,7 @@ import { startOfWeek, endOfWeek } from "date-fns";
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth-options";
-import type { Role } from "@prisma/client";
-import { createNotification, checkEventEnabled } from "@/app/actions/notifications";
+import { createNotification, checkEventEnabled, sendClassNotification } from "@/app/actions/notifications";
 
 export async function GET(request: Request) {
   const session = await getServerSession(authOptions);
@@ -22,7 +21,7 @@ export async function GET(request: Request) {
   }
 
   // Security check
-  const role = session.user.role as Role;
+  const role = session.user.role;
   if (role === "STUDENT" && classId) {
     const studentProfile = await prisma.user.findUnique({ where: { id: session.user.id }, select: { classId: true } });
     if (studentProfile?.classId !== classId) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
@@ -217,7 +216,26 @@ export async function PUT(request: Request) {
       const updatedLesson = await prisma.lesson.update({
         where: { id },
         data: filteredData,
+        include: {
+          class: { select: { id: true, name: true } },
+          subject: { select: { name: true } }
+        }
       });
+
+      // Si le professeur a renseigné un devoir et souhaite notifier la classe
+      if (data.notifyStudents && filteredData.homework?.trim()) {
+        const subjectName = updatedLesson.isFreeLesson 
+          ? (updatedLesson.customSubject || "Cours") 
+          : (updatedLesson.subject?.name || "Cours");
+
+        await sendClassNotification({
+          classId: updatedLesson.classId,
+          title: `Nouveau devoir : ${subjectName}`,
+          message: `Travail à faire : ${filteredData.homework.trim().length > 120 ? filteredData.homework.trim().substring(0, 120) + "..." : filteredData.homework.trim()}`,
+          type: "INFO"
+        }).catch(err => console.error("[PUT /api/lessons] Devoir notification error:", err));
+      }
+
       return NextResponse.json(updatedLesson);
     }
 

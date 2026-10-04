@@ -15,7 +15,10 @@ import {
   Sparkles,
   Loader2,
   Search,
-  Bell
+  Bell,
+  HeartHandshake,
+  Briefcase,
+  Clock
 } from "lucide-react";
 
 export type TeacherOption = {
@@ -35,9 +38,42 @@ interface AdminNotificationSenderProps {
   teachers: TeacherOption[];
 }
 
-type AudienceCategory = "TEACHERS" | "STUDENTS";
-type TargetMode = "ALL_TEACHERS" | "TEACHER" | "SCHOOL" | "CLASS";
+type AudienceCategory = "TEACHERS" | "STUDENTS" | "PARENTS" | "TUTORS";
+type TargetMode = "ALL_TEACHERS" | "TEACHER" | "SCHOOL" | "CLASS" | "ALL_PARENTS" | "ALL_TUTORS";
 type NotificationType = "INFO" | "WARNING" | "SUCCESS" | "ERROR";
+
+const NOTIFICATION_TEMPLATES = [
+  {
+    name: "Alerte Météo / Fermeture",
+    type: "ERROR" as NotificationType,
+    title: "Alerte Météo : Fermeture exceptionnelle",
+    message: "En raison des conditions météorologiques exceptionnelles, l'établissement sera fermé demain. Les cours se dérouleront à distance via l'espace Skilla."
+  },
+  {
+    name: "Rappel Administratif",
+    type: "WARNING" as NotificationType,
+    title: "Rappel : Transmission des documents requis",
+    message: "Merci de bien vouloir déposer vos pièces justificatives en attente auprès du secrétariat ou sur votre espace avant la fin de la semaine."
+  },
+  {
+    name: "Planning / Emploi du temps",
+    type: "INFO" as NotificationType,
+    title: "Mise à jour de l'emploi du temps",
+    message: "Des ajustements ont été apportés à votre planning de la semaine prochaine. Veuillez consulter votre emploi du temps mis à jour sur la plateforme."
+  },
+  {
+    name: "Conseils de classe",
+    type: "INFO" as NotificationType,
+    title: "Tenue des conseils de classe du semestre",
+    message: "Les conseils de classe débuteront la semaine prochaine. Les bulletins de notes et synthèses seront consultables en ligne dès la fin des délibérations."
+  },
+  {
+    name: "Félicitations / Projets",
+    type: "SUCCESS" as NotificationType,
+    title: "Félicitations aux étudiants !",
+    message: "Bravo à l'ensemble des élèves et intervenants pour les excellents résultats et projets présentés cette semaine."
+  }
+];
 
 export default function AdminNotificationSender({ classes, teachers }: AdminNotificationSenderProps) {
   const [category, setCategory] = useState<AudienceCategory>("TEACHERS");
@@ -45,19 +81,26 @@ export default function AdminNotificationSender({ classes, teachers }: AdminNoti
   const [selectedTeacherId, setSelectedTeacherId] = useState<string>("");
   const [teacherSearch, setTeacherSearch] = useState<string>("");
   const [selectedClassId, setSelectedClassId] = useState<string>("");
+  const [includeParents, setIncludeParents] = useState<boolean>(false);
   const [notifType, setNotifType] = useState<NotificationType>("INFO");
   const [title, setTitle] = useState<string>("");
   const [message, setMessage] = useState<string>("");
   const [isSending, setIsSending] = useState<boolean>(false);
   const [feedback, setFeedback] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const [isScheduled, setIsScheduled] = useState<boolean>(false);
+  const [scheduledFor, setScheduledFor] = useState<string>("");
 
   // Bascule de catégorie principale
   const handleCategoryChange = (newCat: AudienceCategory) => {
     setCategory(newCat);
     if (newCat === "TEACHERS") {
       setTarget("ALL_TEACHERS");
-    } else {
+    } else if (newCat === "STUDENTS") {
       setTarget("SCHOOL");
+    } else if (newCat === "PARENTS") {
+      setTarget("ALL_PARENTS");
+    } else if (newCat === "TUTORS") {
+      setTarget("ALL_TUTORS");
     }
     setFeedback(null);
   };
@@ -95,6 +138,11 @@ export default function AdminNotificationSender({ classes, teachers }: AdminNoti
       return;
     }
 
+    if (isScheduled && !scheduledFor) {
+      setFeedback({ type: "error", text: "Veuillez choisir une date et une heure pour l'envoi programmé." });
+      return;
+    }
+
     setIsSending(true);
     try {
       const res = await sendAdminNotification({
@@ -104,7 +152,21 @@ export default function AdminNotificationSender({ classes, teachers }: AdminNoti
         title: title.trim(),
         message: message.trim(),
         type: notifType,
+        includeParents: (target === "CLASS" || target === "SCHOOL") ? includeParents : undefined,
+        scheduledFor: isScheduled && scheduledFor ? scheduledFor : undefined,
       });
+
+      if ((res as any).scheduled) {
+        setFeedback({ 
+          type: "success", 
+          text: `Notification programmée avec succès ! Envoi automatique prévu le ${new Date(scheduledFor).toLocaleDateString("fr-FR")} à ${new Date(scheduledFor).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}.` 
+        });
+        setTitle("");
+        setMessage("");
+        setIsScheduled(false);
+        setScheduledFor("");
+        return;
+      }
 
       let successMsg = "Notification envoyée avec succès !";
       if (target === "ALL_TEACHERS") {
@@ -112,10 +174,14 @@ export default function AdminNotificationSender({ classes, teachers }: AdminNoti
       } else if (target === "TEACHER") {
         successMsg = `Notification envoyée avec succès à ${(res as any).recipient || "l'enseignant"} !`;
       } else if (target === "SCHOOL") {
-        successMsg = `Notification diffusée à toute l'école (${res.count} élève(s)) !`;
+        successMsg = `Notification diffusée à toute l'école (${res.count} destinataire(s)${includeParents ? " incluant les parents" : ""}) !`;
       } else if (target === "CLASS") {
         const cls = classes.find(c => c.id === selectedClassId);
-        successMsg = `Notification envoyée à la classe ${cls?.name || ""} (${res.count} élève(s)) !`;
+        successMsg = `Notification envoyée à la classe ${cls?.name || ""} (${res.count} destinataire(s)${includeParents ? " incluant les parents" : ""}) !`;
+      } else if (target === "ALL_PARENTS") {
+        successMsg = `Notification envoyée à tous les parents d'élèves (${res.count} parent(s) notifié(s)) !`;
+      } else if (target === "ALL_TUTORS") {
+        successMsg = `Notification envoyée à tous les tuteurs d'entreprise (${res.count} tuteur(s) notifié(s)) !`;
       }
 
       setFeedback({ type: "success", text: successMsg });
@@ -162,21 +228,21 @@ export default function AdminNotificationSender({ classes, teachers }: AdminNoti
   return (
     <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
       {/* En-tête avec indicateur */}
-      <div className="px-6 py-5 border-b border-slate-100 bg-gradient-to-r from-slate-50 via-white to-sky-50/30 flex items-center justify-between">
+      <div className="px-6 py-5 border-b border-slate-100 bg-gradient-to-r from-slate-50 via-white to-sky-50/30 flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex items-center gap-3">
-          <div className="h-10 w-10 rounded-xl bg-slate-900 text-white flex items-center justify-center shadow-sm">
+          <div className="h-10 w-10 rounded-xl bg-slate-900 text-white flex items-center justify-center shadow-sm shrink-0">
             <Bell className="h-5 w-5" />
           </div>
           <div>
             <h2 className="text-base font-bold text-slate-900">Diffuser une notification</h2>
             <p className="text-xs text-slate-500">
-              Communiquez instantanément avec vos professeurs ou vos élèves (in-app et push).
+              Communiquez instantanément avec vos enseignants, élèves, parents et entreprises (in-app et push).
             </p>
           </div>
         </div>
 
-        {/* Sélecteur de groupe cible : Profs vs Élèves */}
-        <div className="flex items-center p-1 bg-slate-100/80 rounded-xl border border-slate-200/80">
+        {/* Sélecteur de groupe cible étendu */}
+        <div className="flex items-center p-1 bg-slate-100/80 rounded-xl border border-slate-200/80 flex-wrap gap-1">
           <button
             type="button"
             onClick={() => handleCategoryChange("TEACHERS")}
@@ -208,17 +274,70 @@ export default function AdminNotificationSender({ classes, teachers }: AdminNoti
               {classes.length} cl.
             </span>
           </button>
+
+          <button
+            type="button"
+            onClick={() => handleCategoryChange("PARENTS")}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+              category === "PARENTS"
+                ? "bg-white text-emerald-700 shadow-sm"
+                : "text-slate-600 hover:text-slate-900"
+            }`}
+          >
+            <HeartHandshake className="h-3.5 w-3.5" />
+            <span>Parents</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => handleCategoryChange("TUTORS")}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+              category === "TUTORS"
+                ? "bg-white text-amber-700 shadow-sm"
+                : "text-slate-600 hover:text-slate-900"
+            }`}
+          >
+            <Briefcase className="h-3.5 w-3.5" />
+            <span>Entreprises</span>
+          </button>
         </div>
       </div>
 
       <form onSubmit={handleSubmit} className="p-6 space-y-6">
+        {/* Modèles de messages rapides */}
+        <div>
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-xs font-bold text-slate-600 uppercase tracking-wider flex items-center gap-1.5">
+              <Sparkles className="h-3.5 w-3.5 text-amber-500" />
+              Modèles de communication rapide
+            </span>
+            <span className="text-[11px] text-slate-400">Cliquez pour pré-remplir</span>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {NOTIFICATION_TEMPLATES.map((tmpl) => (
+              <button
+                key={tmpl.name}
+                type="button"
+                onClick={() => {
+                  setTitle(tmpl.title);
+                  setMessage(tmpl.message);
+                  setNotifType(tmpl.type);
+                }}
+                className="px-3 py-1.5 rounded-xl border border-slate-200 bg-slate-50 hover:bg-white hover:border-slate-300 text-xs font-semibold text-slate-700 transition shadow-2xs hover:shadow-xs flex items-center gap-1.5"
+              >
+                <span>{tmpl.name}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+
         {/* Sous-choix de cible */}
         <div>
           <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-2.5">
             Destinataire(s)
           </label>
 
-          {category === "TEACHERS" ? (
+          {category === "TEACHERS" && (
             <div className="space-y-3">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <button
@@ -307,7 +426,9 @@ export default function AdminNotificationSender({ classes, teachers }: AdminNoti
                 </div>
               )}
             </div>
-          ) : (
+          )}
+
+          {category === "STUDENTS" && (
             <div className="space-y-3">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <button
@@ -350,14 +471,14 @@ export default function AdminNotificationSender({ classes, teachers }: AdminNoti
               {/* Sélecteur de classe */}
               {target === "CLASS" && (
                 <div className="p-4 rounded-xl bg-slate-50/70 border border-slate-200 space-y-2 animate-in fade-in duration-150">
-                  <label className="text-xs font-bold text-slate-700">Sélectionner la classe :</label>
+                  <span className="text-xs font-bold text-slate-700">Sélectionner la classe cible :</span>
                   <select
                     value={selectedClassId}
                     onChange={(e) => setSelectedClassId(e.target.value)}
                     required={target === "CLASS"}
                     className="w-full p-2.5 rounded-xl border border-slate-200 bg-white text-sm font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-600"
                   >
-                    <option value="">-- Choisir une classe ({classes.length} disponibles) --</option>
+                    <option value="">-- Choisir une classe dans la liste --</option>
                     {classes.map((c) => (
                       <option key={c.id} value={c.id}>
                         {c.name}
@@ -366,16 +487,54 @@ export default function AdminNotificationSender({ classes, teachers }: AdminNoti
                   </select>
                 </div>
               )}
+
+              {/* Option notifier les parents */}
+              <div className="flex items-center gap-2 p-3 rounded-xl bg-slate-50 border border-slate-200/80">
+                <input
+                  type="checkbox"
+                  id="includeParentsCheck"
+                  checked={includeParents}
+                  onChange={(e) => setIncludeParents(e.target.checked)}
+                  className="h-4 w-4 rounded border-slate-300 text-sky-600 focus:ring-sky-500 cursor-pointer"
+                />
+                <label htmlFor="includeParentsCheck" className="text-xs font-semibold text-slate-700 cursor-pointer select-none">
+                  Notifier également les parents des élèves concernés (si rattachés à un compte responsable)
+                </label>
+              </div>
+            </div>
+          )}
+
+          {category === "PARENTS" && (
+            <div className="p-4 rounded-xl border border-emerald-200 bg-emerald-50/40 space-y-1">
+              <div className="flex items-center gap-2 font-bold text-emerald-900 text-sm">
+                <HeartHandshake className="h-4 w-4 text-emerald-600" />
+                <span>Diffusion globale aux parents et représentants légaux</span>
+              </div>
+              <p className="text-xs text-emerald-700">
+                La notification sera transmise à l'ensemble des parents enregistrés sur la plateforme avec compte actif.
+              </p>
+            </div>
+          )}
+
+          {category === "TUTORS" && (
+            <div className="p-4 rounded-xl border border-amber-200 bg-amber-50/40 space-y-1">
+              <div className="flex items-center gap-2 font-bold text-amber-900 text-sm">
+                <Briefcase className="h-4 w-4 text-amber-600" />
+                <span>Diffusion globale aux tuteurs d'entreprises</span>
+              </div>
+              <p className="text-xs text-amber-700">
+                La notification sera transmise à l'ensemble des tuteurs professionnels et maîtres d'apprentissage.
+              </p>
             </div>
           )}
         </div>
 
-        {/* Type visuel de notification */}
+        {/* Type de notification (esthétique & priorité) */}
         <div>
-          <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-2">
-            Niveau d'importance
+          <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-2.5">
+            Type d'alerte / Catégorie visuelle
           </label>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
             {(["INFO", "WARNING", "SUCCESS", "ERROR"] as NotificationType[]).map((type) => {
               const cfg = typeConfig[type];
               const Icon = cfg.icon;
@@ -413,6 +572,10 @@ export default function AdminNotificationSender({ classes, teachers }: AdminNoti
                 placeholder={
                   category === "TEACHERS"
                     ? "Ex: Réunion pédagogique, Saisie des livrets..."
+                    : category === "PARENTS"
+                    ? "Ex: Informations rentrée, Rencontres parents-profs..."
+                    : category === "TUTORS"
+                    ? "Ex: Calendrier d'alternance, Évaluations en entreprise..."
                     : "Ex: Information importante, Fermeture exceptionnelle..."
                 }
                 required
@@ -467,7 +630,16 @@ export default function AdminNotificationSender({ classes, teachers }: AdminNoti
               </p>
 
               <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-400">
-                <span>Cible : {target === "ALL_TEACHERS" ? `Tous les profs (${teachers.length})` : target === "TEACHER" ? (selectedTeacher ? `${selectedTeacher.lastName} ${selectedTeacher.firstName}` : "Professeur sélectionné") : target === "SCHOOL" ? "Toute l'école" : "Classe"}</span>
+                <span>
+                  Cible : {
+                    target === "ALL_TEACHERS" ? `Tous les profs (${teachers.length})` 
+                    : target === "TEACHER" ? (selectedTeacher ? `${selectedTeacher.lastName} ${selectedTeacher.firstName}` : "Professeur sélectionné") 
+                    : target === "SCHOOL" ? (includeParents ? "Toute l'école + parents" : "Toute l'école (élèves)") 
+                    : target === "ALL_PARENTS" ? "Tous les parents d'élèves"
+                    : target === "ALL_TUTORS" ? "Tous les tuteurs d'entreprises"
+                    : (includeParents ? "Classe + parents" : "Classe")
+                  }
+                </span>
                 <span>Push Web & In-app</span>
               </div>
             </div>
@@ -492,6 +664,46 @@ export default function AdminNotificationSender({ classes, teachers }: AdminNoti
           </div>
         )}
 
+        {/* Point 7: Option de programmation de notification */}
+        <div className="p-4 rounded-2xl bg-indigo-50/70 border border-indigo-100 flex flex-col gap-3">
+          <div className="flex items-center justify-between">
+            <label htmlFor="scheduleCheckbox" className="flex items-center gap-2 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                id="scheduleCheckbox"
+                checked={isScheduled}
+                onChange={(e) => setIsScheduled(e.target.checked)}
+                className="h-4 w-4 rounded text-indigo-600 focus:ring-indigo-500 border-slate-300 cursor-pointer"
+              />
+              <span className="text-xs font-bold text-indigo-950 flex items-center gap-1.5">
+                <Clock className="w-3.5 h-3.5 text-indigo-600" />
+                Planifier l&apos;envoi pour plus tard (Envoi différé automatique)
+              </span>
+            </label>
+            {isScheduled && (
+              <span className="text-[10px] font-bold text-indigo-700 bg-white px-2.5 py-0.5 rounded-full border border-indigo-200">
+                Différé
+              </span>
+            )}
+          </div>
+
+          {isScheduled && (
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 pt-2 border-t border-indigo-100/80 animate-in fade-in duration-200">
+              <span className="text-xs font-semibold text-slate-700 whitespace-nowrap">
+                Date et heure d&apos;expédition programmée :
+              </span>
+              <input
+                type="datetime-local"
+                value={scheduledFor}
+                onChange={(e) => setScheduledFor(e.target.value)}
+                min={new Date(Date.now() + 60000).toISOString().slice(0, 16)}
+                className="px-3 py-1.5 bg-white border border-indigo-200 rounded-xl text-xs font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                required={isScheduled}
+              />
+            </div>
+          )}
+        </div>
+
         {/* Bouton d'action */}
         <div className="pt-2 flex items-center justify-end gap-3 border-t border-slate-100">
           <button
@@ -502,7 +714,12 @@ export default function AdminNotificationSender({ classes, teachers }: AdminNoti
             {isSending ? (
               <>
                 <Loader2 className="h-4 w-4 animate-spin" />
-                <span>Envoi en cours...</span>
+                <span>{isScheduled ? "Planification en cours..." : "Envoi en cours..."}</span>
+              </>
+            ) : isScheduled ? (
+              <>
+                <Clock className="h-4 w-4" />
+                <span>Programmer l&apos;envoi</span>
               </>
             ) : (
               <>
@@ -514,6 +731,10 @@ export default function AdminNotificationSender({ classes, teachers }: AdminNoti
                     ? "Envoyer au professeur"
                     : target === "SCHOOL"
                     ? "Diffuser à toute l'école"
+                    : target === "ALL_PARENTS"
+                    ? "Envoyer à tous les parents"
+                    : target === "ALL_TUTORS"
+                    ? "Envoyer aux tuteurs d'entreprise"
                     : "Envoyer à la classe"}
                 </span>
               </>

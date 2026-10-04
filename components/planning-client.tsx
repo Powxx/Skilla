@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import WeeklyCalendar from '@/components/WeeklyCalendar';
 import { startOfWeek, format } from 'date-fns';
 import { fr } from 'date-fns/locale';
@@ -10,6 +11,11 @@ export default function PlanningClient({ classId, teacherId }: { classId?: strin
   const [currentDate, setCurrentDate] = useState(new Date());
   const [loading, setLoading] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<any>(null);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const fetchLessons = async (date: Date) => {
     if (!classId && !teacherId) return;
@@ -63,20 +69,26 @@ export default function PlanningClient({ classId, teacherId }: { classId?: strin
         }}
       />
 
-      {selectedEvent && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden border border-white/20">
-            <div className="px-6 py-5 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+      {mounted && selectedEvent && createPortal(
+        <div className="fixed inset-0 z-[9999] overflow-y-auto custom-scrollbar flex min-h-screen items-center justify-center p-4 sm:p-6 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-150">
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg min-w-[320px] max-h-[85vh] my-auto flex flex-col overflow-hidden border border-white/20">
+            <div className="px-6 py-5 border-b border-slate-100 flex justify-between items-center bg-slate-50/50 shrink-0">
               <div>
                 <h2 className="text-lg font-bold text-slate-900">{selectedEvent.extendedProps?.subject}</h2>
                 <p className="text-xs text-slate-500 font-medium">{selectedEvent.extendedProps?.teacher}</p>
               </div>
-              <button onClick={() => setSelectedEvent(null)} className="h-8 w-8 rounded-full flex items-center justify-center bg-slate-200/50 text-slate-500 hover:bg-slate-200 transition">&times;</button>
+              <button 
+                onClick={() => setSelectedEvent(null)} 
+                className="h-8 w-8 rounded-full flex items-center justify-center bg-slate-200/50 text-slate-500 hover:bg-slate-200 transition"
+                title="Fermer"
+              >
+                &times;
+              </button>
             </div>
 
-            <div className="p-6 space-y-6">
+            <div className="p-6 space-y-6 flex-1 overflow-y-auto custom-scrollbar">
               {/* Infos Row */}
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 gap-4 shrink-0">
                 <div className="p-3 bg-slate-50 rounded-2xl border border-slate-100">
                   <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Horaire</p>
                   <p className="text-sm font-semibold text-slate-700">
@@ -94,7 +106,9 @@ export default function PlanningClient({ classId, teacherId }: { classId?: strin
                 <div className="p-4 bg-blue-50/50 rounded-2xl border border-blue-100">
                   <h3 className="text-[10px] font-bold text-blue-600 uppercase tracking-widest mb-2">Contenu du cours</h3>
                   {selectedEvent.extendedProps?.summary ? (
-                    <p className="text-sm text-slate-700 whitespace-pre-wrap">{selectedEvent.extendedProps.summary}</p>
+                    <div className="max-h-48 overflow-y-auto custom-scrollbar pr-1">
+                      <p className="text-sm text-slate-700 whitespace-pre-wrap break-words leading-relaxed select-text">{selectedEvent.extendedProps.summary}</p>
+                    </div>
                   ) : (
                     <p className="text-sm text-slate-400 italic">Aucun résumé renseigné pour ce cours.</p>
                   )}
@@ -103,13 +117,17 @@ export default function PlanningClient({ classId, teacherId }: { classId?: strin
                 <div className="p-4 bg-orange-50/50 rounded-2xl border border-orange-100">
                   <h3 className="text-[10px] font-bold text-orange-600 uppercase tracking-widest mb-2">Devoirs à faire</h3>
                   {selectedEvent.extendedProps?.homework ? (
-                    <p className="text-sm text-slate-700 whitespace-pre-wrap">{selectedEvent.extendedProps.homework}</p>
+                    <div className="max-h-48 overflow-y-auto custom-scrollbar pr-1">
+                      <p className="text-sm text-slate-700 whitespace-pre-wrap break-words leading-relaxed select-text">{selectedEvent.extendedProps.homework}</p>
+                    </div>
                   ) : (
                     <p className="text-sm text-slate-400 italic">Aucun devoir pour le prochain cours.</p>
                   )}
                 </div>
               </div>
-              
+            </div>
+
+            <div className="p-4 border-t border-slate-100 bg-white shrink-0">
               <button 
                 onClick={() => setSelectedEvent(null)}
                 className="w-full py-3 bg-slate-900 text-white rounded-xl text-sm font-bold shadow-lg hover:bg-slate-800 transition"
@@ -118,7 +136,8 @@ export default function PlanningClient({ classId, teacherId }: { classId?: strin
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

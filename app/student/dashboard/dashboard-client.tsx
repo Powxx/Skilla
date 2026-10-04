@@ -1,5 +1,8 @@
 "use client";
 
+import { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
+import { toggleStudentHomeworkDone } from "@/app/actions/homework";
 import Link from "next/link";
 import { formatInTimeZone } from 'date-fns-tz';
 import { fr } from "date-fns/locale";
@@ -13,6 +16,7 @@ import {
   YAxis,
 } from "recharts";
 import MeetingRequestForm from "@/components/meetings/meeting-request-form";
+import { BookOpen, Calendar, ChevronDown, ChevronUp, X, CheckCircle2, Circle, ArrowRight } from "lucide-react";
 
 export type DashboardChartRow = {
   dateLabel: string;
@@ -35,7 +39,8 @@ export type DashboardClientProps = {
   classSize?: number;
   lastGrade?: { value: number; subjectName: string; date: string } | null;
   nextLesson?: { subjectName: string; startTime: string; roomName: string } | null;
-  upcomingHomework?: { subjectName: string; content: string; date: string }[];
+  upcomingHomework?: { id?: string; subjectName: string; content: string; date: string }[];
+  initialDoneLessonIds?: string[];
   absencesDetailHref: string;
   enableMeetings?: boolean;
 };
@@ -58,9 +63,54 @@ export default function StudentDashboardClient({
   lastGrade,
   nextLesson,
   upcomingHomework = [],
+  initialDoneLessonIds = [],
   absencesDetailHref,
   enableMeetings = true,
 }: DashboardClientProps) {
+  const [selectedHw, setSelectedHw] = useState<{ subjectName: string; content: string; date: string } | null>(null);
+  const [expandedHwIndex, setExpandedHwIndex] = useState<number | null>(null);
+  const [doneHomeworks, setDoneHomeworks] = useState<Record<string, boolean>>({});
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+    const initialMap: Record<string, boolean> = {};
+    if (initialDoneLessonIds && initialDoneLessonIds.length > 0) {
+      initialDoneLessonIds.forEach((id) => {
+        initialMap[`hw_${id}`] = true;
+      });
+    }
+    try {
+      const stored = localStorage.getItem("skilla_student_hw_done");
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        Object.assign(initialMap, parsed);
+      }
+    } catch (e) {}
+    setDoneHomeworks(initialMap);
+  }, [initialDoneLessonIds]);
+
+  const toggleHomeworkDone = (hw: { id?: string; subjectName: string; content: string; date: string }) => {
+    const hwKey = hw.id ? `hw_${hw.id}` : `${hw.subjectName}_${hw.date}_${hw.content.slice(0, 20)}`;
+    const legacyKey = `${hw.subjectName}_${hw.date}_${hw.content.slice(0, 20)}`;
+    const current = Boolean(doneHomeworks[hwKey] || doneHomeworks[legacyKey]);
+    const nextState = !current;
+
+    setDoneHomeworks(prev => {
+      const updated = { ...prev, [hwKey]: nextState, [legacyKey]: nextState };
+      try {
+        localStorage.setItem("skilla_student_hw_done", JSON.stringify(updated));
+      } catch (e) {}
+      return updated;
+    });
+
+    if (hw.id) {
+      toggleStudentHomeworkDone(hw.id).catch(err =>
+        console.error("toggleStudentHomeworkDone error:", err)
+      );
+    }
+  };
+
   return (
     <div className="min-h-screen flex flex-col gap-4 font-sans text-slate-900 pb-10">
       {/* Mini Header */}
@@ -109,19 +159,113 @@ export default function StudentDashboardClient({
             <div className="absolute top-0 right-0 w-32 h-32 bg-blue-600/20 blur-3xl -mr-10 -mt-10 rounded-full"></div>
           </div>
 
-          <section className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm flex flex-col min-h-0">
-            <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-4">Prochains Devoirs</h3>
-            <div className="flex-1 overflow-y-auto space-y-3 pr-2 scrollbar-thin">
-              {upcomingHomework.length > 0 ? upcomingHomework.map((hw, idx) => (
-                <div key={idx} className="p-3 rounded-xl border border-slate-50 bg-slate-50/50 hover:border-blue-100 transition">
-                   <div className="flex justify-between items-start mb-1">
-                     <p className="text-[9px] font-black text-blue-600 uppercase tracking-tighter">{hw.subjectName}</p>
-                     <p className="text-[9px] text-slate-400 font-bold">{new Date(hw.date.replace('Z', '')).toLocaleDateString('fr-FR')}</p>
-                   </div>
-                   <p className="text-xs text-slate-700 leading-snug line-clamp-2">{hw.content}</p>
+          <section className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm flex flex-col min-h-[260px]">
+            <div className="flex items-center justify-between mb-4 border-b border-slate-100 pb-3">
+              <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] flex items-center gap-1.5">
+                <BookOpen className="h-3.5 w-3.5 text-blue-600" />
+                Prochains Devoirs
+              </h3>
+              <div className="flex items-center gap-2">
+                {upcomingHomework.length > 0 && (
+                  <span className="text-[10px] font-bold bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full border border-blue-100">
+                    {upcomingHomework.filter(hw => !doneHomeworks[`${hw.subjectName}_${hw.date}_${hw.content.slice(0, 20)}`]).length} restant(s)
+                  </span>
+                )}
+                <Link
+                  href="/student/devoirs"
+                  className="text-[10px] font-bold text-blue-600 hover:text-blue-800 flex items-center gap-0.5 transition"
+                  title="Voir tout le cahier de texte"
+                >
+                  Tout voir <ArrowRight className="h-2.5 w-2.5" />
+                </Link>
+              </div>
+            </div>
+            <div className="flex-1 min-h-[160px] max-h-[380px] overflow-y-auto space-y-3 pr-1.5 custom-scrollbar">
+              {upcomingHomework.length > 0 ? upcomingHomework.map((hw, idx) => {
+                const hwKey = `${hw.subjectName}_${hw.date}_${hw.content.slice(0, 20)}`;
+                const isDone = Boolean(doneHomeworks[hwKey]);
+                const isExpanded = expandedHwIndex === idx;
+                const isLong = hw.content.length > 100;
+                return (
+                  <div 
+                    key={idx} 
+                    className={`p-3.5 rounded-xl border transition cursor-pointer group ${
+                      isDone 
+                        ? 'border-emerald-200 bg-emerald-50/30 opacity-80' 
+                        : 'border-slate-100 bg-slate-50/70 hover:border-blue-200 hover:bg-slate-50'
+                    }`}
+                    onClick={() => {
+                      if (isLong) {
+                        setExpandedHwIndex(isExpanded ? null : idx);
+                      } else {
+                        setSelectedHw(hw);
+                      }
+                    }}
+                  >
+                     <div className="flex justify-between items-start mb-1.5 gap-2">
+                       <div className="flex items-center gap-1.5">
+                         <button
+                           type="button"
+                           onClick={(e) => {
+                             e.stopPropagation();
+                             toggleHomeworkDone(hw);
+                           }}
+                           className="text-slate-400 hover:text-emerald-600 transition"
+                           title={isDone ? "Marquer comme à faire" : "Marquer comme terminé"}
+                         >
+                           {isDone ? (
+                             <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                           ) : (
+                             <Circle className="h-4 w-4" />
+                           )}
+                         </button>
+                         <span className="text-[10px] font-black text-blue-600 uppercase tracking-tighter bg-blue-50/80 px-1.5 py-0.5 rounded">
+                           {hw.subjectName}
+                         </span>
+                       </div>
+                       <div className="flex items-center gap-1.5">
+                         {isDone && (
+                           <span className="text-[9px] font-bold text-emerald-700 bg-emerald-100/80 px-1.5 py-0.2 rounded-full">
+                             Fait ✓
+                           </span>
+                         )}
+                         <span className="text-[9px] text-slate-400 font-bold flex items-center gap-1">
+                           <Calendar className="h-3 w-3" />
+                           {new Date(hw.date.replace('Z', '')).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' })}
+                         </span>
+                       </div>
+                     </div>
+                     <p className={`text-xs leading-relaxed break-words whitespace-pre-wrap ${isDone ? 'text-slate-500 line-through' : 'text-slate-700'} ${!isExpanded ? 'line-clamp-3' : 'max-h-56 overflow-y-auto custom-scrollbar p-2.5 bg-white rounded-lg border border-slate-100'}`}>
+                       {hw.content}
+                     </p>
+                     <div className="mt-2 flex items-center justify-between pt-1 border-t border-slate-100/60 text-[10px]">
+                       <button 
+                         type="button" 
+                         onClick={(e) => {
+                           e.stopPropagation();
+                           setSelectedHw(hw);
+                         }}
+                         className="text-blue-600 hover:text-blue-800 font-bold uppercase tracking-wider"
+                       >
+                         Détails complets →
+                       </button>
+                       {isLong && (
+                         <span className="text-slate-400 flex items-center gap-0.5 font-medium">
+                           {isExpanded ? (
+                             <>Réduire <ChevronUp className="h-3 w-3" /></>
+                           ) : (
+                             <>Déplier <ChevronDown className="h-3 w-3" /></>
+                           )}
+                         </span>
+                       )}
+                     </div>
+                  </div>
+                );
+              }) : (
+                <div className="h-full min-h-[140px] flex flex-col items-center justify-center text-center p-4">
+                  <BookOpen className="h-6 w-6 text-slate-300 mb-1" />
+                  <p className="text-xs text-slate-400 italic">Aucun devoir à faire.</p>
                 </div>
-              )) : (
-                <p className="text-[10px] text-slate-400 italic">Aucun devoir.</p>
               )}
             </div>
           </section>
@@ -217,6 +361,46 @@ export default function StudentDashboardClient({
           </section>
         </div>
       </div>
+
+      {/* Modal pour afficher les devoirs en entier avec scrollbar */}
+      {mounted && selectedHw && createPortal(
+        <div className="fixed inset-0 z-[9999] overflow-y-auto custom-scrollbar flex min-h-screen items-center justify-center p-4 sm:p-6 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-150">
+          <div className="bg-white rounded-3xl p-6 w-full max-w-lg min-w-[320px] max-h-[85vh] my-auto shadow-2xl relative flex flex-col overflow-hidden border border-slate-100">
+            <button 
+              onClick={() => setSelectedHw(null)} 
+              className="absolute top-4 right-4 p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition"
+              title="Fermer"
+            >
+              <X className="h-5 w-5" />
+            </button>
+            <div className="pr-8 mb-3 shrink-0">
+              <span className="text-[10px] font-black uppercase tracking-wider text-blue-600 bg-blue-50 px-2.5 py-1 rounded-full border border-blue-100">
+                {selectedHw.subjectName}
+              </span>
+              <h3 className="text-lg font-bold text-slate-900 mt-2">
+                Devoirs à faire
+              </h3>
+              <p className="text-xs text-slate-400 font-medium mt-0.5">
+                Pour le : {new Date(selectedHw.date.replace('Z', '')).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+              </p>
+            </div>
+
+            <div className="flex-1 overflow-y-auto custom-scrollbar my-4 p-4 rounded-2xl bg-slate-50 border border-slate-100 text-sm text-slate-800 whitespace-pre-wrap break-words leading-relaxed select-text min-h-[100px]">
+              {selectedHw.content}
+            </div>
+
+            <div className="pt-3 border-t border-slate-100 flex justify-end shrink-0">
+              <button 
+                onClick={() => setSelectedHw(null)} 
+                className="py-2.5 px-6 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-bold text-xs transition"
+              >
+                Fermer
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
     </div>
   );
 }
