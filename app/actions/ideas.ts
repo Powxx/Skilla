@@ -22,8 +22,11 @@ function isGeneralAdminUser(session: any, currentUser?: any) {
   );
 }
 
+import { sendPushNotificationBatch } from "./push";
+
 /**
- * Créer une nouvelle idée soumise par un membre de l'équipe administrative.
+ * Créer une nouvelle idée ou un signalement de panne soumis par un membre de l'équipe administrative.
+ * Notifie automatiquement l'Administrateur Général.
  */
 export async function createAdminIdea(data: {
   title: string;
@@ -39,6 +42,12 @@ export async function createAdminIdea(data: {
     throw new Error("Le titre et la description sont obligatoires.");
   }
 
+  const author = await prisma.user.findUnique({
+    where: { id: session.user.id },
+    select: { firstName: true, lastName: true },
+  });
+  const authorName = author ? `${author.firstName || ""} ${author.lastName || ""}`.trim() || "Un administrateur" : "Un administrateur";
+
   const idea = await prisma.adminIdea.create({
     data: {
       title: data.title.trim(),
@@ -49,8 +58,52 @@ export async function createAdminIdea(data: {
     },
   });
 
+  const isBreakdown = (data.category as string) === "BREAKDOWN";
+  const notifTitle = isBreakdown
+    ? `🚨 Signalement de panne : ${idea.title}`
+    : `💡 Nouvelle proposition : ${idea.title}`;
+  const notifMessage = isBreakdown
+    ? `Une panne ou un incident technique a été signalé par ${authorName} : "${idea.title}". Description : ${idea.description.length > 140 ? idea.description.substring(0, 140) + "..." : idea.description}`
+    : `${authorName} a soumis une suggestion dans la boîte à idées : "${idea.title}".`;
+  const notifType = isBreakdown ? "ERROR" : "INFO";
+
+  // Trouver tous les administrateurs généraux pour leur notifier la remontée
+  const generalAdmins = await prisma.user.findMany({
+    where: {
+      OR: [
+        { isGeneralAdmin: true },
+        { role: "SUPER_ADMIN" },
+        { email: { equals: "admin@skilla.edu", mode: "insensitive" } },
+        { username: { equals: "admin", mode: "insensitive" } },
+      ],
+      isActive: true,
+    },
+    select: { id: true },
+  });
+
+  if (generalAdmins.length > 0) {
+    const adminIds = generalAdmins.map((a) => a.id);
+    await prisma.notification.createMany({
+      data: adminIds.map((adminId) => ({
+        userId: adminId,
+        title: notifTitle,
+        message: notifMessage,
+        type: notifType,
+        senderName: authorName,
+        link: "/admin/idees",
+      })),
+    });
+
+    sendPushNotificationBatch(adminIds, {
+      title: notifTitle,
+      body: notifMessage,
+      url: "/admin/idees",
+    }).catch((err) => console.error("[createAdminIdea] Push error:", err));
+  }
+
   revalidatePath("/admin/idees");
   revalidatePath("/admin");
+  revalidatePath("/", "layout");
 
   return idea;
 }
@@ -125,10 +178,49 @@ export async function updateAdminIdeaStatus(data: {
       adminResponse: data.adminResponse?.trim() || null,
       respondedAt: new Date(),
     },
+    include: {
+      author: { select: { id: true, firstName: true, lastName: true } },
+    },
   });
+
+  // Notifier l'auteur du signalement ou de l'idée
+  if (updated.authorId && updated.authorId !== session.user.id) {
+    const statusLabels: Record<AdminIdeaStatus, string> = {
+      SUBMITTED: "Nouveau",
+      UNDER_REVIEW: "En cours d'étude",
+      ACCEPTED: "Retenu / Pris en charge",
+      REJECTED: "Non retenu",
+      IMPLEMENTED: "Résolu / Déployé",
+    };
+    const isBreakdown = (updated.category as string) === "BREAKDOWN";
+    const statusLabel = statusLabels[data.status] || data.status;
+    const authorNotifTitle = isBreakdown
+      ? `Suivi Panne : ${updated.title}`
+      : `Suivi Proposition : ${updated.title}`;
+    const authorNotifMessage = `Votre ${isBreakdown ? "signalement de panne" : "proposition"} est passé au statut « ${statusLabel} ».${data.adminResponse?.trim() ? ` Réponse : "${data.adminResponse.trim()}"` : ""}`;
+    const authorNotifType = data.status === "IMPLEMENTED" || data.status === "ACCEPTED" ? "SUCCESS" : data.status === "REJECTED" ? "WARNING" : "INFO";
+
+    await prisma.notification.create({
+      data: {
+        userId: updated.authorId,
+        title: authorNotifTitle,
+        message: authorNotifMessage,
+        type: authorNotifType,
+        senderName: "Administrateur Général",
+        link: "/admin/idees",
+      },
+    }).catch((err) => console.error("Author notif error:", err));
+
+    sendPushNotificationBatch([updated.authorId], {
+      title: authorNotifTitle,
+      body: authorNotifMessage,
+      url: "/admin/idees",
+    }).catch(() => {});
+  }
 
   revalidatePath("/admin/idees");
   revalidatePath("/admin");
+  revalidatePath("/", "layout");
 
   return updated;
 }

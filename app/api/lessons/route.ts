@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { startOfWeek, endOfWeek } from "date-fns";
 import { NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth-options";
 import { createNotification, checkEventEnabled, sendClassNotification } from "@/app/actions/notifications";
@@ -199,12 +200,15 @@ export async function PUT(request: Request) {
 
   try {
     const data = await request.json();
-    const { id, updateSeries, updateGroup, ...updateData } = data;
+    const { id, updateSeries, updateGroup, notifyStudents, ...updateData } = data;
     
     // Check ownership if teacher
     if (session.user.role === "TEACHER") {
-      const lesson = await prisma.lesson.findUnique({ where: { id }, select: { teacherId: true } });
-      if (lesson?.teacherId !== session.user.id) {
+      const lesson = await prisma.lesson.findUnique({
+        where: { id },
+        select: { teacherId: true, substituteId: true }
+      });
+      if (lesson?.teacherId !== session.user.id && lesson?.substituteId !== session.user.id) {
         return NextResponse.json({ error: "Vous ne pouvez modifier que vos propres cours" }, { status: 403 });
       }
       
@@ -223,7 +227,7 @@ export async function PUT(request: Request) {
       });
 
       // Si le professeur a renseigné un devoir et souhaite notifier la classe
-      if (data.notifyStudents && filteredData.homework?.trim()) {
+      if (notifyStudents && filteredData.homework?.trim()) {
         const subjectName = updatedLesson.isFreeLesson 
           ? (updatedLesson.customSubject || "Cours") 
           : (updatedLesson.subject?.name || "Cours");
@@ -235,6 +239,12 @@ export async function PUT(request: Request) {
           type: "INFO"
         }).catch(err => console.error("[PUT /api/lessons] Devoir notification error:", err));
       }
+
+      revalidatePath("/student/devoirs");
+      revalidatePath("/student/dashboard");
+      revalidatePath("/prof/devoirs");
+      revalidatePath("/admin/devoirs");
+      revalidatePath("/prof/planning");
 
       return NextResponse.json(updatedLesson);
     }
@@ -331,6 +341,26 @@ export async function PUT(request: Request) {
         substitute: { select: { id: true, firstName: true, lastName: true } }
       }
     });
+
+    if (notifyStudents && updateData.homework?.trim() && updatedLesson) {
+      const subjectName = updatedLesson.isFreeLesson 
+        ? (updatedLesson.customSubject || "Cours") 
+        : (updatedLesson.subject?.name || "Cours");
+
+      await sendClassNotification({
+        classId: updatedLesson.classId,
+        title: `Nouveau devoir : ${subjectName}`,
+        message: `Travail à faire : ${updateData.homework.trim().length > 120 ? updateData.homework.trim().substring(0, 120) + "..." : updateData.homework.trim()}`,
+        type: "INFO"
+      }).catch(err => console.error("[PUT /api/lessons] Admin devoir notification error:", err));
+    }
+
+    revalidatePath("/student/devoirs");
+    revalidatePath("/student/dashboard");
+    revalidatePath("/prof/devoirs");
+    revalidatePath("/admin/devoirs");
+    revalidatePath("/prof/planning");
+    revalidatePath("/admin/planning");
 
     return NextResponse.json(updatedLesson);
   } catch (error: any) {

@@ -796,13 +796,14 @@ enum AdminIdeaStatus {
   IMPLEMENTED   // Réalisée / Déployée
 }
 
-/// Catégorie d'une idée soumise.
+/// Catégorie d'une idée ou d'un signalement soumis.
 enum AdminIdeaCategory {
   PEDAGOGY          // Pédagogie & Évaluations
   SCHOOL_LIFE       // Vie Scolaire & Quotidien
   COMMUNICATION     // Communication & Familles
   TOOLS_ERGONOMICS  // Outils & Ergonomie
   ADMIN_PROCESS     // Processus Administratifs & RH
+  BREAKDOWN         // Panne & Incident matériel / technique
   OTHER             // Autre suggestion
 }
 

@@ -25,6 +25,8 @@ import {
   Loader2,
   Check,
   ChevronDown,
+  AlertTriangle,
+  Wrench,
 } from "lucide-react";
 import {
   createAdminIdea,
@@ -60,8 +62,15 @@ interface AdminIdeesClientProps {
 
 const CATEGORY_CONFIG: Record<
   AdminIdeaCategory,
-  { label: string; color: string; bg: string; border: string }
+  { label: string; color: string; bg: string; border: string; icon?: any }
 > = {
+  BREAKDOWN: {
+    label: "Panne & Incident matériel / technique",
+    color: "text-rose-700",
+    bg: "bg-rose-50",
+    border: "border-rose-200",
+    icon: Wrench,
+  },
   PEDAGOGY: {
     label: "Pédagogie & Évaluations",
     color: "text-violet-700",
@@ -173,11 +182,21 @@ export default function AdminIdeesClient({
 
   // KPIs
   const totalCount = ideas.length;
+  const breakdownCount = ideas.filter((i) => i.category === "BREAKDOWN").length;
+  const ideasOnlyCount = ideas.filter((i) => i.category !== "BREAKDOWN").length;
   const pendingCount = ideas.filter((i) => i.status === "SUBMITTED").length;
   const underReviewCount = ideas.filter((i) => i.status === "UNDER_REVIEW").length;
   const acceptedOrImplementedCount = ideas.filter(
     (i) => i.status === "ACCEPTED" || i.status === "IMPLEMENTED"
   ).length;
+
+  const openCreateModal = (cat: AdminIdeaCategory = "TOOLS_ERGONOMICS") => {
+    setNewCategory(cat);
+    setNewTitle("");
+    setNewDescription("");
+    setFormError(null);
+    setCreateModalOpen(true);
+  };
 
   // Filtered and sorted list
   const filteredIdeas = useMemo(() => {
@@ -346,7 +365,7 @@ export default function AdminIdeesClient({
               <Lightbulb className="h-5 w-5" />
             </span>
             <span className="text-xs font-black uppercase tracking-widest text-amber-700">
-              Boîte à Idées & Améliorations
+              Boîte à Idées & Signalement de Pannes
             </span>
             {isGeneralAdmin && (
               <span className="flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-black uppercase tracking-wider bg-amber-100 text-amber-900 border border-amber-300 shadow-xs ml-1">
@@ -356,14 +375,14 @@ export default function AdminIdeesClient({
             )}
           </div>
           <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
-            Remontées & Suggestions Administratives
+            Remontées & Pannes Matérielles
           </h1>
           <p className="text-xs sm:text-sm text-slate-600 font-medium mt-1">
-            Partagez vos propositions d'évolutions, d'ergonomie et de process avec l'Administrateur Général
+            Partagez vos propositions d'évolutions ou signalez une panne technique : chaque remontée notifie directement l'Administrateur Général.
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2.5">
           <Link
             href="/admin"
             className="px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-700 hover:bg-slate-50 transition shadow-sm"
@@ -372,8 +391,16 @@ export default function AdminIdeesClient({
           </Link>
           <button
             type="button"
-            onClick={() => setCreateModalOpen(true)}
-            className="flex items-center gap-2 px-5 py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-black transition shadow-md active:scale-95"
+            onClick={() => openCreateModal("BREAKDOWN")}
+            className="flex items-center gap-2 px-4 py-2.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-black transition shadow-md active:scale-95"
+          >
+            <AlertTriangle className="w-4 h-4 text-white" />
+            Signaler une panne
+          </button>
+          <button
+            type="button"
+            onClick={() => openCreateModal("TOOLS_ERGONOMICS")}
+            className="flex items-center gap-2 px-4 py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-black transition shadow-md active:scale-95"
           >
             <Plus className="w-4 h-4 text-amber-400" />
             Proposer une idée
@@ -382,52 +409,71 @@ export default function AdminIdeesClient({
       </div>
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm flex items-center gap-4">
-          <div className="h-12 w-12 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center shrink-0">
-            <Lightbulb className="h-6 w-6" />
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3.5">
+        <div className="bg-white rounded-2xl p-4 border border-slate-200 shadow-sm flex items-center gap-3.5">
+          <div className="h-11 w-11 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center shrink-0">
+            <Lightbulb className="h-5 w-5" />
           </div>
           <div>
-            <p className="text-2xl font-black text-slate-900">{totalCount}</p>
-            <p className="text-xs font-bold text-slate-400 uppercase tracking-tight">
+            <p className="text-xl font-black text-slate-900">{ideasOnlyCount}</p>
+            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-tight">
               Idées soumises
             </p>
           </div>
         </div>
 
-        <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm flex items-center gap-4">
-          <div className="h-12 w-12 rounded-xl bg-amber-50/80 text-amber-700 flex items-center justify-center shrink-0">
-            <Clock className="h-6 w-6" />
+        <div className="bg-white rounded-2xl p-4 border border-rose-200 shadow-sm flex items-center gap-3.5">
+          <div className="h-11 w-11 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center shrink-0">
+            <Wrench className="h-5 w-5" />
           </div>
           <div>
-            <p className="text-2xl font-black text-amber-700">{pendingCount}</p>
-            <p className="text-xs font-bold text-slate-400 uppercase tracking-tight">
+            <div className="flex items-center gap-1.5">
+              <p className="text-xl font-black text-rose-700">{breakdownCount}</p>
+              {breakdownCount > 0 && (
+                <span className="px-1.5 py-0.5 rounded text-[9px] font-black bg-rose-100 text-rose-800">
+                  Alerte
+                </span>
+              )}
+            </div>
+            <p className="text-[11px] font-bold text-rose-500 uppercase tracking-tight">
+              Pannes / Incidents
+            </p>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-2xl p-4 border border-slate-200 shadow-sm flex items-center gap-3.5">
+          <div className="h-11 w-11 rounded-xl bg-amber-50/80 text-amber-700 flex items-center justify-center shrink-0">
+            <Clock className="h-5 w-5" />
+          </div>
+          <div>
+            <p className="text-xl font-black text-amber-700">{pendingCount}</p>
+            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-tight">
               À étudier
             </p>
           </div>
         </div>
 
-        <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm flex items-center gap-4">
-          <div className="h-12 w-12 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
-            <TrendingUp className="h-6 w-6" />
+        <div className="bg-white rounded-2xl p-4 border border-slate-200 shadow-sm flex items-center gap-3.5">
+          <div className="h-11 w-11 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+            <TrendingUp className="h-5 w-5" />
           </div>
           <div>
-            <p className="text-2xl font-black text-blue-600">{underReviewCount}</p>
-            <p className="text-xs font-bold text-slate-400 uppercase tracking-tight">
-              En cours d'étude
+            <p className="text-xl font-black text-blue-600">{underReviewCount}</p>
+            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-tight">
+              En cours
             </p>
           </div>
         </div>
 
-        <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm flex items-center gap-4">
-          <div className="h-12 w-12 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
-            <CheckCircle2 className="h-6 w-6" />
+        <div className="bg-white rounded-2xl p-4 border border-slate-200 shadow-sm flex items-center gap-3.5 col-span-2 lg:col-span-1">
+          <div className="h-11 w-11 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
+            <CheckCircle2 className="h-5 w-5" />
           </div>
           <div>
-            <p className="text-2xl font-black text-emerald-600">
+            <p className="text-xl font-black text-emerald-600">
               {acceptedOrImplementedCount}
             </p>
-            <p className="text-xs font-bold text-slate-400 uppercase tracking-tight">
+            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-tight">
               Retenues / Déployées
             </p>
           </div>
@@ -553,17 +599,25 @@ export default function AdminIdeesClient({
             const isDeleting = deletingId === idea.id;
             const canDelete = isGeneralAdmin || idea.isOwnIdea;
 
+            const isBreakdown = idea.category === "BREAKDOWN";
+            const CatIcon = cat.icon;
+
             return (
               <div
                 key={idea.id}
-                className="bg-white rounded-3xl border border-slate-200 p-6 shadow-sm hover:border-blue-300 hover:shadow-md transition-all flex flex-col justify-between"
+                className={`rounded-3xl border p-6 shadow-sm transition-all flex flex-col justify-between ${
+                  isBreakdown
+                    ? "bg-rose-50/15 border-rose-200 hover:border-rose-400 hover:shadow-rose-100/50"
+                    : "bg-white border-slate-200 hover:border-blue-300 hover:shadow-md"
+                }`}
               >
                 <div>
                   {/* Top tags */}
                   <div className="flex items-center justify-between gap-2 mb-3 flex-wrap">
                     <span
-                      className={`text-[11px] font-black uppercase tracking-wider px-2.5 py-1 rounded-lg border ${cat.bg} ${cat.color} ${cat.border}`}
+                      className={`flex items-center gap-1.5 text-[11px] font-black uppercase tracking-wider px-2.5 py-1 rounded-lg border ${cat.bg} ${cat.color} ${cat.border}`}
                     >
+                      {CatIcon && <CatIcon className="w-3.5 h-3.5" />}
                       {cat.label}
                     </span>
 
@@ -576,8 +630,11 @@ export default function AdminIdeesClient({
                   </div>
 
                   {/* Title */}
-                  <h3 className="text-base sm:text-lg font-black text-slate-900 leading-snug mb-2">
-                    {idea.title}
+                  <h3 className="text-base sm:text-lg font-black text-slate-900 leading-snug mb-2 flex items-start gap-2">
+                    {isBreakdown && (
+                      <span className="text-rose-600 font-bold shrink-0">🚨</span>
+                    )}
+                    <span>{idea.title}</span>
                   </h3>
 
                   {/* Description */}
@@ -698,16 +755,36 @@ export default function AdminIdeesClient({
               </button>
 
               <div className="mb-5 pr-8">
-                <span className="text-xs font-black uppercase tracking-wider text-amber-700 bg-amber-50 px-2.5 py-1 rounded-full border border-amber-200">
-                  Nouvelle Proposition
-                </span>
+                {newCategory === "BREAKDOWN" ? (
+                  <span className="text-xs font-black uppercase tracking-wider text-rose-700 bg-rose-50 px-2.5 py-1 rounded-full border border-rose-200 flex items-center gap-1.5 w-fit">
+                    <AlertTriangle className="w-3.5 h-3.5 text-rose-600" />
+                    Signalement d'Incident / Panne
+                  </span>
+                ) : (
+                  <span className="text-xs font-black uppercase tracking-wider text-amber-700 bg-amber-50 px-2.5 py-1 rounded-full border border-amber-200">
+                    Nouvelle Proposition
+                  </span>
+                )}
                 <h2 className="text-xl font-black text-slate-900 mt-2">
-                  Déposer une idée dans la boîte à idées
+                  {newCategory === "BREAKDOWN"
+                    ? "Signaler une panne ou un incident matériel"
+                    : "Déposer une idée dans la boîte à idées"}
                 </h2>
                 <p className="text-xs text-slate-500 mt-0.5">
-                  Votre proposition sera transmise directement à l'Administrateur Général pour étude
+                  {newCategory === "BREAKDOWN"
+                    ? "Une alerte prioritaire sera directement envoyée à l'Administrateur Général"
+                    : "Votre proposition sera transmise directement à l'Administrateur Général pour étude"}
                 </p>
               </div>
+
+              {newCategory === "BREAKDOWN" && (
+                <div className="mb-4 p-3.5 bg-rose-50/80 border border-rose-200 rounded-2xl flex items-start gap-2.5 text-xs text-rose-800">
+                  <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+                  <p className="leading-relaxed">
+                    <strong>Notification immédiate :</strong> Cette panne remontera en direct avec un niveau d'alerte prioritaire sur le centre de notifications et le compte de l'<strong>Administrateur Général</strong>.
+                  </p>
+                </div>
+              )}
 
               {formError && (
                 <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 text-xs rounded-xl font-medium">
@@ -718,26 +795,12 @@ export default function AdminIdeesClient({
               <form onSubmit={handleCreateIdea} className="space-y-4">
                 <div>
                   <label className="block text-xs font-black uppercase tracking-wider text-slate-700 mb-1">
-                    Titre de la proposition
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="Ex: Automatiser les relances d'assiduité par SMS..."
-                    value={newTitle}
-                    onChange={(e) => setNewTitle(e.target.value)}
-                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-black uppercase tracking-wider text-slate-700 mb-1">
-                    Domaine / Catégorie
+                    Catégorie de la remontée
                   </label>
                   <select
                     value={newCategory}
                     onChange={(e) => setNewCategory(e.target.value as AdminIdeaCategory)}
-                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white cursor-pointer transition"
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white cursor-pointer transition"
                   >
                     {Object.entries(CATEGORY_CONFIG).map(([key, cfg]) => (
                       <option key={key} value={key}>
@@ -749,12 +812,38 @@ export default function AdminIdeesClient({
 
                 <div>
                   <label className="block text-xs font-black uppercase tracking-wider text-slate-700 mb-1">
-                    Description & Bénéfices attendus
+                    {newCategory === "BREAKDOWN"
+                      ? "Objet / Équipement ou salle concernée"
+                      : "Titre de la proposition"}
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder={
+                      newCategory === "BREAKDOWN"
+                        ? "Ex: Vidéoprojecteur HS en salle 204, Panne Wi-Fi Bâtiment B..."
+                        : "Ex: Automatiser les relances d'assiduité par SMS..."
+                    }
+                    value={newTitle}
+                    onChange={(e) => setNewTitle(e.target.value)}
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-black uppercase tracking-wider text-slate-700 mb-1">
+                    {newCategory === "BREAKDOWN"
+                      ? "Description de la panne, symptômes & urgence"
+                      : "Description & Bénéfices attendus"}
                   </label>
                   <textarea
                     required
                     rows={4}
-                    placeholder="Expliquez en détail l'idée, le problème qu'elle résout et comment la mettre en place..."
+                    placeholder={
+                      newCategory === "BREAKDOWN"
+                        ? "Précisez l'incident, depuis quand il survient, la salle/matériel impacté et le degré de blocage pour les cours..."
+                        : "Expliquez en détail l'idée, le problème qu'elle résout et comment la mettre en place..."
+                    }
                     value={newDescription}
                     onChange={(e) => setNewDescription(e.target.value)}
                     className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition custom-scrollbar"
@@ -772,14 +861,24 @@ export default function AdminIdeesClient({
                   <button
                     type="submit"
                     disabled={isSubmitting}
-                    className="flex items-center gap-2 px-5 py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-black transition shadow-sm"
+                    className={`flex items-center gap-2 px-5 py-2.5 text-white rounded-xl text-xs font-black transition shadow-sm ${
+                      newCategory === "BREAKDOWN"
+                        ? "bg-rose-600 hover:bg-rose-700 active:scale-95"
+                        : "bg-slate-900 hover:bg-slate-800"
+                    }`}
                   >
                     {isSubmitting ? (
                       <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : newCategory === "BREAKDOWN" ? (
+                      <AlertTriangle className="w-4 h-4 text-white" />
                     ) : (
                       <Send className="w-4 h-4 text-amber-400" />
                     )}
-                    <span>Soumettre l'idée</span>
+                    <span>
+                      {newCategory === "BREAKDOWN"
+                        ? "Signaler la panne à l'Admin Général"
+                        : "Soumettre l'idée"}
+                    </span>
                   </button>
                 </div>
               </form>
@@ -804,13 +903,15 @@ export default function AdminIdeesClient({
               <div className="mb-4 pr-8">
                 <span className="text-xs font-black uppercase tracking-wider text-amber-900 bg-amber-100 px-2.5 py-1 rounded-full border border-amber-200 flex items-center gap-1.5 w-fit">
                   <Crown className="w-3.5 h-3.5 text-amber-700" />
-                  Arbitrage Administrateur Général
+                  {selectedIdeaForReview.category === "BREAKDOWN"
+                    ? "Prise en charge Panne — Admin Général"
+                    : "Arbitrage Boîte à Idées — Admin Général"}
                 </span>
                 <h2 className="text-xl font-black text-slate-900 mt-2">
                   {selectedIdeaForReview.title}
                 </h2>
                 <p className="text-xs text-slate-500 mt-0.5">
-                  Proposée par <span className="font-bold text-slate-700">{selectedIdeaForReview.authorName}</span>
+                  Signalé par <span className="font-bold text-slate-700">{selectedIdeaForReview.authorName}</span>
                 </p>
               </div>
 
@@ -822,7 +923,9 @@ export default function AdminIdeesClient({
               <form onSubmit={handleSaveReview} className="space-y-4">
                 <div>
                   <label className="block text-xs font-black uppercase tracking-wider text-slate-700 mb-1">
-                    Statut de la décision
+                    {selectedIdeaForReview.category === "BREAKDOWN"
+                      ? "Statut d'intervention / Traitement"
+                      : "Statut de la décision"}
                   </label>
                   <select
                     value={reviewStatus}
@@ -839,11 +942,17 @@ export default function AdminIdeesClient({
 
                 <div>
                   <label className="block text-xs font-black uppercase tracking-wider text-slate-700 mb-1">
-                    Réponse officielle / Commentaire de l'Administrateur Général
+                    {selectedIdeaForReview.category === "BREAKDOWN"
+                      ? "Commentaire de prise en charge / Résolution"
+                      : "Réponse officielle / Commentaire de l'Administrateur Général"}
                   </label>
                   <textarea
                     rows={4}
-                    placeholder="Indiquez votre arbitrage, calendrier envisagé ou motif de non-retenue..."
+                    placeholder={
+                      selectedIdeaForReview.category === "BREAKDOWN"
+                        ? "Indiquez l'état d'intervention technique, réparateur mandaté ou confirmation de résolution..."
+                        : "Indiquez votre arbitrage, calendrier envisagé ou motif de non-retenue..."
+                    }
                     value={reviewResponse}
                     onChange={(e) => setReviewResponse(e.target.value)}
                     className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-amber-500 focus:bg-white transition custom-scrollbar"

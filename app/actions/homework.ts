@@ -47,6 +47,8 @@ export async function toggleStudentHomeworkDone(lessonId: string) {
   revalidatePath("/student/dashboard");
   revalidatePath("/prof/devoirs");
   revalidatePath("/admin/devoirs");
+  revalidatePath("/parent/devoirs");
+  revalidatePath("/employer/devoirs");
 
   return { isDone };
 }
@@ -187,6 +189,8 @@ export async function adminToggleStudentHomeworkDone(lessonId: string, targetStu
   revalidatePath("/student/dashboard");
   revalidatePath("/prof/devoirs");
   revalidatePath("/admin/devoirs");
+  revalidatePath("/parent/devoirs");
+  revalidatePath("/employer/devoirs");
 
   return { isDone };
 }

@@ -4,7 +4,7 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth-options";
 import prisma from "@/lib/prisma";
 import bcrypt from "bcrypt";
-import { unstable_cache, revalidateTag } from "next/cache";
+import { unstable_cache, revalidateTag, revalidatePath } from "next/cache";
 
 // --- EXISTING FUNCTIONS ---
 
@@ -39,6 +39,9 @@ export async function updateGlobalSetting(key: string, value: string) {
     create: { key, value }
   });
   revalidateTag("global-settings", { expire: 0 });
+  revalidatePath("/admin/settings");
+  revalidatePath("/admin");
+  revalidatePath("/", "layout");
 }
 
 export async function updateTeacherLivretAccess(teacherId: string, canAccess: boolean) {

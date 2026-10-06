@@ -10,7 +10,8 @@ export default function SendNotificationClient({ classes }: { classes: { id: str
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    const fd = new FormData(e.currentTarget);
+    const form = e.currentTarget;
+    const fd = new FormData(form);
     const data = {
       classId: fd.get("classId") as string,
       title: fd.get("title") as string,
@@ -18,12 +19,16 @@ export default function SendNotificationClient({ classes }: { classes: { id: str
     };
 
     transition(async () => {
-      const res = await sendClassNotification(data);
-      if (res) {
-          setStatus({type: 'success', message: "Notification envoyée avec succès !"});
-          e.currentTarget.reset();
-      } else {
-          setStatus({type: 'error', message: "Erreur lors de l'envoi."});
+      try {
+        const res = await sendClassNotification(data);
+        if (res) {
+          setStatus({ type: 'success', message: "Notification envoyée avec succès !" });
+          form.reset();
+        } else {
+          setStatus({ type: 'error', message: "Erreur lors de l'envoi." });
+        }
+      } catch (err: any) {
+        setStatus({ type: 'error', message: err?.message || "Erreur lors de l'envoi." });
       }
     });
   };

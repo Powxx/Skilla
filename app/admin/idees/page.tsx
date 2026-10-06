@@ -5,8 +5,8 @@ import prisma from "@/lib/prisma";
 import AdminIdeesClient, { AdminIdeaItem } from "./admin-idees-client";
 
 export const metadata = {
-  title: "Boîte à idées — Administration",
-  description: "Espace de suggestions et remontées directes à l'Administrateur Général",
+  title: "Boîte à idées & Pannes — Administration",
+  description: "Espace de suggestions et signalement de pannes avec notification directe à l'Administrateur Général",
 };
 
 export const dynamic = "force-dynamic";

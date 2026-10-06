@@ -89,7 +89,7 @@ export default function PortalSidebar({ variant, resolvedChildId, schoolName = "
         { href: "/admin/sanctions", label: "Sanctions", icon: ShieldAlert },
         ...(qualiopiEnabled ? [{ href: "/admin/qualiopi", label: "Qualiopi", icon: FileText }] : []),
         { href: "/admin/notifications", label: "Notifications", icon: FileText },
-        { href: "/admin/idees", label: "Boîte à idées", icon: Lightbulb },
+        { href: "/admin/idees", label: "Boîte à idées & Pannes", icon: Lightbulb },
         { href: "/admin/connexion-docs", label: "Connexion Docs", icon: Key },
         { href: "/admin/impersonate", label: "Impersonnalisation", icon: UserCircle },
         { href: "/admin/settings", label: "Config", icon: Settings },

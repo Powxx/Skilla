@@ -1,5 +1,5 @@
 import "./globals.css";
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import Providers from "@/app/providers";
 import { Analytics } from '@vercel/analytics/react';
 import { SpeedInsights } from '@vercel/speed-insights/next';
@@ -8,10 +8,25 @@ import Script from "next/script";
 
 const inter = Inter({ subsets: ["latin"], display: 'swap' });
 
+export const viewport: Viewport = {
+  themeColor: "#0f172a",
+  width: "device-width",
+  initialScale: 1,
+};
+
 export const metadata: Metadata = {
   title: "ECM Academie - Gestion d'Emploi du temps",
   description: "Plateforme de gestion pour alternance",
   manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "Skilla",
+  },
+  icons: {
+    icon: "/SKILLA-Logo.png",
+    apple: "/SKILLA-Logo.png",
+  },
 };
 
 export default function RootLayout({
