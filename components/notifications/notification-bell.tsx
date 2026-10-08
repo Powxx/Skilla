@@ -96,10 +96,26 @@ export default function NotificationBell() {
     }
   };
 
-  const handleMarkAllAsRead = async () => {
-    if (session?.user?.id) {
-      await markAllAsRead((session.user as any).id);
-      fetchNotifications();
+  const [isMarkingAll, setIsMarkingAll] = useState(false);
+
+  const handleMarkAllAsRead = async (e?: React.MouseEvent) => {
+    e?.preventDefault();
+    e?.stopPropagation();
+    if (!session?.user?.id || isMarkingAll) return;
+
+    setIsMarkingAll(true);
+    // Mise à jour optimiste immédiate de l'affichage
+    setUnreadCount(0);
+    setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
+
+    try {
+      await markAllAsRead();
+      await fetchNotifications();
+    } catch (err) {
+      console.error("Erreur lors du marquage des notifications comme lues:", err);
+      await fetchNotifications();
+    } finally {
+      setIsMarkingAll(false);
     }
   };
 
@@ -131,10 +147,12 @@ export default function NotificationBell() {
             </div>
             {unreadCount > 0 && (
               <button 
-                onClick={handleMarkAllAsRead} 
-                className="text-[10px] font-bold text-blue-600 hover:text-blue-700 uppercase tracking-wider transition"
+                type="button"
+                onClick={handleMarkAllAsRead}
+                disabled={isMarkingAll}
+                className="text-[10px] font-bold text-blue-600 hover:text-blue-700 uppercase tracking-wider transition cursor-pointer px-2 py-1 rounded-lg hover:bg-blue-50 disabled:opacity-50"
               >
-                Tout marquer lu
+                {isMarkingAll ? "Mise à jour..." : "Tout marquer lu"}
               </button>
             )}
           </div>

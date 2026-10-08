@@ -54,9 +54,10 @@ function parseNote(raw: string): number | null {
   return n;
 }
 
-function getGradeBadgeColor(val: number) {
-  if (val >= 14) return "bg-emerald-50 text-emerald-700 border-emerald-200 ring-emerald-500/20";
-  if (val >= 10) return "bg-sky-50 text-sky-700 border-sky-200 ring-sky-500/20";
+function getGradeBadgeColor(val: number, scale: number = 20) {
+  const ratio = scale > 0 ? (val / scale) * 20 : val;
+  if (ratio >= 14) return "bg-emerald-50 text-emerald-700 border-emerald-200 ring-emerald-500/20";
+  if (ratio >= 10) return "bg-sky-50 text-sky-700 border-sky-200 ring-sky-500/20";
   return "bg-rose-50 text-rose-700 border-rose-200 ring-rose-500/20";
 }
 
@@ -201,10 +202,17 @@ export default function GradeEntryClient({
   // Paramètres globaux de l'évaluation
   const [sujet, setSujet] = useState("");
   const [coefficient, setCoefficient] = useState("1"); // Coefficient de base à 1
+  const [scale, setScale] = useState("20"); // Barème de notation (sur 20, 10, 5, etc.)
+  const [convertOutOf20, setConvertOutOf20] = useState(true); // Convertir sur 20 pour les moyennes
   const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
   const [selectedSemesterId, setSelectedSemesterId] = useState(
     semesters[semesters.length - 1]?.id || ""
   );
+
+  const numericScale = useMemo(() => {
+    const parsed = parseNote(scale);
+    return (parsed !== null && parsed > 0) ? parsed : 20;
+  }, [scale]);
 
   // État des élèves générés
   const [enrolledStudents, setEnrolledStudents] = useState<EnrolledStudent[]>([]);
@@ -295,7 +303,7 @@ export default function GradeEntryClient({
     for (const s of enrolledStudents) {
       const raw = studentGrades[s.id];
       const parsed = parseNote(raw);
-      if (parsed !== null && parsed >= 0 && parsed <= 20) {
+      if (parsed !== null && parsed >= 0 && parsed <= numericScale) {
         validGrades.push(parsed);
       }
     }
@@ -315,7 +323,7 @@ export default function GradeEntryClient({
       min,
       max
     };
-  }, [enrolledStudents, studentGrades]);
+  }, [enrolledStudents, studentGrades, numericScale]);
 
   // Gestion du changement de note pour un élève
   const handleGradeChange = (studentId: string, value: string) => {
@@ -403,32 +411,49 @@ export default function GradeEntryClient({
       }
 
       const parsed = parseNote(raw);
-      if (parsed === null || parsed < 0 || parsed > 20) {
+      if (parsed === null || parsed < 0 || parsed > numericScale) {
         invalidRows.push(`${student.lastName} ${student.firstName} ("${raw}")`);
         continue;
       }
 
-      // Construction du commentaire combiné (Sujet libre + Remarque individuelle)
+      // Construction de la note enregistrée (ramenée sur 20 si demandé pour les bulletins)
+      let finalNote = parsed;
+      let noteMention = "";
+
+      if (convertOutOf20 && numericScale !== 20) {
+        finalNote = Math.round(((parsed / numericScale) * 20) * 100) / 100;
+        noteMention = `(Note : ${parsed}/${numericScale})`;
+      } else if (numericScale !== 20) {
+        noteMention = `(Noté sur ${numericScale})`;
+      }
+
+      // Construction du commentaire combiné (Sujet libre + barème d'origine + Remarque individuelle)
       const userRemark = studentRemarks[student.id]?.trim() || "";
-      const finalComment = userRemark 
-        ? `${sujet.trim()} — ${userRemark}` 
-        : sujet.trim();
+      let finalComment = sujet.trim();
+      if (noteMention) {
+        finalComment = `${finalComment} ${noteMention}`;
+      }
+      if (userRemark) {
+        finalComment = `${finalComment} — ${userRemark}`;
+      }
 
       entriesToSave.push({
         studentId: student.id,
-        note: parsed,
+        note: finalNote,
         matiereId: subjectId,
         coefficient: coeffNum,
         date: new Date(date),
         semesterId: selectedSemesterId || undefined,
-        comment: finalComment
+        comment: finalComment,
+        scale: numericScale,
+        originalNote: parsed
       });
     }
 
     if (invalidRows.length > 0) {
       setSaveFeedback({
         type: "error",
-        message: `Certaines notes sont invalides (doivent être entre 0 et 20) : ${invalidRows.join(", ")}`
+        message: `Certaines notes sont invalides (doivent être comprises entre 0 et ${numericScale}) : ${invalidRows.join(", ")}`
       });
       return;
     }
@@ -436,7 +461,7 @@ export default function GradeEntryClient({
     if (entriesToSave.length === 0) {
       setSaveFeedback({
         type: "error",
-        message: "Aucune note n'a été saisie. Entrez au moins une note sur 20 dans la liste des élèves."
+        message: `Aucune note n'a été saisie. Entrez au moins une note sur ${numericScale} dans la liste des élèves.`
       });
       return;
     }
@@ -643,18 +668,65 @@ export default function GradeEntryClient({
 
             <div className="grid gap-4 sm:grid-cols-12">
               {/* Sujet libre */}
-              <div className="sm:col-span-6">
+              <div className="sm:col-span-4">
                 <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1.5 flex items-center gap-1.5">
                   <FileText className="h-3.5 w-3.5 text-sky-600" />
-                  Sujet / Intitulé de l'évaluation <span className="text-rose-500">*</span>
+                  Sujet / Intitulé <span className="text-rose-500">*</span>
                 </label>
                 <input
                   type="text"
                   value={sujet}
                   onChange={(e) => setSujet(e.target.value)}
-                  placeholder="ex: Contrôle continu n°2 : Fonctions, TP noté, Devoir maison..."
+                  placeholder="ex: Interro n°1, TP noté..."
                   className="w-full h-11 px-3.5 rounded-xl border border-slate-200 bg-white text-sm text-slate-900 placeholder:text-slate-400 focus:ring-2 focus:ring-sky-500 focus:border-sky-500 transition-all shadow-sm"
                 />
+              </div>
+
+              {/* Barème de notation (sur 20, 10, etc.) */}
+              <div className="sm:col-span-3">
+                <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1.5 flex items-center justify-between">
+                  <span className="flex items-center gap-1.5">
+                    <Sparkles className="h-3.5 w-3.5 text-sky-600" />
+                    Barème / Noté sur
+                  </span>
+                  <div className="flex gap-1 text-[10px] font-mono">
+                    <button
+                      type="button"
+                      onClick={() => setScale("20")}
+                      className={`px-1.5 py-0.5 rounded transition ${scale === "20" ? "bg-sky-600 text-white font-bold" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`}
+                    >
+                      /20
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setScale("10")}
+                      className={`px-1.5 py-0.5 rounded transition ${scale === "10" ? "bg-sky-600 text-white font-bold" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`}
+                    >
+                      /10
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setScale("5")}
+                      className={`px-1.5 py-0.5 rounded transition ${scale === "5" ? "bg-sky-600 text-white font-bold" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`}
+                    >
+                      /5
+                    </button>
+                  </div>
+                </label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">/</span>
+                  <input
+                    type="number"
+                    min="1"
+                    max="100"
+                    step="0.5"
+                    value={scale}
+                    onChange={(e) => setScale(e.target.value)}
+                    placeholder="20"
+                    className="w-full h-11 pl-6 pr-3 rounded-xl border border-slate-200 bg-white text-sm font-mono font-bold text-slate-900 focus:ring-2 focus:ring-sky-500 focus:border-sky-500 transition-all shadow-sm"
+                    title="Total des points pour cette évaluation (ex: 20, 10, 5, 40)"
+                  />
+                </div>
               </div>
 
               {/* Coefficient de base à 1 */}
@@ -674,7 +746,7 @@ export default function GradeEntryClient({
               </div>
 
               {/* Date */}
-              <div className="sm:col-span-2">
+              <div className="sm:col-span-3">
                 <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1.5 flex items-center gap-1.5">
                   <Calendar className="h-3.5 w-3.5 text-sky-600" />
                   Date
@@ -686,25 +758,30 @@ export default function GradeEntryClient({
                   className="w-full h-11 px-3 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-800 focus:ring-2 focus:ring-sky-500 focus:border-sky-500 transition-all shadow-sm"
                 />
               </div>
-
-              {/* Semestre */}
-              <div className="sm:col-span-2">
-                <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1.5 flex items-center gap-1.5">
-                  Période
-                </label>
-                <select
-                  value={selectedSemesterId}
-                  onChange={(e) => setSelectedSemesterId(e.target.value)}
-                  className="w-full h-11 px-2.5 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-800 focus:ring-2 focus:ring-sky-500 focus:border-sky-500 transition-all shadow-sm"
-                >
-                  {semesters.map((sem) => (
-                    <option key={sem.id} value={sem.id}>
-                      {sem.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
             </div>
+
+            {/* Option de conversion sur 20 pour la moyenne générale */}
+            {numericScale !== 20 && (
+              <div className="mt-3.5 p-3 rounded-2xl bg-sky-50/80 border border-sky-200/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs animate-in fade-in duration-200">
+                <div className="flex items-center gap-2 text-sky-900">
+                  <Sparkles className="h-4 w-4 text-sky-600 shrink-0" />
+                  <span>
+                    Évaluation notée sur <strong>{numericScale}</strong>.
+                  </span>
+                </div>
+                <label className="flex items-center gap-2 font-medium text-slate-800 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={convertOutOf20}
+                    onChange={(e) => setConvertOutOf20(e.target.checked)}
+                    className="rounded text-sky-600 focus:ring-sky-500 h-4 w-4"
+                  />
+                  <span>
+                    Ramener sur 20 pour le calcul de la moyenne du bulletin (ex : 8/{numericScale} → {((8 / numericScale) * 20).toFixed(1)}/20)
+                  </span>
+                </label>
+              </div>
+            )}
           </div>
         </div>
       </section>
@@ -796,7 +873,7 @@ export default function GradeEntryClient({
                     Moyenne du devoir
                   </span>
                   <span className="text-lg font-black text-sky-600 font-mono">
-                    {stats.average !== null ? `${stats.average.toLocaleString("fr-FR")} / 20` : "—"}
+                    {stats.average !== null ? `${stats.average.toLocaleString("fr-FR")} / ${numericScale}` : "—"}
                   </span>
                 </div>
 
@@ -852,16 +929,16 @@ export default function GradeEntryClient({
                     <tr>
                       <th className="px-6 py-4 w-12 text-center">#</th>
                       <th className="px-6 py-4">Élève</th>
-                      <th className="px-6 py-4 w-36">Note (/20)</th>
+                      <th className="px-6 py-4 w-40">Note (/{numericScale})</th>
                       <th className="px-6 py-4">Remarque individuelle (optionnel)</th>
-                      <th className="px-6 py-4 w-28 text-center">Statut</th>
+                      <th className="px-6 py-4 w-32 text-center">Statut</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
                     {enrolledStudents.map((student, idx) => {
                       const rawNote = studentGrades[student.id] || "";
                       const parsed = parseNote(rawNote);
-                      const isValidNote = parsed !== null && parsed >= 0 && parsed <= 20;
+                      const isValidNote = parsed !== null && parsed >= 0 && parsed <= numericScale;
                       const hasError = rawNote.trim() !== "" && !isValidNote;
 
                       return (
@@ -899,8 +976,8 @@ export default function GradeEntryClient({
                                 value={rawNote}
                                 onChange={(e) => handleGradeChange(student.id, e.target.value)}
                                 onKeyDown={(e) => handleKeyDown(e, idx)}
-                                placeholder="—"
-                                className={`w-28 h-10 px-3 text-center rounded-xl font-mono text-sm font-bold border transition-all ${
+                                placeholder={`0 à ${numericScale}`}
+                                className={`w-32 h-10 px-3 text-center rounded-xl font-mono text-sm font-bold border transition-all ${
                                   hasError 
                                     ? "border-rose-400 bg-rose-50 text-rose-700 focus:ring-2 focus:ring-rose-400" 
                                     : isValidNote 
@@ -921,9 +998,16 @@ export default function GradeEntryClient({
                           </td>
                           <td className="px-6 py-3.5 text-center">
                             {isValidNote ? (
-                              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold border ${getGradeBadgeColor(parsed!)}`}>
-                                {parsed} / 20
-                              </span>
+                              <div className="inline-flex flex-col items-center">
+                                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold border ${getGradeBadgeColor(parsed!, numericScale)}`}>
+                                  {parsed} / {numericScale}
+                                </span>
+                                {convertOutOf20 && numericScale !== 20 && (
+                                  <span className="text-[10px] text-slate-400 font-mono mt-0.5">
+                                    ≈ {((parsed! / numericScale) * 20).toFixed(1)}/20
+                                  </span>
+                                )}
+                              </div>
                             ) : rawNote.trim() !== "" ? (
                               <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-700">
                                 Invalide

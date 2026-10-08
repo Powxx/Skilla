@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth-options";
 import { createNotification, checkEventEnabled } from "@/app/actions/notifications";
+import { getEffectiveTeacherId } from "@/lib/teacher-utils";
 
 export async function GET(request: Request) {
   const session = await getServerSession(authOptions);
@@ -48,17 +49,18 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   const session = await getServerSession(authOptions);
-  if (!session?.user || session.user.role !== "TEACHER") {
+  if (!session?.user || (session.user.role !== "TEACHER" && session.user.role !== "ADMIN" && session.user.role !== "SUPER_ADMIN")) {
     return NextResponse.json({ error: "Non autorisé" }, { status: 403 });
   }
 
   try {
     const { lessonId } = await request.json();
+    const effectiveTeacherId = await getEffectiveTeacherId(session.user.id);
 
     const subRequest = await prisma.substitutionRequest.create({
       data: {
         lessonId,
-        originalTeacherId: session.user.id,
+        originalTeacherId: effectiveTeacherId,
         status: "PENDING"
       }
     });

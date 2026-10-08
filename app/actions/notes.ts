@@ -6,6 +6,8 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth-options";
 import { revalidatePath } from "next/cache";
 
+import { getEffectiveTeacherId } from "@/lib/teacher-utils";
+
 export type GradeBatchEntry = {
   studentId: string;
   note: number;
@@ -14,6 +16,8 @@ export type GradeBatchEntry = {
   comment?: string | null;
   date?: string | Date;
   semesterId?: string;
+  scale?: number;
+  originalNote?: number;
 };
 
 export type SaveGradeBatchSuccess = { ok: true; count: number };
@@ -40,7 +44,11 @@ export async function saveGradesBatch(
       error: "Non autorisé. Accès réservé aux professeurs et administrateurs.",
     };
   }
-  const teacherId = session.user.role === "TEACHER" ? session.user.id : null;
+
+  const effectiveTeacherId = await getEffectiveTeacherId(session.user.id);
+  const teacherId = session.user.role === "TEACHER" 
+    ? session.user.id 
+    : (effectiveTeacherId !== session.user.id ? effectiveTeacherId : null);
 
   try {
     if (!entries.length) {
@@ -53,11 +61,14 @@ export async function saveGradesBatch(
     for (const row of entries) {
       const coef =
         row.coefficient === undefined ? 1 : Number(row.coefficient);
+      const rowScale = (row.scale && Number.isFinite(row.scale) && row.scale > 0) ? Number(row.scale) : 20;
+      const maxAllowed = Math.max(rowScale, 20);
+
       if (
         !row.studentId?.trim() ||
         !Number.isFinite(row.note) ||
         row.note < 0 ||
-        row.note > 20 ||
+        row.note > maxAllowed ||
         !Number.isFinite(coef) ||
         !row.matiereId?.trim() ||
         coef <= 0
@@ -65,7 +76,7 @@ export async function saveGradesBatch(
         return {
           ok: false,
           error:
-            "Données invalides : élève et matière requis, note entre 0 et 20, coefficient positif.",
+            `Données invalides : élève et matière requis, note positive et valide (barème max : ${maxAllowed}), coefficient positif.`,
         };
       }
     }
@@ -149,10 +160,14 @@ export async function saveGradesBatch(
     const isEnabled = await checkEventEnabled("NEW_GRADE");
     if (isEnabled) {
       for (const e of entries) {
+        const displayScore = (e.originalNote !== undefined && e.scale) 
+          ? `${e.originalNote}/${e.scale}` 
+          : `${e.note}/20`;
+
         createNotification({
           userId: e.studentId,
           title: "Nouvelle note disponible",
-          message: `Une nouvelle note a été publiée en ${subjectNameById.get(e.matiereId)}. Note : ${e.note}/20.`,
+          message: `Une nouvelle note a été publiée en ${subjectNameById.get(e.matiereId)}. Note : ${displayScore}.`,
           type: "INFO",
           link: "/student/grades"
         }).catch(err => console.error("Failed to send notification:", err));
@@ -178,7 +193,11 @@ export async function updateGrade(id: string, value: number, coefficient: number
   }
 
   const isAdmin = session.user.role === "ADMIN" || session.user.role === "SUPER_ADMIN";
-  const whereClause = isAdmin ? { id } : { id, teacherId: session.user.id };
+  const effectiveTeacherId = await getEffectiveTeacherId(session.user.id);
+  const allowedTeacherIds = [session.user.id];
+  if (effectiveTeacherId) allowedTeacherIds.push(effectiveTeacherId);
+
+  const whereClause = isAdmin ? { id } : { id, teacherId: { in: allowedTeacherIds } };
 
   try {
     await prisma.grade.update({
@@ -203,7 +222,11 @@ export async function deleteGrade(id: string) {
   }
 
   const isAdmin = session.user.role === "ADMIN" || session.user.role === "SUPER_ADMIN";
-  const whereClause = isAdmin ? { id } : { id, teacherId: session.user.id };
+  const effectiveTeacherId = await getEffectiveTeacherId(session.user.id);
+  const allowedTeacherIds = [session.user.id];
+  if (effectiveTeacherId) allowedTeacherIds.push(effectiveTeacherId);
+
+  const whereClause = isAdmin ? { id } : { id, teacherId: { in: allowedTeacherIds } };
 
   try {
     await prisma.grade.delete({

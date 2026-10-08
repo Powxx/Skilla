@@ -41,12 +41,21 @@ export default async function UsersDataFetcher({
   }
 
   if (q.length > 0) {
+    const digitsOnly = q.replace(/\D/g, "");
+    const orClauses: Prisma.UserWhereInput[] = [
+      { email: { contains: q, mode: "insensitive" } },
+      { firstName: { contains: q, mode: "insensitive" } },
+      { lastName: { contains: q, mode: "insensitive" } },
+      { username: { contains: q, mode: "insensitive" } },
+      { phone: { contains: q, mode: "insensitive" } },
+    ];
+
+    if (digitsOnly.length >= 3 && digitsOnly !== q) {
+      orClauses.push({ phone: { contains: digitsOnly, mode: "insensitive" } });
+    }
+
     clauses.push({
-      OR: [
-        { email: { contains: q, mode: "insensitive" } },
-        { firstName: { contains: q, mode: "insensitive" } },
-        { lastName: { contains: q, mode: "insensitive" } },
-      ],
+      OR: orClauses,
     });
   }
 

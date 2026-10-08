@@ -384,11 +384,14 @@ export async function assignSanction(data: {
   const sanctionType = await prisma.sanctionType.findUnique({ where: { id: data.sanctionTypeId } });
   if (!sanctionType) throw new Error("Type de sanction introuvable.");
   
-  // Validation des droits d'attribution spécifiques du type de sanction
-  if (callerRole === "TEACHER" && !sanctionType.allowTeacher)
+  // Validation des droits d'attribution : un administrateur bénéficie de tous les droits profs et admins
+  const isAdmin = callerRole === "ADMIN" || callerRole === "SUPER_ADMIN";
+  if (!isAdmin && callerRole === "TEACHER" && !sanctionType.allowTeacher) {
     throw new Error("Les enseignants ne peuvent pas attribuer ce type de sanction.");
-  if ((callerRole === "ADMIN" || callerRole === "SUPER_ADMIN") && !sanctionType.allowAdmin)
-    throw new Error("Les administrateurs ne peuvent pas attribuer ce type de sanction.");
+  }
+  if (isAdmin && !sanctionType.allowAdmin && !sanctionType.allowTeacher) {
+    throw new Error("Non autorisé à attribuer ce type de sanction.");
+  }
 
   const parsedDate = data.date ? new Date(data.date) : new Date();
   const pointsCost = data.pointsCost ?? 0;

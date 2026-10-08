@@ -1,5 +1,6 @@
 import prisma from "@/lib/prisma";
 import SendNotificationClient from "./notifications-client";
+import MarkAllReadButton from "./mark-all-read-button";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth-options";
 import { redirect } from "next/navigation";
@@ -9,7 +10,19 @@ import { Bell, Inbox, AlertTriangle, CheckCircle2, AlertCircle, Info } from "luc
 
 export default async function ProfNotificationsPage() {
   const session = await getServerSession(authOptions);
-  if (!session?.user || session.user.role !== "TEACHER") redirect("/login");
+  if (!session?.user || (session.user.role !== "TEACHER" && session.user.role !== "ADMIN" && session.user.role !== "SUPER_ADMIN")) {
+    redirect("/login");
+  }
+
+  const user = await prisma.user.findUnique({
+    where: { id: session.user.id },
+    select: { id: true, role: true, linkedTeacherId: true }
+  });
+
+  const targetUserIds = [session.user.id];
+  if (user && (user.role === "ADMIN" || user.role === "SUPER_ADMIN") && user.linkedTeacherId) {
+    targetUserIds.push(user.linkedTeacherId);
+  }
 
   const [classes, receivedNotifications] = await Promise.all([
     prisma.class.findMany({ 
@@ -17,7 +30,7 @@ export default async function ProfNotificationsPage() {
       select: { id: true, name: true } 
     }),
     prisma.notification.findMany({
-      where: { userId: session.user.id },
+      where: { userId: { in: targetUserIds } },
       orderBy: { createdAt: "desc" },
       take: 40
     })
@@ -89,11 +102,14 @@ export default async function ProfNotificationsPage() {
               </div>
             </div>
 
-            {unreadCount > 0 && (
-              <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-indigo-600 text-white shadow-sm">
-                {unreadCount} non lu{unreadCount > 1 ? "s" : ""}
-              </span>
-            )}
+            <div className="flex items-center gap-2">
+              {unreadCount > 0 && <MarkAllReadButton />}
+              {unreadCount > 0 && (
+                <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-indigo-600 text-white shadow-sm">
+                  {unreadCount} non lu{unreadCount > 1 ? "s" : ""}
+                </span>
+              )}
+            </div>
           </div>
 
           <div className="divide-y divide-slate-100 max-h-[600px] min-h-[250px] overflow-y-auto custom-scrollbar">

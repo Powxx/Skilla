@@ -7,6 +7,8 @@ import prisma from "@/lib/prisma";
 import { AttendanceStatus } from "@prisma/client";
 import { createNotification, checkEventEnabled } from "@/app/actions/notifications";
 
+import { getEffectiveTeacherId } from "@/lib/teacher-utils";
+
 // Types pour le payload
 export type SubmitRollPayload = {
   classId: string;
@@ -25,8 +27,8 @@ export async function updateAttendanceStatus(
 ): Promise<{ ok: true } | { ok: false; error: string }> {
   const session = await getServerSession(authOptions);
   
-  if (!session?.user || session.user.role !== "TEACHER") {
-    return { ok: false, error: "Accès réservé aux enseignants." };
+  if (!session?.user || (session.user.role !== "TEACHER" && session.user.role !== "ADMIN" && session.user.role !== "SUPER_ADMIN")) {
+    return { ok: false, error: "Accès réservé aux enseignants et administrateurs." };
   }
 
   try {
@@ -51,8 +53,8 @@ export async function submitRollCall(payload: SubmitRollPayload): Promise<Submit
   const session = await getServerSession(authOptions);
   
   // 1. Vérification de sécurité
-  if (!session?.user || session.user.role !== "TEACHER") {
-    return { ok: false, error: "Accès réservé aux enseignants." };
+  if (!session?.user || (session.user.role !== "TEACHER" && session.user.role !== "ADMIN" && session.user.role !== "SUPER_ADMIN")) {
+    return { ok: false, error: "Accès réservé aux enseignants et administrateurs." };
   }
 
   const { classId, lessonId, markings, lateDurations = {} } = payload;
@@ -71,12 +73,17 @@ export async function submitRollCall(payload: SubmitRollPayload): Promise<Submit
     return { ok: false, error: "Cours introuvable." };
   }
 
-  const isAuthorizedToRollCall = targetLesson.substituteId
-    ? targetLesson.substituteId === session.user.id
-    : targetLesson.teacherId === session.user.id;
+  const effectiveTeacherId = await getEffectiveTeacherId(session.user.id);
+  const isAdmin = session.user.role === "ADMIN" || session.user.role === "SUPER_ADMIN";
+
+  const isAuthorizedToRollCall = isAdmin || (
+    targetLesson.substituteId
+      ? targetLesson.substituteId === effectiveTeacherId
+      : targetLesson.teacherId === effectiveTeacherId
+  );
 
   if (!isAuthorizedToRollCall) {
-    return { ok: false, error: "Ce cours fait l'objet d'un remplacement. Seul l'enseignant remplaçant peut effectuer cet appel." };
+    return { ok: false, error: "Ce cours ne vous est pas assigné ou fait l'objet d'un remplacement." };
   }
 
   // 2. Vérification de l'existence de la classe et de ses élèves

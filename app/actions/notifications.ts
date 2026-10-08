@@ -92,16 +92,23 @@ export async function markAsRead(notificationId: string) {
 /**
  * Server Action : Marque TOUTES les notifications d'un utilisateur comme lues.
  */
-export async function markAllAsRead(userId: string) {
+export async function markAllAsRead(userId?: string) {
   const session = await getServerSession(authOptions);
-  if (!session?.user?.id || session.user.id !== userId) throw new Error("Non autorisé");
+  if (!session?.user?.id) throw new Error("Non autorisé");
 
-  const ids = await getUserNotificationIds(userId);
-  await prisma.notification.updateMany({
+  const targetUserId = (userId && (session.user.role === "ADMIN" || session.user.role === "SUPER_ADMIN"))
+    ? userId
+    : session.user.id;
+
+  const ids = await getUserNotificationIds(targetUserId);
+  const result = await prisma.notification.updateMany({
     where: { userId: { in: ids }, isRead: false },
     data: { isRead: true, readAt: new Date() },
   });
+
   revalidatePath("/", "layout");
+  revalidatePath("/prof/notifications");
+  return { ok: true, count: result.count };
 }
 
 /**

@@ -4,6 +4,8 @@ import { authOptions } from "@/lib/auth-options";
 import prisma from "@/lib/prisma";
 import ProfDevoirsClient, { TeacherLessonHomework } from "./prof-devoirs-client";
 
+import { getEffectiveTeacherId } from "@/lib/teacher-utils";
+
 export const metadata = {
   title: "Gestion des devoirs — Espace Enseignant",
   description: "Attribuez et suivez les devoirs et travaux à faire pour vos classes",
@@ -23,7 +25,7 @@ export default async function ProfDevoirsPage() {
     redirect("/login");
   }
 
-  const teacherId = session.user.id;
+  const teacherId = await getEffectiveTeacherId(session.user.id);
   const now = new Date();
 
   // Load teacher's lessons

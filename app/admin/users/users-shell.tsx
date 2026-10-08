@@ -230,7 +230,7 @@ export default function UsersShell(props: Props) {
       <form method="GET" action="/admin/users" className="flex flex-col sm:flex-row items-end gap-3 shrink-0">
         <div className="flex-1 w-full">
           <span className="mb-1 block text-[9px] font-black text-slate-400 uppercase tracking-widest">Recherche</span>
-          <input name="q" defaultValue={initialQuery} placeholder="E-mail, nom..." className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs outline-none focus:ring-blue-500/20" />
+          <input name="q" defaultValue={initialQuery} placeholder="E-mail, nom, téléphone..." className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs outline-none focus:ring-blue-500/20" />
         </div>
         <div className="w-full sm:w-44">
           <span className="mb-1 block text-[9px] font-black text-slate-400 uppercase tracking-widest">Rôle</span>
