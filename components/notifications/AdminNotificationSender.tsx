@@ -17,8 +17,7 @@ import {
   Search,
   Bell,
   HeartHandshake,
-  Briefcase,
-  Clock
+  Briefcase
 } from "lucide-react";
 
 export type TeacherOption = {
@@ -87,9 +86,6 @@ export default function AdminNotificationSender({ classes, teachers }: AdminNoti
   const [message, setMessage] = useState<string>("");
   const [isSending, setIsSending] = useState<boolean>(false);
   const [feedback, setFeedback] = useState<{ type: "success" | "error"; text: string } | null>(null);
-  const [isScheduled, setIsScheduled] = useState<boolean>(false);
-  const [scheduledFor, setScheduledFor] = useState<string>("");
-
   // Bascule de catégorie principale
   const handleCategoryChange = (newCat: AudienceCategory) => {
     setCategory(newCat);
@@ -138,11 +134,6 @@ export default function AdminNotificationSender({ classes, teachers }: AdminNoti
       return;
     }
 
-    if (isScheduled && !scheduledFor) {
-      setFeedback({ type: "error", text: "Veuillez choisir une date et une heure pour l'envoi programmé." });
-      return;
-    }
-
     setIsSending(true);
     try {
       const res = await sendAdminNotification({
@@ -153,20 +144,7 @@ export default function AdminNotificationSender({ classes, teachers }: AdminNoti
         message: message.trim(),
         type: notifType,
         includeParents: (target === "CLASS" || target === "SCHOOL") ? includeParents : undefined,
-        scheduledFor: isScheduled && scheduledFor ? scheduledFor : undefined,
       });
-
-      if ((res as any).scheduled) {
-        setFeedback({ 
-          type: "success", 
-          text: `Notification programmée avec succès ! Envoi automatique prévu le ${new Date(scheduledFor).toLocaleDateString("fr-FR")} à ${new Date(scheduledFor).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}.` 
-        });
-        setTitle("");
-        setMessage("");
-        setIsScheduled(false);
-        setScheduledFor("");
-        return;
-      }
 
       let successMsg = "Notification envoyée avec succès !";
       if (target === "ALL_TEACHERS") {
@@ -664,46 +642,6 @@ export default function AdminNotificationSender({ classes, teachers }: AdminNoti
           </div>
         )}
 
-        {/* Point 7: Option de programmation de notification */}
-        <div className="p-4 rounded-2xl bg-indigo-50/70 border border-indigo-100 flex flex-col gap-3">
-          <div className="flex items-center justify-between">
-            <label htmlFor="scheduleCheckbox" className="flex items-center gap-2 cursor-pointer select-none">
-              <input
-                type="checkbox"
-                id="scheduleCheckbox"
-                checked={isScheduled}
-                onChange={(e) => setIsScheduled(e.target.checked)}
-                className="h-4 w-4 rounded text-indigo-600 focus:ring-indigo-500 border-slate-300 cursor-pointer"
-              />
-              <span className="text-xs font-bold text-indigo-950 flex items-center gap-1.5">
-                <Clock className="w-3.5 h-3.5 text-indigo-600" />
-                Planifier l&apos;envoi pour plus tard (Envoi différé automatique)
-              </span>
-            </label>
-            {isScheduled && (
-              <span className="text-[10px] font-bold text-indigo-700 bg-white px-2.5 py-0.5 rounded-full border border-indigo-200">
-                Différé
-              </span>
-            )}
-          </div>
-
-          {isScheduled && (
-            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 pt-2 border-t border-indigo-100/80 animate-in fade-in duration-200">
-              <span className="text-xs font-semibold text-slate-700 whitespace-nowrap">
-                Date et heure d&apos;expédition programmée :
-              </span>
-              <input
-                type="datetime-local"
-                value={scheduledFor}
-                onChange={(e) => setScheduledFor(e.target.value)}
-                min={new Date(Date.now() + 60000).toISOString().slice(0, 16)}
-                className="px-3 py-1.5 bg-white border border-indigo-200 rounded-xl text-xs font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                required={isScheduled}
-              />
-            </div>
-          )}
-        </div>
-
         {/* Bouton d'action */}
         <div className="pt-2 flex items-center justify-end gap-3 border-t border-slate-100">
           <button
@@ -714,12 +652,7 @@ export default function AdminNotificationSender({ classes, teachers }: AdminNoti
             {isSending ? (
               <>
                 <Loader2 className="h-4 w-4 animate-spin" />
-                <span>{isScheduled ? "Planification en cours..." : "Envoi en cours..."}</span>
-              </>
-            ) : isScheduled ? (
-              <>
-                <Clock className="h-4 w-4" />
-                <span>Programmer l&apos;envoi</span>
+                <span>Envoi en cours...</span>
               </>
             ) : (
               <>

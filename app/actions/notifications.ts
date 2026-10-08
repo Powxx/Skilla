@@ -126,7 +126,6 @@ export async function sendAdminNotification(data: {
   message: string;
   type?: "INFO" | "WARNING" | "SUCCESS" | "ERROR";
   includeParents?: boolean;
-  scheduledFor?: string; // Point 7: Date de programmation différée (format ISO ou datetime-local)
 }) {
   const session = await getServerSession(authOptions);
   if (!session?.user?.id || (session.user.role !== "ADMIN" && session.user.role !== "SUPER_ADMIN")) 
@@ -134,41 +133,6 @@ export async function sendAdminNotification(data: {
   
   const senderName = "Administration";
   const notifType = data.type || "INFO";
-
-  // Point 7 : Si une date de programmation est spécifiée dans le futur
-  if (data.scheduledFor) {
-    const scheduledDate = new Date(data.scheduledFor);
-    if (isNaN(scheduledDate.getTime())) {
-      throw new Error("Date de programmation invalide.");
-    }
-    if (scheduledDate.getTime() <= Date.now()) {
-      throw new Error("La date de programmation doit être située dans le futur.");
-    }
-
-    const scheduled = await prisma.scheduledNotification.create({
-      data: {
-        title: data.title,
-        message: data.message,
-        type: notifType,
-        target: data.target,
-        targetClassId: data.classId || null,
-        targetUserId: data.teacherId || null,
-        includeParents: Boolean(data.includeParents),
-        scheduledFor: scheduledDate,
-        status: "PENDING",
-        senderId: session.user.id,
-      },
-    });
-
-    revalidatePath("/admin/notifications");
-    return {
-      ok: true,
-      scheduled: true,
-      id: scheduled.id,
-      scheduledFor: scheduled.scheduledFor.toISOString(),
-      recipient: `Envoi planifié pour le ${scheduledDate.toLocaleDateString("fr-FR")} à ${scheduledDate.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}`,
-    };
-  }
 
   // Point 2 : Identifiant unique de diffusion pour le suivi des accusés de lecture
   const broadcastId = `bc_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
@@ -641,97 +605,5 @@ export async function getAdminNotificationReceipts(notificationIds: string[]) {
       readAt: n.readAt ? n.readAt.toISOString() : null,
     })),
   };
-}
-
-/**
- * Point 7 : Récupère la liste des notifications programmées en attente ou récentes.
- */
-export async function getScheduledNotifications() {
-  const session = await getServerSession(authOptions);
-  if (!session?.user || (session.user.role !== "ADMIN" && session.user.role !== "SUPER_ADMIN")) {
-    throw new Error("Non autorisé");
-  }
-
-  const list = await prisma.scheduledNotification.findMany({
-    where: { status: "PENDING" },
-    orderBy: { scheduledFor: "asc" },
-    include: {
-      sender: {
-        select: { firstName: true, lastName: true },
-      },
-    },
-  });
-
-  return list.map((item) => ({
-    id: item.id,
-    title: item.title,
-    message: item.message,
-    type: item.type,
-    target: item.target,
-    scheduledFor: item.scheduledFor.toISOString(),
-    createdAt: item.createdAt.toISOString(),
-    status: item.status,
-    senderName: `${item.sender.firstName || ""} ${item.sender.lastName || ""}`.trim() || "Admin",
-  }));
-}
-
-/**
- * Point 7 : Annule une notification programmée en attente.
- */
-export async function cancelScheduledNotification(id: string) {
-  const session = await getServerSession(authOptions);
-  if (!session?.user || (session.user.role !== "ADMIN" && session.user.role !== "SUPER_ADMIN")) {
-    throw new Error("Non autorisé");
-  }
-
-  await prisma.scheduledNotification.update({
-    where: { id },
-    data: { status: "CANCELLED" },
-  });
-
-  revalidatePath("/admin/notifications");
-  return { ok: true };
-}
-
-/**
- * Point 7 : Traite et expédie les notifications programmées dont l'échéance est atteinte.
- */
-export async function processDueScheduledNotifications() {
-  const now = new Date();
-  const due = await prisma.scheduledNotification.findMany({
-    where: {
-      status: "PENDING",
-      scheduledFor: { lte: now },
-    },
-  });
-
-  if (due.length === 0) return { processed: 0 };
-
-  let count = 0;
-  for (const item of due) {
-    try {
-      // Envoi de la notification sans paramètre scheduledFor pour déclencher l'envoi immédiat
-      await sendAdminNotification({
-        target: item.target as any,
-        classId: item.targetClassId || undefined,
-        teacherId: item.targetUserId || undefined,
-        title: item.title,
-        message: item.message,
-        type: item.type as any,
-        includeParents: item.includeParents,
-      });
-
-      await prisma.scheduledNotification.update({
-        where: { id: item.id },
-        data: { status: "SENT", sentAt: new Date() },
-      });
-      count++;
-    } catch (err) {
-      console.error(`[processDueScheduledNotifications] Error processing ${item.id}:`, err);
-    }
-  }
-
-  revalidatePath("/admin/notifications");
-  return { processed: count };
 }
 

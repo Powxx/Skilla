@@ -10,17 +10,10 @@ import AdminNotificationsHistory, {
 } from "@/components/notifications/AdminNotificationsHistory";
 import { GraduationCap, Users, Bell, School } from "lucide-react";
 
-import { cancelScheduledNotification } from "@/app/actions/notifications";
-
 async function deleteLog(id: string) {
   "use server";
   await prisma.classNotificationLog.delete({ where: { id } });
   revalidatePath("/admin/notifications");
-}
-
-async function cancelScheduledLog(id: string) {
-  "use server";
-  await cancelScheduledNotification(id);
 }
 
 export default async function AdminNotificationsPage() {
@@ -30,7 +23,7 @@ export default async function AdminNotificationsPage() {
     redirect("/login");
   }
 
-  const [logs, classes, teachers, adminNotifsRaw, scheduledRaw] = await Promise.all([
+  const [logs, classes, teachers, adminNotifsRaw] = await Promise.all([
     prisma.classNotificationLog.findMany({
       include: {
         sender: { select: { firstName: true, lastName: true } },
@@ -55,13 +48,6 @@ export default async function AdminNotificationsPage() {
       },
       orderBy: { createdAt: "desc" },
       take: 250
-    }),
-    prisma.scheduledNotification.findMany({
-      where: { status: "PENDING" },
-      include: {
-        sender: { select: { firstName: true, lastName: true } }
-      },
-      orderBy: { scheduledFor: "asc" }
     })
   ]);
 
@@ -165,18 +151,6 @@ export default async function AdminNotificationsPage() {
     message: l.message
   }));
 
-  const scheduledLogs = scheduledRaw.map((s) => ({
-    id: s.id,
-    title: s.title,
-    message: s.message,
-    type: s.type,
-    target: s.target,
-    scheduledFor: s.scheduledFor.toISOString(),
-    createdAt: s.createdAt.toISOString(),
-    status: s.status,
-    senderName: `${s.sender.firstName ?? ""} ${s.sender.lastName ?? ""}`.trim() || "Admin",
-  }));
-
   return (
     <div className="p-6 sm:p-8 max-w-7xl mx-auto space-y-8">
       {/* En-tête */}
@@ -208,13 +182,11 @@ export default async function AdminNotificationsPage() {
       {/* Module d'envoi principal */}
       <AdminNotificationSender classes={classes} teachers={teachers} />
 
-      {/* Historique complet des notifications avec accusés et programmation */}
+      {/* Historique complet des notifications */}
       <AdminNotificationsHistory 
         adminLogs={adminLogs} 
         classLogs={classLogs}
-        scheduledLogs={scheduledLogs}
         onDeleteClassLog={deleteLog}
-        onCancelScheduledLog={cancelScheduledLog}
       />
     </div>
   );

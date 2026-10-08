@@ -23,7 +23,6 @@ import {
   Calendar,
   Check,
   Loader2,
-  CalendarClock,
   ShieldCheck
 } from "lucide-react";
 import { deleteAdminNotification, getAdminNotificationReceipts } from "@/app/actions/notifications";
@@ -84,34 +83,18 @@ export type ClassLogRecord = {
   message: string;
 };
 
-export type ScheduledNotificationRecord = {
-  id: string;
-  title: string;
-  message: string;
-  type: string;
-  target: string;
-  scheduledFor: string;
-  createdAt: string;
-  status: string;
-  senderName: string;
-};
-
 interface AdminNotificationsHistoryProps {
   adminLogs: AdminNotificationRecord[];
   classLogs: ClassLogRecord[];
-  scheduledLogs?: ScheduledNotificationRecord[];
   onDeleteClassLog: (id: string) => Promise<void>;
-  onCancelScheduledLog?: (id: string) => Promise<void>;
 }
 
 export default function AdminNotificationsHistory({
   adminLogs,
   classLogs,
-  scheduledLogs = [],
   onDeleteClassLog,
-  onCancelScheduledLog,
 }: AdminNotificationsHistoryProps) {
-  const [tab, setTab] = useState<"ADMIN" | "CLASSES" | "SCHEDULED">("ADMIN");
+  const [tab, setTab] = useState<"ADMIN" | "CLASSES">("ADMIN");
   const [search, setSearch] = useState<string>("");
   const [isDeleting, setIsDeleting] = useState<string | null>(null);
   const [mounted, setMounted] = useState(false);
@@ -171,16 +154,6 @@ export default function AdminNotificationsHistory({
     );
   });
 
-  const filteredScheduledLogs = scheduledLogs.filter((log) => {
-    if (!search.trim()) return true;
-    const q = search.toLowerCase();
-    return (
-      log.title.toLowerCase().includes(q) ||
-      log.message.toLowerCase().includes(q) ||
-      log.target.toLowerCase().includes(q)
-    );
-  });
-
   const handleDeleteAdminNotif = async (ids: string[]) => {
     if (!confirm("Êtes-vous sûr de vouloir supprimer cette notification ?")) return;
     setIsDeleting(ids[0]);
@@ -204,13 +177,6 @@ export default function AdminNotificationsHistory({
       alert("Erreur lors de la suppression.");
     } finally {
       setIsDeleting(null);
-    }
-  };
-
-  const handleCancelScheduled = async (id: string) => {
-    if (!confirm("Voulez-vous vraiment annuler cette notification programmée ?")) return;
-    if (onCancelScheduledLog) {
-      await onCancelScheduledLog(id);
     }
   };
 
@@ -280,7 +246,7 @@ export default function AdminNotificationsHistory({
             Historique & Suivi des notifications
           </h3>
           <p className="text-xs text-slate-500 mt-0.5">
-            Suivi des envois de la direction, accusés de lecture et programmations différées.
+            Suivi des envois de la direction et accusés de lecture.
           </p>
         </div>
 
@@ -318,17 +284,6 @@ export default function AdminNotificationsHistory({
             >
               <GraduationCap className="h-3.5 w-3.5" />
               <span>Classes ({classLogs.length})</span>
-            </button>
-            <button
-              onClick={() => setTab("SCHEDULED")}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
-                tab === "SCHEDULED"
-                  ? "bg-white text-indigo-700 shadow-sm"
-                  : "text-slate-600 hover:text-slate-900"
-              }`}
-            >
-              <CalendarClock className="h-3.5 w-3.5 text-indigo-600" />
-              <span>Programmées ({scheduledLogs.length})</span>
             </button>
           </div>
         </div>
@@ -564,84 +519,6 @@ export default function AdminNotificationsHistory({
                             <span className="hidden sm:inline">Supprimer</span>
                           </button>
                         </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          )}
-        </div>
-      )}
-
-      {/* Point 7 : Onglet Notifications Programmées */}
-      {tab === "SCHEDULED" && (
-        <div className="overflow-x-auto overflow-y-auto max-h-[620px] min-h-[280px] custom-scrollbar">
-          {filteredScheduledLogs.length === 0 ? (
-            <div className="p-12 text-center">
-              <CalendarClock className="h-8 w-8 text-indigo-300 mx-auto mb-2" />
-              <p className="text-sm font-semibold text-slate-600">Aucun envoi programmé en attente</p>
-              <p className="text-xs text-slate-400 mt-1">
-                {search ? "Aucun résultat ne correspond à votre recherche." : "Lorsque vous planifiez un envoi différé, il apparaîtra ici jusqu'à sa date d'expédition."}
-              </p>
-            </div>
-          ) : (
-            <table className="w-full text-left text-sm">
-              <thead className="sticky top-0 bg-white/95 backdrop-blur z-10">
-                <tr className="border-b border-slate-100 bg-slate-50/80 text-[11px] uppercase font-bold text-slate-500 tracking-wider">
-                  <th className="py-3 px-6">Date de tir prévue</th>
-                  <th className="py-3 px-4">Cible</th>
-                  <th className="py-3 px-4">Titre</th>
-                  <th className="py-3 px-4">Message</th>
-                  <th className="py-3 px-4">Planifié par</th>
-                  <th className="py-3 px-6 text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {filteredScheduledLogs.map((item) => {
-                  const scheduledDate = new Date(item.scheduledFor);
-                  const scheduledStr = format(scheduledDate, "dd/MM/yyyy HH:mm", { locale: fr });
-                  const isFuture = scheduledDate > new Date();
-
-                  return (
-                    <tr key={item.id} className="hover:bg-slate-50/70 transition-colors">
-                      <td className="py-4 px-6 whitespace-nowrap text-xs font-bold text-indigo-900">
-                        <div className="flex items-center gap-1.5">
-                          <Clock className="w-3.5 h-3.5 text-indigo-600" />
-                          <span>{scheduledStr}</span>
-                          <span className={`ml-2 text-[10px] px-2 py-0.5 rounded-full border ${
-                            isFuture ? "bg-indigo-50 text-indigo-700 border-indigo-200" : "bg-amber-50 text-amber-700 border-amber-200"
-                          }`}>
-                            {isFuture ? "En attente" : "En cours d'envoi"}
-                          </span>
-                        </div>
-                      </td>
-
-                      <td className="py-4 px-4 whitespace-nowrap text-xs font-semibold text-slate-700">
-                        {item.target}
-                      </td>
-
-                      <td className="py-4 px-4 font-bold text-xs text-slate-900 max-w-[200px] truncate">
-                        {item.title}
-                      </td>
-
-                      <td className="py-4 px-4 text-xs text-slate-600 max-w-[280px] truncate">
-                        {item.message}
-                      </td>
-
-                      <td className="py-4 px-4 whitespace-nowrap text-xs text-slate-500">
-                        {item.senderName}
-                      </td>
-
-                      <td className="py-4 px-6 text-right whitespace-nowrap">
-                        <button
-                          type="button"
-                          onClick={() => handleCancelScheduled(item.id)}
-                          className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-bold text-rose-600 hover:bg-rose-50 rounded-xl transition border border-rose-200"
-                        >
-                          <X className="w-3.5 h-3.5" />
-                          Annuler l&apos;envoi
-                        </button>
                       </td>
                     </tr>
                   );
