@@ -92,7 +92,7 @@ export default async function TeacherGradesPage() {
   return (
     <>
       <div className="border-b border-slate-200/90 bg-white/90 backdrop-blur-sm mb-8">
-        <div className="mx-auto max-w-5xl py-3 px-4 text-sm text-slate-600 flex justify-between items-center">
+        <div className="mx-auto max-w-7xl xl:max-w-[1440px] py-3 px-4 sm:px-6 lg:px-8 text-sm text-slate-600 flex justify-between items-center">
           <div>
             <span className="text-slate-500 font-medium">Parcours :</span>{" "}
             Saisie groupée par classe & matière → Sujet libre → Enregistrement direct

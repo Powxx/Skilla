@@ -112,7 +112,7 @@ export async function saveGradesBatch(
       }
     }
 
-    // Resolve Semesters
+    // Resolve Semesters - Détection automatique prioritaire selon la date de la note
     const semCache = new Map<string, string>(); // date(iso) -> semesterId
 
     const resolvedEntries = await Promise.all(entries.map(async (e) => {
@@ -120,18 +120,35 @@ export async function saveGradesBatch(
         const dateKey = noteDate.toISOString().split('T')[0];
         
         if (!semCache.has(dateKey)) {
-            const sem = await prisma.semester.findFirst({
+            // 1. Chercher en priorité le semestre dont la période englobe noteDate
+            let sem = await prisma.semester.findFirst({
                 where: {
                   startDate: { lte: noteDate },
                   endDate: { gte: noteDate }
                 },
                 select: { id: true }
-            }) || await prisma.semester.findFirst({ orderBy: { startDate: 'desc' } });
+            });
+
+            // 2. Si non trouvé par date stricte, tester l'identifiant de semestre éventuellement fourni
+            if (!sem && e.semesterId) {
+                sem = await prisma.semester.findUnique({
+                    where: { id: e.semesterId },
+                    select: { id: true }
+                });
+            }
+
+            // 3. Repli de sécurité : dernier semestre actif en base
+            if (!sem) {
+                sem = await prisma.semester.findFirst({ 
+                    orderBy: { startDate: 'desc' },
+                    select: { id: true }
+                });
+            }
             
             if (!sem) throw new Error("Aucun semestre défini en base.");
             semCache.set(dateKey, sem.id);
         }
-        return { ...e, semesterId: e.semesterId || semCache.get(dateKey)!, noteDate };
+        return { ...e, semesterId: semCache.get(dateKey)!, noteDate };
     }));
 
     await prisma.$transaction(
