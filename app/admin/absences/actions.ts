@@ -25,6 +25,8 @@ export type LessonWithAttendancePayload = {
   startTime: string;
   endTime: string;
   isAttendanceValidated: boolean;
+  isAttendanceFinalized: boolean;
+  attendanceFinalizedAt?: string | null;
   presentCount: number;
   absentCount: number;
   lateCount: number;
@@ -121,7 +123,7 @@ export async function getAdminLessonsWithAttendance(filters?: {
       }
     },
     orderBy: { startTime: 'desc' },
-    take: 120
+    take: 250
   });
 
   return lessons.map((lesson) => {
@@ -131,6 +133,8 @@ export async function getAdminLessonsWithAttendance(filters?: {
     const className = lesson.class?.name || "Sans classe";
     const roomName = lesson.room?.name || "Non assignée";
     const isAttendanceValidated = lesson.isAttendanceValidated || lesson.attendances.length > 0;
+    const isAttendanceFinalized = lesson.isAttendanceFinalized ?? false;
+    const attendanceFinalizedAt = lesson.attendanceFinalizedAt ? lesson.attendanceFinalizedAt.toISOString() : null;
 
     // Map d'émargement existant
     const attendanceMap = new Map<string, { id: string; status: AttendanceStatus; lateDuration?: number | null; reason?: string | null; isConfirmed: boolean }>();
@@ -217,6 +221,8 @@ export async function getAdminLessonsWithAttendance(filters?: {
       startTime: lesson.startTime.toISOString(),
       endTime: lesson.endTime.toISOString(),
       isAttendanceValidated,
+      isAttendanceFinalized,
+      attendanceFinalizedAt,
       presentCount,
       absentCount,
       lateCount,
@@ -225,6 +231,57 @@ export async function getAdminLessonsWithAttendance(filters?: {
       students: filteredStudents
     };
   });
+}
+
+/**
+ * Finalise ou rouvre un appel de cours côté administration.
+ * Une fois finalisé, le cours est archivé et disparaît de la vue principale à traiter.
+ */
+export async function finalizeLessonAttendance(
+  lessonId: string,
+  isFinalized: boolean = true
+) {
+  await requireAdmin();
+
+  await prisma.lesson.update({
+    where: { id: lessonId },
+    data: {
+      isAttendanceFinalized: isFinalized,
+      attendanceFinalizedAt: isFinalized ? new Date() : null,
+      ...(isFinalized ? { isAttendanceValidated: true } : {})
+    }
+  });
+
+  revalidatePath("/admin/absences");
+  revalidatePath("/admin/dashboard");
+  return { ok: true };
+}
+
+/**
+ * Finalise plusieurs appels sélectionnés d'un coup côté administration.
+ */
+export async function finalizeMultipleLessonsAttendance(
+  lessonIds: string[],
+  isFinalized: boolean = true
+) {
+  await requireAdmin();
+
+  if (!lessonIds || lessonIds.length === 0) {
+    return { ok: true, count: 0 };
+  }
+
+  const result = await prisma.lesson.updateMany({
+    where: { id: { in: lessonIds } },
+    data: {
+      isAttendanceFinalized: isFinalized,
+      attendanceFinalizedAt: isFinalized ? new Date() : null,
+      ...(isFinalized ? { isAttendanceValidated: true } : {})
+    }
+  });
+
+  revalidatePath("/admin/absences");
+  revalidatePath("/admin/dashboard");
+  return { ok: true, count: result.count };
 }
 
 /**

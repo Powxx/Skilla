@@ -314,6 +314,8 @@ model Lesson {
   endTime               DateTime
   isCancelled           Boolean  @default(false)                /// Cours annulé par l'administration
   isAttendanceValidated Boolean  @default(false)                /// L'émargement / appel a été validé par le prof
+  isAttendanceFinalized Boolean  @default(false)                /// L'appel a été finalisé / clôturé par l'administration
+  attendanceFinalizedAt DateTime?                               /// Date et heure de finalisation de l'appel
   isFreeLesson          Boolean  @default(false)                /// Libellé libre (sans matière liée)
   customSubject         String?                                 /// Nom de matière libre si isFreeLesson est vrai
   customTeacher         String?                                 /// Nom d'intervenant libre si isFreeLesson est vrai
