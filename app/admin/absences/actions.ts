@@ -45,27 +45,8 @@ export type LessonWithAttendancePayload = {
   }>;
 };
 
-function formatStudentName(firstName?: string | null, lastName?: string | null): string {
-  const cleanLast = (lastName || "").trim();
-  const cleanFirst = (firstName || "").trim();
-  
-  if (cleanLast && cleanFirst) {
-    return `${cleanLast.toUpperCase()} ${cleanFirst.charAt(0).toUpperCase()}.`;
-  }
-  if (cleanLast) {
-    return cleanLast.toUpperCase();
-  }
-  if (cleanFirst) {
-    const parts = cleanFirst.split(/\s+/).filter(Boolean);
-    if (parts.length >= 2) {
-      const last = parts[parts.length - 1];
-      const first = parts[0];
-      return `${last.toUpperCase()} ${first.charAt(0).toUpperCase()}.`;
-    }
-    return cleanFirst.toUpperCase();
-  }
-  return "ÉLÈVE";
-}
+import { formatStudentName, formatTeacherName } from "@/lib/user-utils";
+
 
 /**
  * Récupère les cours sous forme de cartes d'appels avec les indicateurs et les élèves.
@@ -128,7 +109,7 @@ export async function getAdminLessonsWithAttendance(filters?: {
 
   return lessons.map((lesson) => {
     const teacherUser = lesson.substitute || lesson.teacher;
-    const teacherName = teacherUser ? `${teacherUser.firstName} ${teacherUser.lastName}` : "Sans prof";
+    const teacherName = teacherUser ? formatTeacherName(teacherUser.firstName, teacherUser.lastName, "Sans prof") : "Sans prof";
     const subjectName = lesson.isFreeLesson ? (lesson.customSubject || "Cours libre") : (lesson.subject?.name || "Sans matière");
     const className = lesson.class?.name || "Sans classe";
     const roomName = lesson.room?.name || "Non assignée";
@@ -346,7 +327,7 @@ export async function updateStudentAttendance(
           createNotification({
             userId: targetId,
             title: "Alerte Absence (Admin)",
-            message: `Une absence a été enregistrée pour ${student.firstName} ${student.lastName}.`,
+            message: `Une absence a été enregistrée pour ${formatStudentName(student.firstName, student.lastName)}.`,
             type: "WARNING",
             link: student.role === "STUDENT" ? "/student/absences" : undefined
           }).catch(e => console.error(e));

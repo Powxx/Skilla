@@ -59,7 +59,7 @@ export default function FamilyRelationsClient({ parents, students }: any) {
           >
             <option value="">-- Sélectionner --</option>
             {parents.map((p: any) => (
-              <option key={p.id} value={p.id}>{p.lastName} {p.firstName} ({p.email})</option>
+              <option key={p.id} value={p.id}>{(p.lastName || '').toUpperCase()} {p.firstName || ''} ({p.email})</option>
             ))}
           </select>
         </div>
@@ -73,7 +73,7 @@ export default function FamilyRelationsClient({ parents, students }: any) {
           >
             <option value="">-- Sélectionner --</option>
             {students.map((s: any) => (
-              <option key={s.id} value={s.id}>{s.lastName} {s.firstName} ({s.class?.name || 'Sans classe'})</option>
+              <option key={s.id} value={s.id}>{(s.lastName || '').toUpperCase()} {s.firstName || ''} ({s.class?.name || 'Sans classe'})</option>
             ))}
           </select>
         </div>
@@ -92,12 +92,12 @@ export default function FamilyRelationsClient({ parents, students }: any) {
               <span className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-xs text-slate-500">
                 {parent.lastName?.[0]}
               </span>
-              {parent.lastName} {parent.firstName}
+              <span className="uppercase">{parent.lastName}</span> {parent.firstName}
             </h3>
             <ul className="space-y-2">
               {parent.students.map((student: any) => (
                 <li key={student.id} className="flex justify-between items-center bg-blue-50/50 px-3 py-2 rounded-lg border border-blue-100/50">
-                  <span className="text-sm text-blue-900 font-medium">{student.lastName} {student.firstName}</span>
+                  <span className="text-sm text-blue-900 font-bold truncate max-w-[180px] sm:max-w-xs" title={`${(student.lastName || '').toUpperCase()} ${student.firstName || ''}`}><span className="uppercase">{student.lastName}</span> {student.firstName}</span>
                   <button 
                     onClick={() => handleRemoveLink(parent.id, student.id)}
                     disabled={loading === `${parent.id}-${student.id}`}

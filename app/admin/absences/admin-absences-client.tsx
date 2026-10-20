@@ -971,11 +971,11 @@ export default function AdminAbsencesClient({
                             >
                               {/* Nom de l'élève & Statut d'administration */}
                               <div className="flex items-center justify-between gap-2">
-                                <div className="flex items-center gap-2.5">
+                                <div className="flex items-center gap-2.5 min-w-0">
                                   <div className="h-7 w-7 rounded-full bg-blue-100 text-blue-700 font-black text-xs flex items-center justify-center shrink-0 uppercase border border-blue-200">
                                     {student.formattedName ? student.formattedName.charAt(0) : '?'}
                                   </div>
-                                  <span className="text-xs font-black text-slate-900 tracking-wide">
+                                  <span className="text-xs font-black text-slate-900 tracking-wide truncate max-w-[160px] sm:max-w-none" title={student.formattedName}>
                                     {student.formattedName}
                                   </span>
                                 </div>
@@ -1201,12 +1201,12 @@ export default function AdminAbsencesClient({
                           type="button"
                           onClick={() => {
                             setSelectedStudentForCard(s.id);
-                            setStudentSearchQuery(s.formattedName || `${(s.lastName || '').toUpperCase()} ${(s.firstName || '').charAt(0).toUpperCase()}.`);
+                            setStudentSearchQuery(s.formattedName || `${(s.lastName || '').toUpperCase()} ${s.firstName || ''}`);
                             setSearchResults([]);
                           }}
                           className="w-full text-left p-2.5 text-xs font-bold hover:bg-blue-50 transition flex justify-between items-center"
                         >
-                          <span>{s.formattedName || `${(s.lastName || '').toUpperCase()} ${(s.firstName || '').charAt(0).toUpperCase()}.`}</span>
+                          <span className="truncate max-w-[200px]" title={s.formattedName || `${(s.lastName || '').toUpperCase()} ${s.firstName || ''}`}>{s.formattedName || `${(s.lastName || '').toUpperCase()} ${s.firstName || ''}`}</span>
                           <span className="text-[9px] text-slate-400 uppercase">{s.class?.name || "Sans classe"}</span>
                         </button>
                       ))}

@@ -143,7 +143,7 @@ function SanctionComments({
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex-1 min-w-0">
                     <p className="text-[10px] font-black text-slate-500 uppercase tracking-wide">
-                      {c.author.firstName} {c.author.lastName}
+                      <span className="uppercase">{c.author.lastName}</span> {c.author.firstName}
                       <span className="text-slate-400 font-bold ml-1.5">· {roleLabel(c.author.role)}</span>
                     </p>
                     <p className="text-slate-700 font-medium mt-0.5 whitespace-pre-line">{c.body}</p>
@@ -267,8 +267,8 @@ export default function SanctionsPortalList({
                   <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none">
                     Décidé par
                   </p>
-                  <p className="text-xs font-bold text-slate-800 mt-1">
-                    M. / Mme. {s.givenBy.lastName}
+                  <p className="text-xs font-bold text-slate-800 mt-1 truncate max-w-[180px]" title={`M. / Mme. ${(s.givenBy.lastName || "").toUpperCase()} ${s.givenBy.firstName || ""}`}>
+                    M. / Mme. <span className="uppercase">{s.givenBy.lastName}</span> {s.givenBy.firstName}
                   </p>
                 </div>
               </div>

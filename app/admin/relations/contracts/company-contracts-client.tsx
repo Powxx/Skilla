@@ -53,7 +53,7 @@ export default function CompanyContractsClient({ initialContracts, students, tut
             <label className="text-[10px] uppercase font-bold text-slate-500 mb-1 block">Élève</label>
             <select required className="w-full rounded-xl border-slate-200 text-sm" value={form.studentId} onChange={e => setForm({...form, studentId: e.target.value})}>
               <option value="">-- Sélectionner l'élève --</option>
-              {students.map((s: any) => <option key={s.id} value={s.id}>{s.lastName} {s.firstName}</option>)}
+              {students.map((s: any) => <option key={s.id} value={s.id}>{(s.lastName || '').toUpperCase()} {s.firstName || ''}</option>)}
             </select>
           </div>
           <div>
@@ -73,7 +73,7 @@ export default function CompanyContractsClient({ initialContracts, students, tut
               }}
             >
               <option value="">-- Sélectionner le tuteur --</option>
-              {tutors.map((t: any) => <option key={t.id} value={t.id}>{t.lastName} {t.firstName}</option>)}
+              {tutors.map((t: any) => <option key={t.id} value={t.id}>{(t.lastName || '').toUpperCase()} {t.firstName || ''}</option>)}
             </select>
           </div>
           <div>
@@ -121,11 +121,15 @@ export default function CompanyContractsClient({ initialContracts, students, tut
             {initialContracts.map((c: any) => (
               <tr key={c.id} className="hover:bg-slate-50/50 transition">
                 <td className="px-6 py-4">
-                  <p className="font-bold text-slate-900 text-sm">{c.student.lastName} {c.student.firstName}</p>
+                  <p className="font-bold text-slate-900 text-sm truncate max-w-[180px] sm:max-w-none" title={`${(c.student.lastName || '').toUpperCase()} ${c.student.firstName || ''}`}>
+                    <span className="uppercase">{c.student.lastName}</span> {c.student.firstName}
+                  </p>
                 </td>
                 <td className="px-6 py-4">
                   <p className="text-sm font-semibold text-slate-800">{c.companyName}</p>
-                  <p className="text-xs text-slate-500">Tuteur: {c.tutor.lastName} {c.tutor.firstName}</p>
+                  <p className="text-xs text-slate-500 truncate" title={`Tuteur: ${(c.tutor.lastName || '').toUpperCase()} ${c.tutor.firstName || ''}`}>
+                    Tuteur: <span className="uppercase font-semibold">{c.tutor.lastName}</span> {c.tutor.firstName}
+                  </p>
                 </td>
                 <td className="px-6 py-4">
                   <span className="text-xs font-medium text-slate-600 bg-slate-100 px-2 py-1 rounded">

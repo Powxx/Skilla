@@ -1,12 +1,7 @@
 import prisma from "@/lib/prisma";
 
-export function formatStudentName(firstName?: string | null, lastName?: string | null): string {
-  const cleanLast = (lastName || "").trim();
-  const firstInitial = (firstName || "").trim().charAt(0);
-  if (!cleanLast) return firstName || "Élève";
-  if (!firstInitial) return cleanLast;
-  return `${cleanLast} ${firstInitial.toUpperCase()}.`;
-}
+import { formatStudentName, formatTeacherName, formatUserName } from "@/lib/user-utils";
+export { formatStudentName };
 
 export async function loadEmployerDashboardPayload(tutorId: string) {
   const now = new Date();
@@ -63,7 +58,7 @@ export async function loadEmployerDashboardPayload(tutorId: string) {
       return {
         studentId: student.id,
         name: formattedName,
-        fullName: `${student.firstName} ${student.lastName}`.trim(),
+        fullName: formatUserName(student.firstName, student.lastName, "Élève"),
         class: student.class?.name || "N/A",
         contractType: c.type,
         endDate: c.endDate.toISOString(),
@@ -80,7 +75,7 @@ export async function loadEmployerDashboardPayload(tutorId: string) {
             startTime: l.startTime.toISOString(),
             endTime: l.endTime.toISOString(),
             room: l.room?.name || "N/A",
-            teacher: teacherUser ? `${teacherUser.lastName} ${teacherUser.firstName?.charAt(0)}.` : "Sans prof"
+            teacher: teacherUser ? formatTeacherName(teacherUser.firstName, teacherUser.lastName, "Sans prof") : "Sans prof"
           };
         }),
         skills: student.evaluations.map(e => ({

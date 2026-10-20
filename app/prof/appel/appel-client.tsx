@@ -184,19 +184,21 @@ export default function AppelClient({ initialLessons }: { initialLessons: any[] 
             {students.map((s) => {
               const st = states[s.id] || "present";
               return (
-                <li key={s.id} className="flex items-center justify-between px-6 py-4 hover:bg-slate-50/50 transition">
-                  <div className="flex items-center gap-3">
-                    <div className="h-8 w-8 rounded-full bg-slate-100 flex items-center justify-center text-xs font-bold text-slate-500">
+                <li key={s.id} className="flex items-center justify-between gap-3 px-4 sm:px-6 py-3 sm:py-4 hover:bg-slate-50/50 transition">
+                  <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+                    <div className="h-8 w-8 rounded-full bg-slate-100 flex items-center justify-center text-xs font-bold text-slate-500 shrink-0">
                       {s.user.lastName?.[0]}{s.user.firstName?.[0]}
                     </div>
-                    <div>
-                      <p className="font-semibold text-slate-900">{s.user.lastName} {s.user.firstName?.[0]}.</p>
+                    <div className="min-w-0">
+                      <p className="font-bold text-slate-900 text-xs sm:text-sm truncate" title={`${(s.user.lastName || '').toUpperCase()} ${s.user.firstName || ''}`}>
+                        <span className="uppercase">{s.user.lastName}</span> {s.user.firstName}
+                      </p>
                       <p className={`text-[10px] font-bold uppercase ${st === 'present' ? 'text-emerald-600' : st === 'absent' ? 'text-red-600' : 'text-orange-600'}`}>
                         {st === 'present' ? 'Présent' : st === 'absent' ? 'Absent' : 'En retard'}
                       </p>
                     </div>
                   </div>
-                  <div className="flex gap-2">
+                  <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
                     <button
                       onClick={() => setPresence(s.id, st === "absent" ? "present" : "absent")}
                       className={`px-4 py-1.5 rounded-lg text-xs font-bold transition ${st === "absent" ? "bg-red-600 text-white shadow-md" : "bg-red-50 text-red-700 hover:bg-red-100"}`}

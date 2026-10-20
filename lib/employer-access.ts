@@ -1,4 +1,5 @@
 import prisma from "@/lib/prisma";
+import { formatStudentName } from "@/lib/user-utils";
 
 /**
  * Extrait la première valeur d'un paramètre de requête HTTP (Query Parameter).
@@ -34,7 +35,7 @@ export async function listTutorStudentsSerialized(tutorId: string) {
 
   return contracts.map((c) => ({
     id: c.student.id,
-    label: `${c.student.lastName} ${c.student.firstName}`,
+    label: formatStudentName(c.student.firstName, c.student.lastName),
   }));
 }
 

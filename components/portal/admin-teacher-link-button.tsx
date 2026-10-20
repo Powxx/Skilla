@@ -64,11 +64,11 @@ export default function AdminTeacherLinkButton({ variant }: { variant?: string }
           <Link
             href="/prof"
             className="h-9 px-3 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200/80 text-[11px] font-black flex items-center gap-2 transition shadow-sm"
-            title={`Espace professeur de ${linkedTeacher.firstName} ${linkedTeacher.lastName}`}
+            title={`Espace professeur de ${(linkedTeacher.lastName || '').toUpperCase()} ${linkedTeacher.firstName || ''}`}
           >
             <span className="text-xs">👨‍🏫</span>
             <span className="truncate max-w-[120px] sm:max-w-[160px]">
-              Prof. {linkedTeacher.lastName}
+              Prof. {(linkedTeacher.lastName || '').toUpperCase()} {linkedTeacher.firstName || ''}
             </span>
             <ArrowRight className="h-3 w-3 opacity-60" />
           </Link>
@@ -125,7 +125,7 @@ export default function AdminTeacherLinkButton({ variant }: { variant?: string }
                 <option value="">-- Aucun (Délier) --</option>
                 {teachers.map((t) => (
                   <option key={t.id} value={t.id}>
-                    {t.firstName} {t.lastName} ({t.email || "Sans email"})
+                    {(t.lastName || '').toUpperCase()} {t.firstName || ''} ({t.email || "Sans email"})
                   </option>
                 ))}
               </select>

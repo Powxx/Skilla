@@ -40,7 +40,7 @@ export default async function AdminReportCardsPage() {
         </header>
 
         <ReportCardClient 
-          students={students.map(s => ({ id: s.id, name: `${s.lastName} ${s.firstName}`, className: s.class?.name || "N/A", classId: s.class?.id }))} 
+          students={students.map(s => ({ id: s.id, name: `${(s.lastName || '').toUpperCase()} ${s.firstName || ''}`, className: s.class?.name || "N/A", classId: s.class?.id }))} 
           semesters={semesters.map(s => ({ id: s.id, name: s.name, schoolYear: s.schoolYear?.name ?? null }))}
           initialClasses={classes}
         />

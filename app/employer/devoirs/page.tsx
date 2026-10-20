@@ -107,7 +107,7 @@ export default async function EmployerDevoirsPage({
       const teacherName = l.isFreeLesson
         ? l.customTeacher || "Intervenant"
         : teacherObj
-        ? `${teacherObj.firstName} ${teacherObj.lastName}`
+        ? `${(teacherObj.lastName || '').toUpperCase()} ${teacherObj.firstName || ''}`
         : "";
 
       return {
@@ -123,7 +123,7 @@ export default async function EmployerDevoirsPage({
 
   return (
     <ParentDevoirsClient
-      studentName={`${student.firstName} ${student.lastName}`}
+      studentName={`${(student.lastName || '').toUpperCase()} ${student.firstName || ''}`}
       className={student.class?.name || "Classe"}
       homeworks={validHomeworks}
       subjects={subjects}

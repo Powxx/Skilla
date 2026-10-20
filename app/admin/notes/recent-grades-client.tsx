@@ -394,7 +394,11 @@ export default function RecentGradesClient({
 
                         {/* Teacher Name */}
                         <td className="py-3.5 px-4 text-slate-700 font-bold">
-                          {grade.teacher ? `${grade.teacher.firstName} ${grade.teacher.lastName}` : "Non spécifié"}
+                          {grade.teacher ? (
+                            <span className="truncate block max-w-[150px]" title={`${(grade.teacher.lastName || '').toUpperCase()} ${grade.teacher.firstName || ''}`}>
+                              <span className="uppercase">{grade.teacher.lastName}</span> {grade.teacher.firstName}
+                            </span>
+                          ) : "Non spécifié"}
                         </td>
 
                         {/* Comment */}

@@ -54,7 +54,9 @@ export default function GradeGridClient({ classes, teacherId, subjectId }: { cla
                         <tbody className="divide-y divide-slate-100">
                             {classData.students.map((student: any) => (
                                 <tr key={student.id} className="hover:bg-slate-50/50">
-                                    <td className="px-6 py-4 font-medium text-slate-900">{student.lastName} {student.firstName}</td>
+                                    <td className="px-6 py-4 font-bold text-slate-900 truncate max-w-[160px] sm:max-w-none" title={`${(student.lastName || '').toUpperCase()} ${student.firstName || ''}`}>
+                                      <span className="uppercase">{student.lastName}</span> {student.firstName}
+                                    </td>
                                     <td className="px-6 py-4">
                                         <input 
                                             type="number" 

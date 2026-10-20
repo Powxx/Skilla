@@ -5,6 +5,7 @@ import { authOptions } from "@/lib/auth-options";
 import prisma from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { AdminIdeaCategory, AdminIdeaStatus } from "@prisma/client";
+import { formatUserName } from "@/lib/user-utils";
 
 function canAccessAdminIdeas(session: any) {
   if (!session?.user?.id) return false;
@@ -46,7 +47,7 @@ export async function createAdminIdea(data: {
     where: { id: session.user.id },
     select: { firstName: true, lastName: true },
   });
-  const authorName = author ? `${author.firstName || ""} ${author.lastName || ""}`.trim() || "Un administrateur" : "Un administrateur";
+  const authorName = author ? formatUserName(author.firstName, author.lastName, "Un administrateur") : "Un administrateur";
 
   const idea = await prisma.adminIdea.create({
     data: {

@@ -37,7 +37,9 @@ export default async function AdminDispensesPage({ searchParams }: { searchParam
                 <tbody>
                     {selectedClass.students.map(student => (
                         <tr key={student.id} className="border-t">
-                            <td className="p-3 font-medium">{student.lastName} {student.firstName}</td>
+                            <td className="p-3 font-bold truncate max-w-[160px] sm:max-w-xs" title={`${(student.lastName || '').toUpperCase()} ${student.firstName || ''}`}>
+                              <span className="uppercase">{student.lastName}</span> {student.firstName}
+                            </td>
                             {subjects.map(s => {
                                 const isDispensed = student.dispensations.some(d => d.subjectId === s.id);
                                 return (

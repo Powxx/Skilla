@@ -192,7 +192,9 @@ export default function SanctionsAdminClient({ initialSanctions, initialTypes, s
                 ) : filteredSanctions.map((s) => (
                   <tr key={s.id} className="hover:bg-slate-50/50 transition">
                     <td className="px-5 py-4">
-                      <div className="font-black text-slate-900">{s.student.lastName} {s.student.firstName}</div>
+                      <div className="font-black text-slate-900 truncate max-w-[160px] sm:max-w-none" title={`${(s.student.lastName || "").toUpperCase()} ${s.student.firstName || ""}`}>
+                        <span className="uppercase">{s.student.lastName}</span> {s.student.firstName}
+                      </div>
                       <div className="text-[10px] text-slate-400 uppercase font-bold">{s.student.class?.name || "Sans classe"}</div>
                       {pointsEnabled && (
                         <div className="text-[10px] font-black text-slate-500 mt-0.5 flex items-center gap-1">
@@ -219,7 +221,9 @@ export default function SanctionsAdminClient({ initialSanctions, initialTypes, s
                       </select>
                     </td>
                     <td className="px-5 py-4">
-                      <div className="font-bold text-slate-800">{s.givenBy.lastName}</div>
+                      <div className="font-bold text-slate-800 truncate max-w-[140px] sm:max-w-none" title={`${(s.givenBy.lastName || "").toUpperCase()} ${s.givenBy.firstName || ""}`}>
+                        <span className="uppercase">{s.givenBy.lastName}</span> {s.givenBy.firstName}
+                      </div>
                       <div className="text-[9px] text-slate-400 uppercase font-bold">{s.givenBy.role === "TEACHER" ? "Professeur" : "Admin"}</div>
                     </td>
                     <td className="px-5 py-4">

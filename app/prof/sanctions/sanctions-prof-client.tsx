@@ -198,8 +198,8 @@ export default function SanctionsProfClient({
                   return (
                     <tr key={s.id} className="hover:bg-slate-50/50 transition">
                       <td className="px-6 py-4">
-                        <div className="font-black text-slate-900">
-                          {s.student.lastName} {s.student.firstName}
+                        <div className="font-black text-slate-900 truncate max-w-[160px] sm:max-w-none" title={`${(s.student.lastName || '').toUpperCase()} ${s.student.firstName || ''}`}>
+                          <span className="uppercase">{s.student.lastName}</span> {s.student.firstName}
                         </div>
                         <div className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter mt-0.5">
                           {s.student.class?.name || "Sans classe"}

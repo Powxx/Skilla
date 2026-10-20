@@ -4,6 +4,7 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth-options";
 import prisma from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
+import { formatStudentName } from "@/lib/user-utils";
 
 /**
  * Permet à un élève de cocher / décocher un devoir comme fait.
@@ -114,11 +115,11 @@ export async function getLessonHomeworkStats(lessonId: string) {
 
   lesson.homeworkCompletions.forEach((hc) => {
     const studentName = hc.student
-      ? `${hc.student.lastName || ""} ${hc.student.firstName || ""}`.trim()
+      ? formatStudentName(hc.student.firstName, hc.student.lastName, "Élève")
       : "Élève";
     completedList.push({
       id: hc.studentId,
-      name: studentName || "Élève",
+      name: studentName,
       completedAt: hc.completedAt.toISOString(),
     });
     completedStudentIds.add(hc.studentId);
@@ -128,7 +129,7 @@ export async function getLessonHomeworkStats(lessonId: string) {
     .filter((s) => !completedStudentIds.has(s.id))
     .map((s) => ({
       id: s.id,
-      name: `${s.lastName || ""} ${s.firstName || ""}`.trim() || "Élève",
+      name: formatStudentName(s.firstName, s.lastName, "Élève"),
     }));
 
   const total = Math.max(classStudents.length, completedList.length);

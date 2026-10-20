@@ -126,7 +126,9 @@ function GradeRow({
   return (
     <tr key={g.id} className={`hover:bg-slate-50/80 transition-colors ${editingGradeId === g.id ? 'bg-sky-50/40' : ''}`}>
       <td className="px-6 py-4">
-        <div className="font-bold text-slate-900">{g.student?.lastName} {g.student?.firstName}</div>
+        <div className="font-bold text-slate-900 truncate max-w-[160px] sm:max-w-none" title={`${(g.student?.lastName || '').toUpperCase()} ${g.student?.firstName || ''}`}>
+          <span className="uppercase">{g.student?.lastName}</span> {g.student?.firstName}
+        </div>
         <div className="text-[11px] text-slate-500">{g.student?.class?.name || "Sans classe"}</div>
       </td>
       <td className="px-6 py-4">
@@ -460,7 +462,7 @@ export default function GradeEntryClient({
 
       const parsed = parseNote(raw);
       if (parsed === null || parsed < 0 || parsed > numericScale) {
-        invalidRows.push(`${student.lastName} ${student.firstName} ("${raw}")`);
+        invalidRows.push(`${(student.lastName || '').toUpperCase()} ${student.firstName} ("${raw}")`);
         continue;
       }
 
@@ -965,7 +967,7 @@ export default function GradeEntryClient({
                   <span className="font-bold">
                     {dispensedStudents.length} élève{dispensedStudents.length > 1 ? "s" : ""} dispensé{dispensedStudents.length > 1 ? "s" : ""}
                   </span>{" "}
-                  de cette matière ({dispensedStudents.map(d => `${d.lastName} ${d.firstName}`).join(", ")}) —{" "}
+                  de cette matière ({dispensedStudents.map(d => `${(d.lastName || '').toUpperCase()} ${d.firstName}`).join(", ")}) —{" "}
                   <span className="text-amber-700">automatiquement exclu{dispensedStudents.length > 1 ? "s" : ""} de la liste de notation</span>.
                 </div>
               </div>

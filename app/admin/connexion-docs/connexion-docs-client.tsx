@@ -8,7 +8,7 @@ export default function ConnexionDocsClient({ users }: { users: User[] }) {
   const [filter, setFilter] = useState("");
 
   const downloadFile = (user: User) => {
-    const content = `Informations de connexion - Skilla\n\nNom: ${user.lastName || ''} ${user.firstName || ''}\nIdentifiant: ${user.email || 'N/A'}\nLien: skilla.ecm-academie.com\nMot de passe: Veuillez réinitialiser si nécessaire.`;
+    const content = `Informations de connexion - Skilla\n\nNom: ${(user.lastName || '').toUpperCase()} ${user.firstName || ''}\nIdentifiant: ${user.email || 'N/A'}\nLien: skilla.ecm-academie.com\nMot de passe: Veuillez réinitialiser si nécessaire.`;
     const blob = new Blob([content], { type: "text/plain" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
@@ -32,7 +32,7 @@ export default function ConnexionDocsClient({ users }: { users: User[] }) {
       <div className="space-y-2">
         {filtered.map(u => (
           <div key={u.id} className="flex justify-between items-center p-3 border rounded-lg hover:bg-slate-50">
-            <span>{u.lastName} {u.firstName} ({u.email})</span>
+            <span className="truncate max-w-[200px] sm:max-w-md font-medium" title={`${(u.lastName || '').toUpperCase()} ${u.firstName || ''}`}><span className="uppercase font-bold">{u.lastName}</span> {u.firstName} <span className="text-slate-400 font-normal">({u.email})</span></span>
             <button 
               onClick={() => downloadFile(u)}
               className="px-3 py-1 bg-blue-600 text-white text-xs font-bold rounded"

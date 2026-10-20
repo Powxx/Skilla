@@ -1,5 +1,6 @@
 import prisma from "@/lib/prisma";
 import { startOfDay, endOfDay } from "date-fns";
+import { formatTeacherName } from "@/lib/user-utils";
 
 export type TeacherDashboardPayload = {
   teacherName: string;
@@ -103,7 +104,7 @@ export async function loadTeacherDashboardPayload(teacherId: string): Promise<Te
   });
 
   return {
-    teacherName: `${teacher?.firstName} ${teacher?.lastName}`,
+    teacherName: formatTeacherName(teacher?.firstName, teacher?.lastName, "Professeur"),
     lessonsTodayCount: lessonsToday,
     pendingRollCallsCount: pendingRollCalls,
     classesCount,

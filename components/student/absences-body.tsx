@@ -51,7 +51,7 @@ export default function AbsencesBody({ student, contextNote }: Props) {
             Absences & Retards
           </h1>
           <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">
-            {student.lastName} {student.firstName} • {student.class?.name ?? "Non assignée"}
+            <span className="uppercase">{student.lastName}</span> {student.firstName} • {student.class?.name ?? "Non assignée"}
           </p>
         </div>
       </header>

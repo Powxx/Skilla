@@ -49,7 +49,7 @@ export default function ImpersonateClient({ users }: ImpersonateClientProps) {
         impersonateUser: {
           id: user.id,
           role: user.role,
-          name: `${user.firstName || ''} ${user.lastName || ''}`.trim()
+          name: `${(user.lastName || '').toUpperCase()} ${user.firstName || ''}`.trim()
         }
       });
       
@@ -138,7 +138,7 @@ export default function ImpersonateClient({ users }: ImpersonateClientProps) {
                 </div>
                 <div className="min-w-0">
                   <div className="font-bold text-slate-900 text-sm flex items-center gap-2">
-                    <span className="truncate">{user.lastName} {user.firstName}</span>
+                    <span className="truncate max-w-[140px] sm:max-w-xs" title={`${(user.lastName || '').toUpperCase()} ${user.firstName || ''}`}><span className="uppercase">{user.lastName}</span> {user.firstName}</span>
                     <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border ${cfg.badge} shrink-0`}>
                       <Icon className="h-3 w-3" />
                       {cfg.label}

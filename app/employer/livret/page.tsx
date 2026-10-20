@@ -72,11 +72,11 @@ export default async function EmployerLivretPage({
     <div className="space-y-8">
       <header>
         <h1 className="text-3xl font-black text-slate-900">Livret d'Apprentissage — Entreprise</h1>
-        <p className="text-sm text-slate-500 font-medium">Évaluation des compétences professionnelles pour {student?.firstName} {student?.lastName}.</p>
+        <p className="text-sm text-slate-500 font-medium">Évaluation des compétences professionnelles pour {(student?.lastName || '').toUpperCase()} {student?.firstName}.</p>
       </header>
 
       <ProfLivretClient 
-        students={allTutorStudents.map(c => ({ id: c.student.id, name: `${c.student.lastName} ${c.student.firstName}`, className: c.student.class?.name }))}
+        students={allTutorStudents.map(c => ({ id: c.student.id, name: `${(c.student.lastName || '').toUpperCase()} ${c.student.firstName || ''}`, className: c.student.class?.name }))}
         initialEvaluations={mergedEvaluations}
         selectedStudentId={studentId}
         selectedSemesterId={semesterId}

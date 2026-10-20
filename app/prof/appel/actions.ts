@@ -149,7 +149,7 @@ export async function submitRollCall(payload: SubmitRollPayload): Promise<Submit
             createNotification({
               userId: targetId,
               title: "Alerte Absence",
-              message: `Une absence a été signalée pour ${student.firstName} ${student.lastName} aujourd'hui.`,
+              message: `Une absence a été signalée pour ${(student.lastName || '').toUpperCase()} ${student.firstName || ''} aujourd'hui.`,
               type: "WARNING",
               link: student.role === "STUDENT" ? "/student/absences" : undefined
             }).catch(e => console.error(e));
@@ -167,7 +167,7 @@ export async function submitRollCall(payload: SubmitRollPayload): Promise<Submit
             createNotification({
               userId: targetId,
               title: "Alerte Retard",
-              message: `Un retard de ${item.lateDuration} minutes a été signalé pour ${student.firstName} ${student.lastName}.`,
+              message: `Un retard de ${item.lateDuration} minutes a été signalé pour ${(student.lastName || '').toUpperCase()} ${student.firstName || ''}.`,
               type: "WARNING",
               link: student.role === "STUDENT" ? "/student/absences" : undefined
             }).catch(e => console.error(e));

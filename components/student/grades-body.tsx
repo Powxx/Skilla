@@ -138,7 +138,7 @@ export default function GradesBody({
         </h1>
         <p className="mt-3 text-sm text-slate-600">
           <span className="font-medium text-slate-800">
-            {student.lastName} {student.firstName}
+            <span className="uppercase">{student.lastName}</span> {student.firstName}
           </span>
           {" · "}
           <span className="text-slate-500">{student.email}</span>

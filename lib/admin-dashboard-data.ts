@@ -1,4 +1,5 @@
 import prisma from "@/lib/prisma";
+import { formatTeacherName, formatStudentName, formatUserName } from "@/lib/user-utils";
 import { getGlobalSettings } from "@/app/actions/settings";
 import { QUALIOPI_ENABLED_KEY } from "@/lib/qualiopi";
 import {
@@ -647,13 +648,12 @@ export async function loadAdminDashboardPayload(
   for (const lesson of annualLessonsForTeachers) {
     if (!lesson.teacherId || !lesson.teacher || lesson.isCancelled) continue;
 
-    const teacherId = lesson.teacherId;
-    const name = `${lesson.teacher.lastName ?? ""} ${lesson.teacher.firstName ?? ""}`.trim();
+    const name = formatTeacherName(lesson.teacher.firstName, lesson.teacher.lastName);
 
-    let entry = teacherLessonsMap.get(teacherId);
+    let entry = teacherLessonsMap.get(lesson.teacherId);
     if (!entry) {
       entry = { name, realizedIntervals: [], plannedIntervals: [] };
-      teacherLessonsMap.set(teacherId, entry);
+      teacherLessonsMap.set(lesson.teacherId, entry);
     }
 
     const interval = { start: lesson.startTime.getTime(), end: lesson.endTime.getTime() };
@@ -711,7 +711,7 @@ export async function loadAdminDashboardPayload(
     .slice(0, 8)
     .map((c) => ({
       id: c.id,
-      studentName: `${c.student.lastName ?? ""} ${c.student.firstName ?? ""}`.trim(),
+      studentName: formatStudentName(c.student.firstName, c.student.lastName),
       companyName: c.companyName,
       endDate: c.endDate.toISOString(),
       daysLeft: Math.ceil((c.endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)),
@@ -868,7 +868,7 @@ export async function loadAdminDashboardPayload(
         id: e.id,
         type: e.type,
         description: e.description,
-        studentName: `${e.student.lastName ?? ""} ${e.student.firstName ?? ""}`.trim(),
+        studentName: formatStudentName(e.student.firstName, e.student.lastName),
         createdAt: e.createdAt.toISOString(),
       })),
       expiringContracts,
@@ -884,7 +884,7 @@ export async function loadAdminDashboardPayload(
             subject: c.subject,
             status: c.status,
             createdAt: c.createdAt.toISOString(),
-            senderName: `${c.sender.lastName ?? ""} ${c.sender.firstName ?? ""}`.trim(),
+            senderName: formatUserName(c.sender.firstName, c.sender.lastName, "Un usager"),
           })),
           ratingDistribution,
         }

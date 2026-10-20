@@ -6,6 +6,7 @@ import { Prisma, Role } from "@prisma/client";
 import bcrypt from "bcrypt";
 import { getServerSession } from "next-auth/next";
 import { revalidatePath } from "next/cache";
+import { formatUserName } from "@/lib/user-utils";
 
 const ADMIN_ROLES: Role[] = [
   Role.SUPER_ADMIN,
@@ -119,7 +120,7 @@ export async function createUser(input: {
     return { ok: false, error: "Rôle invalide." };
   }
   const passwordHash = await bcrypt.hash(password, 10);
-  const fullName = `${firstName} ${lastName}`;
+  const fullName = formatUserName(firstName, lastName);
   const username = await generateUniqueUsername(firstName, lastName);
 
   try {
@@ -310,7 +311,7 @@ export async function updateUser(input: {
     }
   }
 
-  const fullName = `${firstName} ${lastName}`;
+  const fullName = formatUserName(firstName, lastName);
 
   const data: Prisma.UserUpdateInput = {
     email,
@@ -477,7 +478,7 @@ export async function importUsersAction(users: Array<{
     const email = user.email?.trim() ? user.email.trim().toLowerCase() : null;
     const firstName = user.firstName.trim();
     const lastName = user.lastName.trim();
-    const fullName = `${firstName} ${lastName}`;
+    const fullName = formatUserName(firstName, lastName);
     const role = user.role;
     const password = user.password || "Skilla2026!";
 

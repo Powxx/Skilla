@@ -62,7 +62,7 @@ export async function GET(
     const start = new Date(lesson.startTime);
     const end = new Date(lesson.endTime);
     const subjectName = lesson.isFreeLesson ? (lesson.customSubject || "Cours libre") : (lesson.subject?.name || "Sans nom");
-    const teacherName = lesson.isFreeLesson ? (lesson.customTeacher || "Intervenant") : (lesson.teacher ? `${lesson.teacher.firstName} ${lesson.teacher.lastName}` : "Sans prof");
+    const teacherName = lesson.isFreeLesson ? (lesson.customTeacher || "Intervenant") : (lesson.teacher ? `${(lesson.teacher.lastName || "").toUpperCase()} ${lesson.teacher.firstName || ""}` : "Sans prof");
 
     return {
       start: [

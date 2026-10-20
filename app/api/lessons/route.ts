@@ -94,7 +94,7 @@ export async function GET(request: Request) {
 
   const formattedEvents = lessons.map((lesson) => {
     const subjectName = lesson.isFreeLesson ? (lesson.customSubject || "Cours libre") : (lesson.subject?.name || "Sans nom");
-    const teacherName = lesson.isFreeLesson ? (lesson.customTeacher || "Intervenant") : (lesson.teacher ? `${lesson.teacher.firstName} ${lesson.teacher.lastName}` : "Sans prof");
+    const teacherName = lesson.isFreeLesson ? (lesson.customTeacher || "Intervenant") : (lesson.teacher ? `${(lesson.teacher.lastName || "").toUpperCase()} ${lesson.teacher.firstName || ""}` : "Sans prof");
 
     return {
       id: lesson.id,
@@ -114,7 +114,7 @@ export async function GET(request: Request) {
         isCancelled: lesson.isCancelled,
         isFreeLesson: lesson.isFreeLesson,
         substituteId: lesson.substituteId,
-        substitute: lesson.substitute ? `${lesson.substitute.firstName} ${lesson.substitute.lastName}` : null,
+        substitute: lesson.substitute ? `${(lesson.substitute.lastName || "").toUpperCase()} ${lesson.substitute.firstName || ""}` : null,
         summary: lesson.summary,
         homework: lesson.homework,
         groupId: lesson.groupId,

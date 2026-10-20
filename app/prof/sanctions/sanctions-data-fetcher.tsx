@@ -63,7 +63,7 @@ export default async function ProfSanctionsDataFetcher() {
 
   const formattedStudents = students.map((s) => ({
     id: s.id,
-    name: `${s.lastName} ${s.firstName}`,
+    name: `${(s.lastName || '').toUpperCase()} ${s.firstName || ''}`,
     className: s.class?.name || "Sans classe",
   }));
 

@@ -149,8 +149,8 @@ export default function AdminMeetingsManager({
                   <div key={m.id} className="bg-white border border-slate-200 p-3 rounded-xl shadow-sm hover:shadow-md transition group relative overflow-hidden">
                     <div className="flex justify-between items-start mb-2 relative z-10">
                       <div className="min-w-0">
-                        <p className="text-xs font-black text-slate-900 truncate leading-tight">
-                          {m.sender.firstName} {m.sender.lastName}
+                        <p className="text-xs font-black text-slate-900 truncate leading-tight" title={`${(m.sender.lastName || "").toUpperCase()} ${m.sender.firstName || ""}`}>
+                          <span className="uppercase">{m.sender.lastName}</span> {m.sender.firstName}
                         </p>
                         <p className="text-[9px] text-slate-400 font-bold uppercase tracking-tighter mt-0.5">
                           {m.sender.role} • {format(new Date(m.requestedAt), 'dd MMM HH:mm', { locale: fr })}
@@ -228,8 +228,8 @@ export default function AdminMeetingsManager({
                   <div key={m.id} className="bg-white border border-emerald-200 p-3 rounded-xl shadow-sm hover:shadow-md transition group relative overflow-hidden">
                     <div className="flex justify-between items-start mb-2 relative z-10">
                       <div className="min-w-0">
-                        <p className="text-xs font-black text-emerald-900 truncate leading-tight">
-                          {m.sender.firstName} {m.sender.lastName}
+                        <p className="text-xs font-black text-emerald-900 truncate leading-tight" title={`${(m.sender.lastName || "").toUpperCase()} ${m.sender.firstName || ""}`}>
+                          <span className="uppercase">{m.sender.lastName}</span> {m.sender.firstName}
                         </p>
                         <p className="text-[9px] text-emerald-600 font-bold uppercase tracking-tighter mt-0.5">
                           {m.sender.role} •{' '}

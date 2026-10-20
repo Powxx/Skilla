@@ -5,6 +5,7 @@ import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { sendPushNotification, sendPushNotificationBatch } from "./push";
+import { formatUserName, formatTeacherName } from "@/lib/user-utils";
 
 async function getUserNotificationIds(userId: string): Promise<string[]> {
   const user = await prisma.user.findUnique({
@@ -187,7 +188,7 @@ export async function sendAdminNotification(data: {
       throw new Error("Professeur introuvable ou inactif.");
     }
 
-    const recipientLabel = `${teacher.lastName ?? ""} ${teacher.firstName ?? ""}`.trim() || "Professeur";
+    const recipientLabel = formatTeacherName(teacher.firstName, teacher.lastName, "Professeur");
 
     await prisma.notification.create({
       data: {
@@ -598,7 +599,7 @@ export async function getAdminNotificationReceipts(notificationIds: string[]) {
     recipients: notifications.map((n) => ({
       id: n.id,
       userId: n.user.id,
-      name: `${n.user.lastName || ""} ${n.user.firstName || ""}`.trim() || "Utilisateur",
+      name: formatUserName(n.user.firstName, n.user.lastName, "Utilisateur"),
       role: n.user.role,
       className: n.user.class?.name || null,
       isRead: n.isRead,

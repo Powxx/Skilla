@@ -33,7 +33,7 @@ export default async function ProfHomePage() {
             <span className="text-xl">👨‍🏫</span>
             <div>
               <p className="text-xs font-bold uppercase tracking-wider">Compte Professeur Lié</p>
-              <p className="text-xs opacity-90">Vous êtes connecté en tant qu'administrateur et vous accédez aux cours et notifications de <strong>{teacherUser?.firstName} {teacherUser?.lastName}</strong>.</p>
+              <p className="text-xs opacity-90">Vous êtes connecté en tant qu'administrateur et vous accédez aux cours et notifications de <strong>{(teacherUser?.lastName || "").toUpperCase()} {teacherUser?.firstName}</strong>.</p>
             </div>
           </div>
           <Link href="/admin" className="px-3 py-1.5 bg-white text-indigo-700 text-xs font-black rounded-xl uppercase tracking-widest hover:bg-indigo-50 transition shrink-0">

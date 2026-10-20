@@ -1,4 +1,5 @@
 import prisma from "@/lib/prisma";
+import { formatStudentName } from "@/lib/user-utils";
 
 /**
  * Extrait la première valeur d'un paramètre de requête HTTP (Query Parameter).
@@ -28,9 +29,10 @@ export async function listParentChildrenSerialized(parentUserId: string) {
     },
   });
 
+
   return rows.map((r) => ({
     id: r.id,
-    label: `${r.lastName} ${r.firstName}`,
+    label: formatStudentName(r.firstName, r.lastName),
   }));
 }
 

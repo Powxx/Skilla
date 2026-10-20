@@ -27,7 +27,7 @@ export default async function SanctionsDataFetcher() {
 
   const formattedStudents = students.map((s) => ({
     id: s.id,
-    name: `${s.lastName} ${s.firstName}`,
+    name: `${(s.lastName || '').toUpperCase()} ${s.firstName || ''}`,
     className: s.class?.name || "Sans classe",
   }));
 

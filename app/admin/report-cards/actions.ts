@@ -43,7 +43,7 @@ export async function calculateStudentAverages(studentId: string, semesterId: st
     include: { teachers: { select: { firstName: true, lastName: true } } }
   });
   classSubjects.forEach(s => {
-    const teacherNames = s.teachers.map(t => `${t.firstName} ${t.lastName}`).join(', ');
+    const teacherNames = s.teachers.map(t => `${(t.lastName || '').toUpperCase()} ${t.firstName || ''}`).join(', ');
     studentStats[s.id] = { 
         sum: 0, 
         count: 0, 
@@ -67,7 +67,7 @@ export async function calculateStudentAverages(studentId: string, semesterId: st
   gradesWithTeachers.forEach(g => {
     if (!g.subject) return; // Skip if subject relation is missing (should not happen for grades)
     if (!studentStats[g.subjectId]) {
-      const teacherNames = g.subject.teachers.map(t => `${t.firstName} ${t.lastName}`).join(', ');
+      const teacherNames = g.subject.teachers.map(t => `${(t.lastName || '').toUpperCase()} ${t.firstName || ''}`).join(', ');
       studentStats[g.subjectId] = { sum: 0, count: 0, name: g.subject.name, comments: [], isDispensed: dispensedSubjectIds.includes(g.subjectId), teacherNames: teacherNames || 'Non assigné' };
     }
     const coef = g.coefficient || 1;
@@ -149,7 +149,7 @@ export async function saveReportCard(data: {
         createNotification({
           userId: targetId,
           title: "Bulletin disponible",
-          message: `Le bulletin du semestre est désormais disponible pour ${student.firstName} ${student.lastName}.`,
+          message: `Le bulletin du semestre est désormais disponible pour ${(student.lastName || '').toUpperCase()} ${student.firstName || ''}.`,
           type: "SUCCESS",
           link: student.role === "STUDENT" ? "/student/grades" : "/parent/grades"
         }).catch(e => console.error(e));

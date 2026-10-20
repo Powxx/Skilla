@@ -4,6 +4,7 @@ import prisma from "@/lib/prisma";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth-options";
 import { getGlobalSettings } from "@/app/actions/settings";
+import { formatUserName, formatStudentName } from "@/lib/user-utils";
 
 export type OfficialDocumentType = 
   | "CERTIFICAT_SCOLARITE" 
@@ -168,7 +169,7 @@ export async function getStudentDocumentData(studentId: string): Promise<{ ok: t
     data: {
       student: {
         id: student.id,
-        fullName: `${student.firstName ?? ""} ${student.lastName ?? ""}`.trim(),
+        fullName: formatStudentName(student.firstName, student.lastName),
         firstName: student.firstName ?? "",
         lastName: student.lastName ?? "",
         birthday: student.birthday ? student.birthday.toLocaleDateString("fr-FR") : null,
@@ -192,7 +193,7 @@ export async function getStudentDocumentData(studentId: string): Promise<{ ok: t
       },
       contract: activeContract ? {
         companyName: activeContract.companyName,
-        tutorName: activeContract.tutor ? `${activeContract.tutor.firstName ?? ""} ${activeContract.tutor.lastName ?? ""}`.trim() : null,
+        tutorName: activeContract.tutor ? formatUserName(activeContract.tutor.firstName, activeContract.tutor.lastName) : null,
         type: activeContract.type === "APPRENTICESHIP" ? "Contrat d'Apprentissage" : "Convention de Stage",
         startDate: activeContract.startDate.toLocaleDateString("fr-FR"),
         endDate: activeContract.endDate.toLocaleDateString("fr-FR")

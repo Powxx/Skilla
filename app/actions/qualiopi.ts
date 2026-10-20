@@ -7,6 +7,7 @@ import { revalidatePath } from "next/cache";
 import { SatisfactionSurveyTarget } from "@prisma/client";
 import { sendPushNotification } from "./push";
 import { isQualiopiEnabled, surveyLinkForRole } from "@/lib/qualiopi";
+import { formatUserName } from "@/lib/user-utils";
 
 async function assertAdmin() {
   const session = await getServerSession(authOptions);
@@ -309,7 +310,7 @@ export async function submitComplaint(data: {
     });
 
     if (admins.length > 0) {
-      const senderName = `${complaint.sender.firstName ?? ""} ${complaint.sender.lastName ?? ""}`.trim() || "Un usager";
+      const senderName = formatUserName(complaint.sender.firstName, complaint.sender.lastName, "Un usager");
       const notifTitle = "⚠️ Nouvelle réclamation Qualiopi";
       const notifBody = `${senderName} : « ${subject} »`;
       const notifLink = "/admin/qualiopi";

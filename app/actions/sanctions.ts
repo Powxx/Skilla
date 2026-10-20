@@ -32,7 +32,7 @@ async function notifyUsersForSanction(studentId: string, sanctionTypeName: strin
   if (!student) return;
 
   const title = "⚠️ Nouvelle sanction";
-  const body = `Une sanction "${sanctionTypeName}" a été attribuée à ${student.firstName} ${student.lastName}.`;
+  const body = `Une sanction "${sanctionTypeName}" a été attribuée à ${(student.lastName || '').toUpperCase()} ${student.firstName || ''}.`;
   const url = "/student/sanctions";
 
   // 1. Notifier l'étudiant concerné
@@ -140,7 +140,7 @@ async function handleConductPoints(studentId: string, sanctionId: string, points
   // Analyse et notification si un palier critique de points est franchi à la baisse
   for (const threshold of CONDUCT_THRESHOLDS) {
     if (oldPoints > threshold.points && newPoints <= threshold.points) {
-      const description = `${student.firstName} ${student.lastName} a atteint le palier de ${threshold.points} points de conduite (${newPoints} pts restants).`;
+      const description = `${(student.lastName || '').toUpperCase()} ${student.firstName || ''} a atteint le palier de ${threshold.points} points de conduite (${newPoints} pts restants).`;
       await prisma.sanctionActionEvent.create({
         data: { studentId, sanctionId, type: threshold.type, description },
       });

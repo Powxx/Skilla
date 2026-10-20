@@ -208,8 +208,8 @@ export default async function ProfClassesPage(props: PageProps) {
                                   {initials || "👨"}
                                 </div>
                                 <div>
-                                  <div className="font-bold text-slate-900 group-hover:text-blue-600 transition-colors">
-                                    {student.lastName} <span className="font-normal text-slate-600">{student.firstName}</span>
+                                  <div className="font-bold text-slate-900 group-hover:text-blue-600 transition-colors truncate max-w-[160px] sm:max-w-xs" title={`${(student.lastName || '').toUpperCase()} ${student.firstName || ''}`}>
+                                    <span className="uppercase">{student.lastName}</span> <span className="font-medium text-slate-600">{student.firstName}</span>
                                   </div>
                                   <div className="text-[9px] text-slate-400 mt-0.5">ID: {student.id.substring(0, 8)}...</div>
                                 </div>

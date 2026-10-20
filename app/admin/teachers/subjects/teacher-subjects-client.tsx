@@ -65,11 +65,11 @@ export default function TeacherSubjectsClient({ teachers, subjects }: { teachers
                     onClick={() => handleSelectTeacher(teacher.id)}
                     className={`flex-1 text-left px-4 py-3 transition ${selectedTeacherId === teacher.id ? 'bg-blue-50 text-blue-700' : 'hover:bg-slate-50'}`}
                 >
-                    <div className="font-medium">{teacher.lastName} {teacher.firstName}</div>
+                    <div className="font-bold truncate max-w-[150px] sm:max-w-xs" title={`${(teacher.lastName || '').toUpperCase()} ${teacher.firstName || ''}`}><span className="uppercase">{teacher.lastName}</span> {teacher.firstName}</div>
                     <div className="text-xs text-slate-500 mt-1">{teacher.subjects.length} matière(s) assignée(s)</div>
                 </button>
-                <div className="pr-2">
-                    <MessageButton recipientId={teacher.id} recipientName={`${teacher.lastName} ${teacher.firstName}`} />
+                <div className="pr-2 shrink-0">
+                    <MessageButton recipientId={teacher.id} recipientName={`${(teacher.lastName || '').toUpperCase()} ${teacher.firstName || ''}`} />
                 </div>
               </div>
             </li>

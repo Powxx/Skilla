@@ -58,7 +58,7 @@ export default async function EmployerSanctionsDataFetcher({
         <p className="mt-2 text-sm text-slate-500 font-medium">
           Dossier disciplinaire de votre alternant :{" "}
           <span className="text-slate-800 font-bold">
-            {student.firstName} {student.lastName}
+            <span className="uppercase">{student.lastName}</span> {student.firstName}
           </span>{" "}
           ({student.class?.name || "Sans classe"})
         </p>

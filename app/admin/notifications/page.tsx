@@ -106,7 +106,7 @@ export default async function AdminNotificationsPage() {
         recipientType = "TEACHER_GROUP";
       } else {
         const u = g.users[0];
-        recipientLabel = `Prof. ${u?.lastName ?? ""} ${u?.firstName ?? ""}`.trim() || u?.email || "Enseignant";
+        recipientLabel = `Prof. ${(u?.lastName ?? "").toUpperCase()} ${u?.firstName ?? ""}`.trim() || u?.email || "Enseignant";
         recipientType = "TEACHER_SINGLE";
       }
     } else if (isParentOnly) {
@@ -121,7 +121,7 @@ export default async function AdminNotificationsPage() {
         recipientType = "STUDENT_GROUP";
       } else {
         const u = g.users[0];
-        recipientLabel = `${u?.firstName ?? ""} ${u?.lastName ?? ""}`.trim() || u?.email || "Élève";
+        recipientLabel = `${(u?.lastName ?? "").toUpperCase()} ${u?.firstName ?? ""}`.trim() || u?.email || "Élève";
         recipientType = "STUDENT_SINGLE";
       }
     }
@@ -145,7 +145,7 @@ export default async function AdminNotificationsPage() {
   const classLogs: ClassLogRecord[] = logs.map((l) => ({
     id: l.id,
     createdAt: l.createdAt.toISOString(),
-    senderName: `${l.sender.lastName ?? ""} ${l.sender.firstName ?? ""}`.trim() || "Enseignant",
+    senderName: `${(l.sender.lastName ?? "").toUpperCase()} ${l.sender.firstName ?? ""}`.trim() || "Enseignant",
     className: l.class.name,
     title: l.title,
     message: l.message

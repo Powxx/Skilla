@@ -4,6 +4,7 @@ import CredentialsProvider from "next-auth/providers/credentials";
 import bcrypt from "bcrypt";
 import prisma from "@/lib/prisma";
 import { updateLoginStreak } from "@/app/actions/gamification";
+import { formatUserName } from "@/lib/user-utils";
 
 /**
  * Options de configuration de NextAuth pour la plateforme Skilla.
@@ -92,7 +93,7 @@ export const authOptions: NextAuthOptions = {
           return {
             id: user.id,
             email: user.email,
-            name: `${user.firstName} ${user.lastName}`.trim(),
+            name: formatUserName(user.firstName, user.lastName),
             role: user.role,
             canAccessLivrets: user.canAccessLivrets,
             canManageUsers: user.canManageUsers,
@@ -147,7 +148,7 @@ export const authOptions: NextAuthOptions = {
 
             token.id = target.id;
             token.role = target.role;
-            token.name = `${target.firstName ?? ""} ${target.lastName ?? ""}`.trim();
+            token.name = formatUserName(target.firstName, target.lastName);
             token.impersonated = true;
           }
         }

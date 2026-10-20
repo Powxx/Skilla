@@ -384,7 +384,7 @@ export default function AdminNotificationSender({ classes, teachers }: AdminNoti
                   >
                     <option value="">-- Choisir un professeur dans la liste --</option>
                     {filteredTeachers.map((t) => {
-                      const fullName = `${t.lastName ?? ""} ${t.firstName ?? ""}`.trim() || "Sans nom";
+                      const fullName = `${(t.lastName ?? "").toUpperCase()} ${t.firstName ?? ""}`.trim() || "Sans nom";
                       return (
                         <option key={t.id} value={t.id}>
                           {fullName} {t.email ? `(${t.email})` : ""}
@@ -397,7 +397,7 @@ export default function AdminNotificationSender({ classes, teachers }: AdminNoti
                     <div className="flex items-center gap-2 text-xs text-indigo-700 font-medium bg-indigo-50 p-2.5 rounded-lg border border-indigo-100">
                       <UserCheck className="h-4 w-4 shrink-0 text-indigo-600" />
                       <span>
-                        Destinataire sélectionné : <strong>{selectedTeacher.lastName} {selectedTeacher.firstName}</strong> ({selectedTeacher.email})
+                        Destinataire sélectionné : <strong>{(selectedTeacher.lastName || "").toUpperCase()} {selectedTeacher.firstName || ""}</strong> ({selectedTeacher.email})
                       </span>
                     </div>
                   )}
@@ -611,7 +611,7 @@ export default function AdminNotificationSender({ classes, teachers }: AdminNoti
                 <span>
                   Cible : {
                     target === "ALL_TEACHERS" ? `Tous les profs (${teachers.length})` 
-                    : target === "TEACHER" ? (selectedTeacher ? `${selectedTeacher.lastName} ${selectedTeacher.firstName}` : "Professeur sélectionné") 
+                    : target === "TEACHER" ? (selectedTeacher ? `${(selectedTeacher.lastName || "").toUpperCase()} ${selectedTeacher.firstName || ""}` : "Professeur sélectionné") 
                     : target === "SCHOOL" ? (includeParents ? "Toute l'école + parents" : "Toute l'école (élèves)") 
                     : target === "ALL_PARENTS" ? "Tous les parents d'élèves"
                     : target === "ALL_TUTORS" ? "Tous les tuteurs d'entreprises"

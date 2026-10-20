@@ -119,10 +119,10 @@ export default async function AdminStudentsPage() {
                       className="transition hover:bg-slate-50/80"
                     >
                       <td className="px-5 py-4">
-                        <div className="font-medium text-slate-900">
-                          {s.lastName}{" "}  {/* Accès direct */}
+                        <div className="font-bold text-slate-900 truncate max-w-[160px] sm:max-w-xs" title={`${(s.lastName || '').toUpperCase()} ${s.firstName || ''}`}>
+                          <span className="uppercase">{s.lastName}</span>{" "}
                           <span className="font-normal text-slate-600">
-                            {s.firstName}   {/* Accès direct */}
+                            {s.firstName}
                           </span>
                         </div>
                       </td>

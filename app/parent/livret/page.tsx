@@ -60,7 +60,7 @@ export default async function ParentLivretPage({
     <div className="max-w-4xl mx-auto py-8 space-y-12">
       <header className="mb-8">
         <h1 className="text-3xl font-black text-slate-900">Livret d'Apprentissage</h1>
-        <p className="text-sm text-slate-500 font-medium">Suivi des compétences pour {student.firstName} {student.lastName}.</p>
+        <p className="text-sm text-slate-500 font-medium">Suivi des compétences pour <span className="uppercase">{student.lastName}</span> {student.firstName}.</p>
       </header>
 
       <section>
@@ -69,7 +69,7 @@ export default async function ParentLivretPage({
            <p className="text-sm text-blue-700">Compétences académiques validées par les professeurs.</p>
         </div>
         <LivretBody 
-          studentName={`${student.firstName} ${student.lastName}`}
+          studentName={`${(student.lastName || '').toUpperCase()} ${student.firstName || ''}`}
           competencies={schoolEvaluations}
           isEditable={false}
         />
@@ -81,7 +81,7 @@ export default async function ParentLivretPage({
            <p className="text-sm text-amber-700">Compétences professionnelles validées par le tuteur.</p>
         </div>
         <LivretBody 
-          studentName={`${student.firstName} ${student.lastName}`}
+          studentName={`${(student.lastName || '').toUpperCase()} ${student.firstName || ''}`}
           competencies={enterpriseEvaluations}
           isEditable={false}
         />

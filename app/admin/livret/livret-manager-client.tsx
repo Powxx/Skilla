@@ -106,7 +106,7 @@ export default function AdminLivretManagerClient({ classes, students, semesters 
   const handleExportEvaluations = () => {
     if (!selectedStudent || !selectedClass) return;
     const data = selectedStudent.evaluations.map((e: any) => ({
-      Élève: `${selectedStudent.lastName} ${selectedStudent.firstName}`,
+      Élève: `${(selectedStudent.lastName || '').toUpperCase()} ${selectedStudent.firstName || ''}`,
       Classe: selectedClass.name,
       Compétence: e.competency,
       Niveau: e.level,
@@ -167,7 +167,7 @@ export default function AdminLivretManagerClient({ classes, students, semesters 
             >
               <option value="">-- Sélectionner un élève --</option>
               {classStudents.map((s) => (
-                <option key={s.id} value={s.id}>{s.lastName} {s.firstName}</option>
+                <option key={s.id} value={s.id}>{(s.lastName || '').toUpperCase()} {s.firstName || ''}</option>
               ))}
             </select>
           </div>
@@ -204,7 +204,7 @@ export default function AdminLivretManagerClient({ classes, students, semesters 
       {selectedStudent ? (
         <div className="bg-white p-8 sm:p-12 rounded-3xl border border-slate-200 shadow-xl print:shadow-none print:border-0 print:p-0">
           <LivretBody 
-            studentName={`${selectedStudent.firstName} ${selectedStudent.lastName}`}
+            studentName={`${(selectedStudent.lastName || '').toUpperCase()} ${selectedStudent.firstName || ''}`}
             competencies={livretData}
           />
         </div>

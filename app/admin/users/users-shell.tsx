@@ -99,7 +99,7 @@ export default function UsersShell(props: Props) {
         impersonateUser: {
           id: u.id,
           role: u.role,
-          name: `${u.firstName} ${u.lastName}`.trim()
+          name: `${(u.lastName || "").toUpperCase()} ${u.firstName || ""}`.trim()
         }
       });
       const destination = 
@@ -270,7 +270,9 @@ export default function UsersShell(props: Props) {
                 users.map((u) => (
                   <tr key={u.id} className="hover:bg-slate-50 transition group">
                     <td className="px-5 py-3">
-                      <div className="font-black text-slate-900 uppercase tracking-tight">{u.lastName} {u.firstName}</div>
+                      <div className="font-black text-slate-900 tracking-tight truncate max-w-[160px] sm:max-w-xs" title={`${(u.lastName || "").toUpperCase()} ${u.firstName || ""}`}>
+                        <span className="uppercase">{u.lastName}</span> {u.firstName}
+                      </div>
                       <div className="text-[9px] text-slate-400 font-medium mb-1">ID: {u.username}</div>
                       {u.hasStudentProfile && <span className="text-[8px] font-bold text-blue-500 uppercase tracking-tighter">Élève</span>}
                     </td>
@@ -295,7 +297,7 @@ export default function UsersShell(props: Props) {
                     </td>
                     <td className="px-5 py-3 text-right">
                       <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition">
-                        <MessageButton recipientId={u.id} recipientName={`${u.lastName} ${u.firstName}`} />
+                        <MessageButton recipientId={u.id} recipientName={`${(u.lastName || "").toUpperCase()} ${u.firstName || ""}`} />
                         {canImpersonate && u.id !== session?.user?.id && (
                           <button
                             onClick={() => handleQuickImpersonate(u)}
@@ -420,7 +422,7 @@ export default function UsersShell(props: Props) {
 
       {deletingUser ? (
         <ConfirmDeleteModal
-          label={`${deletingUser.lastName} ${deletingUser.firstName}`}
+          label={`${(deletingUser.lastName || "").toUpperCase()} ${deletingUser.firstName || ""}`}
           pending={running}
           onClose={() => setDeletingUser(null)}
           onConfirm={() =>
@@ -627,7 +629,7 @@ function EditUserModal({
   return (
     <DialogPortal
       title="Modifier le compte"
-      subtitle={`${user.lastName} ${user.firstName}`}
+      subtitle={`${(user.lastName || "").toUpperCase()} ${user.firstName || ""}`}
       onClose={onClose}
     >
       <form
@@ -880,7 +882,7 @@ function AdminPermissionsModal({
   });
 
   return (
-    <DialogPortal title="Droits Administrateur" subtitle={`${user.lastName} ${user.firstName}`} onClose={onClose}>
+    <DialogPortal title="Droits Administrateur" subtitle={`${(user.lastName || "").toUpperCase()} ${user.firstName || ""}`} onClose={onClose}>
       <div className="p-6 space-y-4">
         <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4">
           Définissez les accès de cet administrateur
@@ -972,7 +974,7 @@ function AccessDocumentModal({
       const fileContent = `==================================================
 FICHE D'ACCÈS DE L'UTILISATEUR - SKILLA
 ==================================================
-Nom Complet  : ${user.lastName} ${user.firstName}
+Nom Complet  : ${(user.lastName || "").toUpperCase()} ${user.firstName || ""}
 Rôle         : ${roleLabel}
 Identifiant  : ${user.username}
 Adresse Mail : ${user.email || "Non spécifiée"}
@@ -1004,7 +1006,7 @@ Conservez ces identifiants de manière sécurisée.
   const roleLabel = roleOptions.find(r => r.value === user.role)?.label ?? user.role;
 
   return (
-    <DialogPortal title="Fiche d'Accès Utilisateur" subtitle={`${user.lastName} ${user.firstName}`} onClose={onClose}>
+    <DialogPortal title="Fiche d'Accès Utilisateur" subtitle={`${(user.lastName || "").toUpperCase()} ${user.firstName || ""}`} onClose={onClose}>
       <div className="p-6 space-y-4">
         <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 space-y-2">
           <p className="text-xs text-slate-600"><strong>Identifiant (Username) :</strong> <code className="bg-slate-200 px-1 rounded">{user.username}</code></p>

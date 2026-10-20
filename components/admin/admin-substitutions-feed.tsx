@@ -192,7 +192,7 @@ export default function AdminSubstitutionsFeed({
                   <div className="flex items-center gap-2">
                     <span className="h-2 w-2 rounded-full bg-orange-400 animate-pulse shrink-0"></span>
                     <p className="text-xs font-black text-orange-100 truncate group-hover:text-white transition">
-                      {sub.originalTeacher.firstName} {sub.originalTeacher.lastName}
+                      {(sub.originalTeacher.lastName || "").toUpperCase()} {sub.originalTeacher.firstName || ""}
                     </p>
                   </div>
                   <p className="text-[11px] font-semibold text-slate-300 truncate">
@@ -226,7 +226,7 @@ export default function AdminSubstitutionsFeed({
                   Détails du cours à remplacer
                 </h3>
                 <p className="text-xs text-slate-300 font-medium">
-                  Demandé par {selectedSub.originalTeacher.firstName} {selectedSub.originalTeacher.lastName}
+                  Demandé par {(selectedSub.originalTeacher.lastName || "").toUpperCase()} {selectedSub.originalTeacher.firstName || ""}
                 </p>
               </div>
               <button
@@ -320,7 +320,7 @@ export default function AdminSubstitutionsFeed({
                   </span>
                 </div>
                 <p className="text-sm font-black text-slate-900">
-                  M./Mme {selectedSub.originalTeacher.firstName} {selectedSub.originalTeacher.lastName}
+                  M./Mme {(selectedSub.originalTeacher.lastName || "").toUpperCase()} {selectedSub.originalTeacher.firstName || ""}
                 </p>
                 {(selectedSub.originalTeacher.email || selectedSub.originalTeacher.phone) && (
                   <div className="flex flex-wrap gap-4 text-xs font-medium text-slate-600 pt-1">
@@ -362,7 +362,7 @@ export default function AdminSubstitutionsFeed({
                   </h4>
                   {selectedSub.substituteTeacher && (
                     <span className="text-[10px] font-black text-blue-700 bg-blue-100 px-2.5 py-1 rounded-full border border-blue-200 uppercase tracking-wider">
-                      ★ Professeur suggéré : {selectedSub.substituteTeacher.firstName} {selectedSub.substituteTeacher.lastName}
+                      ★ Professeur suggéré : {(selectedSub.substituteTeacher.lastName || "").toUpperCase()} {selectedSub.substituteTeacher.firstName || ""}
                     </span>
                   )}
                 </div>

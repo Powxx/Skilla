@@ -76,11 +76,11 @@ export default async function ProfLivretPage({ searchParams }: { searchParams?: 
     <div className="space-y-8">
       <header>
         <h1 className="text-3xl font-black text-slate-900">Livret d'Apprentissage — École</h1>
-        <p className="text-sm text-slate-500 font-medium">Évaluation des compétences académiques pour {student?.firstName} {student?.lastName}.</p>
+        <p className="text-sm text-slate-500 font-medium">Évaluation des compétences académiques pour {(student?.lastName || '').toUpperCase()} {student?.firstName}.</p>
       </header>
 
       <ProfLivretClient 
-        students={students.map(s => ({ id: s.id, name: `${s.lastName} ${s.firstName}`, className: s.class?.name }))}
+        students={students.map(s => ({ id: s.id, name: `${(s.lastName || '').toUpperCase()} ${s.firstName || ''}`, className: s.class?.name }))}
         initialEvaluations={mergedEvaluations}
         selectedStudentId={studentId}
         selectedSemesterId={semesterId}

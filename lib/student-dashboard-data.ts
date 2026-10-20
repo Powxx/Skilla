@@ -1,5 +1,6 @@
 import prisma from "@/lib/prisma";
 import { startOfDay } from "date-fns";
+import { formatStudentName } from "@/lib/user-utils";
 import type { DashboardChartRow } from "@/app/student/dashboard/dashboard-client";
 import type { DashboardClientProps } from "@/app/student/dashboard/dashboard-client";
 
@@ -125,8 +126,9 @@ export async function loadStudentDashboardPayload(
   });
   const initialDoneLessonIds = completions.map((c) => c.lessonId);
 
+
   return {
-    studentDisplayName: `${student.lastName} ${student.firstName}`,
+    studentDisplayName: formatStudentName(student.firstName, student.lastName),
     studentEmail: student.email ?? "",
     classLabel: student.class?.name ?? "Non assignée",
     generalAverage,

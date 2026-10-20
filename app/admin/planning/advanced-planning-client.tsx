@@ -876,7 +876,7 @@ export default function AdvancedPlanningClient({ classes, teachers, subjects, ro
                   subjectId: config.isFree ? null : config.subjectId,
                   classId: config.classId,
                   roomId: config.roomId,
-                  teacher: config.isFree ? (config.customTeacher || "Intervenant") : `${selectedTeacher?.lastName} ${selectedTeacher?.firstName}`,
+                  teacher: config.isFree ? (config.customTeacher || "Intervenant") : `${(selectedTeacher?.lastName || '').toUpperCase()} ${selectedTeacher?.firstName || ''}`,
                   subject: config.isFree ? (config.customSubject || "Cours libre") : selectedSubject?.name,
                   class: selectedClass?.name,
                   room: selectedRoom?.name,

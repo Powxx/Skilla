@@ -66,7 +66,7 @@ export default async function AdminDevoirsPage() {
       const teacherName = l.isFreeLesson
         ? l.customTeacher || "Intervenant externe"
         : teacherObj
-        ? `${teacherObj.firstName} ${teacherObj.lastName}`
+        ? `${(teacherObj.lastName || '').toUpperCase()} ${teacherObj.firstName || ''}`
         : "Non assigné";
 
       const subjectName = l.isFreeLesson
@@ -96,7 +96,7 @@ export default async function AdminDevoirsPage() {
       classes={classes}
       teachers={teachers.map((t) => ({
         id: t.id,
-        name: `${t.lastName} ${t.firstName}`,
+        name: `${(t.lastName || '').toUpperCase()} ${t.firstName || ''}`,
       }))}
     />
   );

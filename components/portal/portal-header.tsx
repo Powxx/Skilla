@@ -130,8 +130,8 @@ export default function PortalHeader({ variant, parentChildren = [] }: Props) {
               <div className="shrink-0">
                 <NotificationBell />
               </div>
-              <div className="text-right hidden md:block leading-tight">
-                <p className="text-xs font-black text-slate-900">{session?.user?.name}</p>
+              <div className="text-right hidden md:block leading-tight max-w-[160px] lg:max-w-[220px]">
+                <p className="text-xs font-black text-slate-900 truncate" title={session?.user?.name || undefined}>{session?.user?.name}</p>
                 <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">{session?.user?.role}</p>
               </div>
               <button
