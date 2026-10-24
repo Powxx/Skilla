@@ -117,66 +117,81 @@ export async function submitRollCall(payload: SubmitRollPayload): Promise<Submit
   }
 
   try {
-    // 4. Insertion des présences
-    await prisma.attendance.createMany({
-      data: toCreate,
-      skipDuplicates: true,
-    });
-
-    // 5. Marquage du cours comme validé
-    await prisma.lesson.update({
-      where: { id: lessonId },
-      data: { isAttendanceValidated: true }
-    });
-
-    // 6. Envoi des notifications
-    const [isAbsenceEnabled, isLateEnabled] = await Promise.all([
-      checkEventEnabled("ABSENCE_ALERT"),
-      checkEventEnabled("LATE_ALERT")
+    // 4. Insertion transactionnelle : remplacement propre des émargements pour permettre la rectification
+    await prisma.$transaction([
+      prisma.attendance.deleteMany({ where: { lessonId } }),
+      prisma.attendance.createMany({ data: toCreate }),
+      prisma.lesson.update({
+        where: { id: lessonId },
+        data: { isAttendanceValidated: true },
+      }),
     ]);
 
-    for (const item of toCreate) {
-      if (item.status === "ABSENT" && isAbsenceEnabled) {
-        // Fetch student and responsibles/tutors
-        const student = await prisma.user.findUnique({
-          where: { id: item.studentId },
-          include: { responsibles: true, studentContracts: { include: { tutor: true } } }
-        });
-        
-        if (student) {
-          const targets = [student.id, ...student.responsibles.map(r => r.id), ...student.studentContracts.map(c => c.tutorId)];
+    // 5. Envoi optimisé des notifications sans boucle N+1
+    const [isAbsenceEnabled, isLateEnabled] = await Promise.all([
+      checkEventEnabled("ABSENCE_ALERT"),
+      checkEventEnabled("LATE_ALERT"),
+    ]);
+
+    const flaggedItems = toCreate.filter(
+      (item) =>
+        (item.status === "ABSENT" && isAbsenceEnabled) ||
+        (item.status === "LATE" && isLateEnabled)
+    );
+
+    if (flaggedItems.length > 0) {
+      const flaggedIds = [...new Set(flaggedItems.map((i) => i.studentId))];
+      const studentsData = await prisma.user.findMany({
+        where: { id: { in: flaggedIds } },
+        select: {
+          id: true,
+          firstName: true,
+          lastName: true,
+          role: true,
+          responsibles: { select: { id: true } },
+          studentContracts: { select: { tutorId: true } },
+        },
+      });
+
+      const studentMap = new Map(studentsData.map((s) => [s.id, s]));
+
+      for (const item of flaggedItems) {
+        const student = studentMap.get(item.studentId);
+        if (!student) continue;
+
+        const studentName = `${(student.lastName || "").toUpperCase()} ${student.firstName || ""}`.trim();
+
+        if (item.status === "ABSENT" && isAbsenceEnabled) {
+          const targets = [
+            student.id,
+            ...student.responsibles.map((r) => r.id),
+            ...student.studentContracts.map((c) => c.tutorId),
+          ];
           for (const targetId of targets) {
             createNotification({
               userId: targetId,
               title: "Alerte Absence",
-              message: `Une absence a été signalée pour ${(student.lastName || '').toUpperCase()} ${student.firstName || ''} aujourd'hui.`,
+              message: `Une absence a été signalée pour ${studentName} aujourd'hui.`,
               type: "WARNING",
-              link: student.role === "STUDENT" ? "/student/absences" : undefined
-            }).catch(e => console.error(e));
+              link: student.role === "STUDENT" ? "/student/absences" : undefined,
+            }).catch((e) => console.error(e));
           }
-        }
-      } else if (item.status === "LATE" && isLateEnabled) {
-        const student = await prisma.user.findUnique({
-          where: { id: item.studentId },
-          include: { responsibles: true }
-        });
-
-        if (student) {
-          const targets = [student.id, ...student.responsibles.map(r => r.id)];
+        } else if (item.status === "LATE" && isLateEnabled) {
+          const targets = [student.id, ...student.responsibles.map((r) => r.id)];
           for (const targetId of targets) {
             createNotification({
               userId: targetId,
               title: "Alerte Retard",
-              message: `Un retard de ${item.lateDuration} minutes a été signalé pour ${(student.lastName || '').toUpperCase()} ${student.firstName || ''}.`,
+              message: `Un retard de ${item.lateDuration || 0} minutes a été signalé pour ${studentName}.`,
               type: "WARNING",
-              link: student.role === "STUDENT" ? "/student/absences" : undefined
-            }).catch(e => console.error(e));
+              link: student.role === "STUDENT" ? "/student/absences" : undefined,
+            }).catch((e) => console.error(e));
           }
         }
       }
     }
 
-    // 7. Revalidation du cache pour mettre à jour les interfaces
+    // 6. Revalidation du cache pour mettre à jour les interfaces
     revalidatePath("/prof/appel");
     revalidatePath("/student/absences");
     revalidatePath("/admin/absences");

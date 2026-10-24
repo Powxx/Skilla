@@ -21,30 +21,7 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Date manquante" }, { status: 400 });
   }
 
-  // Security check
-  const role = session.user.role;
-  if (role === "STUDENT" && classId) {
-    const studentProfile = await prisma.user.findUnique({ where: { id: session.user.id }, select: { classId: true } });
-    if (studentProfile?.classId !== classId) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  }
-  if (role === "TEACHER" && teacherId) {
-    if (session.user.id !== teacherId) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  }
-  // For parents and employers, we trust the classId for now as it's resolved server-side 
-  // in their respective page components. In a strict production environment, 
-  // we would verify the link between session.user.id and the classId requested.
-
   const date = new Date(dateStr);
-  
-  let dispensations: string[] = [];
-  if (session.user.role === "STUDENT") {
-      const user = await prisma.user.findUnique({
-          where: { id: session.user.id },
-          include: { dispensations: true }
-      });
-      dispensations = user?.dispensations.map(d => d.subjectId) || [];
-  }
-
   const whereClause: any = {
     startTime: {
       gte: startOfWeek(date, { weekStartsOn: 1 }),
@@ -52,33 +29,86 @@ export async function GET(request: Request) {
     },
   };
 
-  if (session.user.role === "TEACHER") {
-      whereClause.isFreeLesson = false;
-  }
+  // Security check and role-based scoping
+  const role = session.user.role;
+  const isAdmin = role === "ADMIN" || role === "SUPER_ADMIN";
 
-  if (session.user.role === "STUDENT") {
-      const user = await prisma.user.findUnique({
-          where: { id: session.user.id },
-          include: { dispensations: true }
-      });
-      dispensations = user?.dispensations.map(d => d.subjectId) || [];
+  let dispensations: string[] = [];
+
+  if (role === "STUDENT") {
+    const student = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { classId: true, dispensations: { select: { subjectId: true } } },
+    });
+
+    if (!student?.classId) {
+      return NextResponse.json([]);
+    }
+
+    if (classId && classId !== student.classId) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    // Always enforce the student's own class
+    whereClause.classId = student.classId;
+    dispensations = student.dispensations.map((d) => d.subjectId);
+    whereClause.OR = [
+      { subjectId: { notIn: dispensations } },
+      { isFreeLesson: true },
+    ];
+  } else if (role === "TEACHER") {
+    if (teacherId && teacherId !== session.user.id && !isAdmin) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+    whereClause.isFreeLesson = false;
+    if (classId) {
+      whereClause.classId = classId;
+    } else {
       whereClause.OR = [
-          { subjectId: { notIn: dispensations } },
-          { isFreeLesson: true }
+        { teacherId: session.user.id },
+        { substituteId: session.user.id },
       ];
-  }
-
-  if (classId) whereClause.classId = classId;
-  if (teacherId) {
-      if (whereClause.OR) {
-          // If we already have an OR (like for students), we need to be careful.
-          // But for teachers, we wouldn't have the student OR.
-      } else {
-          whereClause.OR = [
-            { teacherId: teacherId },
-            { substituteId: teacherId }
-          ];
+    }
+  } else if (role === "RESPONSIBLE") {
+    const parent = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { students: { select: { classId: true } } },
+    });
+    const allowedClassIds = (parent?.students || []).map((s) => s.classId).filter(Boolean) as string[];
+    if (classId) {
+      if (!allowedClassIds.includes(classId)) {
+        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
       }
+      whereClause.classId = classId;
+    } else if (allowedClassIds.length > 0) {
+      whereClause.classId = { in: allowedClassIds };
+    } else {
+      return NextResponse.json([]);
+    }
+  } else if (role === "COMPANY_TUTOR") {
+    const tutorContracts = await prisma.companyContract.findMany({
+      where: { tutorId: session.user.id },
+      select: { student: { select: { classId: true } } },
+    });
+    const allowedClassIds = tutorContracts.map((c) => c.student?.classId).filter(Boolean) as string[];
+    if (classId) {
+      if (!allowedClassIds.includes(classId)) {
+        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      }
+      whereClause.classId = classId;
+    } else if (allowedClassIds.length > 0) {
+      whereClause.classId = { in: allowedClassIds };
+    } else {
+      return NextResponse.json([]);
+    }
+  } else if (isAdmin) {
+    if (classId) whereClause.classId = classId;
+    if (teacherId) {
+      whereClause.OR = [
+        { teacherId: teacherId },
+        { substituteId: teacherId },
+      ];
+    }
   }
 
   const lessons = await prisma.lesson.findMany({

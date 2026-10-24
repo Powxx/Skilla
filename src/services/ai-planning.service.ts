@@ -287,6 +287,7 @@ export class AIPlanningService {
              const combinableReq = sortedRequirements.find(other => 
                 other.classId !== req.classId && 
                 other.subjectId === req.subjectId &&
+                other.durationHours >= 2 &&
                 !scheduledLessons.some(l => l.classId.includes(other.classId) && this.doSlotsOverlap(l, slot)) &&
                 !existingLessons.some(l => l.classId.includes(other.classId) && this.doSlotsOverlap(l, slot))
              );
@@ -294,7 +295,8 @@ export class AIPlanningService {
                 // Vérifie que l'autre classe ne dépasse pas sa limite d'enchaînement consécutif
                 if (countConsecutive(combinableReq.classId, slot, 'class') < maxConsecutiveLessons) {
                    finalClassId = `${req.classId}, ${combinableReq.classId}`;
-                   // NOTE : Dans un solveur avancé, on décompterait également 2h du besoin de l'autre classe.
+                   // Décompte effectif des 2h satisfaites pour l'autre classe
+                   combinableReq.durationHours -= 2;
                 }
              }
           }

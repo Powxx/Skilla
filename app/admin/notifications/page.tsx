@@ -12,6 +12,10 @@ import { GraduationCap, Users, Bell, School } from "lucide-react";
 
 async function deleteLog(id: string) {
   "use server";
+  const session = await getServerSession(authOptions);
+  if (!session?.user || (session.user.role !== "ADMIN" && session.user.role !== "SUPER_ADMIN")) {
+    throw new Error("Action réservée aux administrateurs.");
+  }
   await prisma.classNotificationLog.delete({ where: { id } });
   revalidatePath("/admin/notifications");
 }

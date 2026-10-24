@@ -20,12 +20,16 @@ export default async function ProfSanctionsDataFetcher() {
   });
   const classIds = Array.from(new Set(teacherLessons.map((l) => l.classId)));
 
+  const isAdmin = session.user.role === "ADMIN" || session.user.role === "SUPER_ADMIN";
   const studentsQuery: { role: "STUDENT"; isActive: boolean; classId?: { in: string[] } } = {
     role: "STUDENT",
     isActive: true,
   };
 
-  if (classIds.length > 0) {
+  // Si l'utilisateur n'est pas admin, il ne peut voir QUE les élèves de ses classes assignées (même si vide)
+  if (!isAdmin) {
+    studentsQuery.classId = { in: classIds };
+  } else if (classIds.length > 0) {
     studentsQuery.classId = { in: classIds };
   }
 

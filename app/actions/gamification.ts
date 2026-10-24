@@ -1,6 +1,8 @@
 "use server";
 
 import { prisma } from "@/lib/prisma";
+import { getServerSession } from "next-auth/next";
+import { authOptions } from "@/lib/auth-options";
 import { startOfDay, subDays, isSameDay } from "date-fns";
 
 export async function updateLoginStreak(userId: string) {
@@ -39,9 +41,6 @@ export async function updateLoginStreak(userId: string) {
   return newStreak;
 }
 
-import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/lib/auth-options";
-
 export async function saveGameScore(userId: string, gameKey: string, score: number) {
   const session = await getServerSession(authOptions);
   if (!session?.user?.id || (session.user.id !== userId && session.user.role !== "ADMIN" && session.user.role !== "SUPER_ADMIN")) {
@@ -73,16 +72,35 @@ export async function getStudentStats(userId: string) {
   if (!session?.user?.id) throw new Error("Non autorisé");
 
   const isSelf = session.user.id === userId;
-  const isStaff = session.user.role === "ADMIN" || session.user.role === "SUPER_ADMIN" || session.user.role === "TEACHER";
+  const isAdmin = session.user.role === "ADMIN" || session.user.role === "SUPER_ADMIN";
+  const isTeacher = session.user.role === "TEACHER";
 
-  if (!isSelf && !isStaff) {
-    const isLinked = await prisma.user.findFirst({
-      where: {
-        id: session.user.id,
-        students: { some: { id: userId } }
-      }
-    });
-    if (!isLinked) throw new Error("Non autorisé");
+  if (!isSelf && !isAdmin) {
+    if (isTeacher) {
+      // Vérifier si le professeur enseigne à la classe de l'élève
+      const targetUser = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { classId: true }
+      });
+      const teachesClass = targetUser?.classId
+        ? await prisma.lesson.findFirst({
+            where: { teacherId: session.user.id, classId: targetUser.classId }
+          })
+        : null;
+      if (!teachesClass) throw new Error("Non autorisé");
+    } else {
+      // Vérifier si parent ou tuteur lié
+      const isLinked = await prisma.user.findFirst({
+        where: {
+          id: session.user.id,
+          OR: [
+            { students: { some: { id: userId } } },
+            { tutorContracts: { some: { studentId: userId } } }
+          ]
+        }
+      });
+      if (!isLinked) throw new Error("Non autorisé");
+    }
   }
 
   const [user, grades] = await Promise.all([

@@ -47,7 +47,13 @@ export async function DELETE(request: Request) {
     const id = searchParams.get("id");
     if (!id) throw new Error("ID manquant");
 
-    await prisma.room.delete({ where: { id } });
+    await prisma.$transaction([
+      prisma.lesson.updateMany({
+        where: { roomId: id },
+        data: { roomId: null },
+      }),
+      prisma.room.delete({ where: { id } }),
+    ]);
     return NextResponse.json({ success: true });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 400 });

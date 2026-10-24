@@ -1,4 +1,5 @@
 import prisma from "@/lib/prisma";
+import { unstable_cache } from "next/cache";
 import { formatTeacherName, formatStudentName, formatUserName } from "@/lib/user-utils";
 import { getGlobalSettings } from "@/app/actions/settings";
 import { QUALIOPI_ENABLED_KEY } from "@/lib/qualiopi";
@@ -240,7 +241,7 @@ function resolvePeriodStart(period: AdminDashboardPeriod, semester: { startDate:
  * @param filters Filtres de sélection (période, classe, semestre).
  * @returns Le payload complet d'indicateurs et graphiques.
  */
-export async function loadAdminDashboardPayload(
+async function calculateAdminDashboardPayload(
   filters: AdminDashboardFilters = {},
 ): Promise<AdminDashboardPayload> {
   const now = new Date();
@@ -314,6 +315,7 @@ export async function loadAdminDashboardPayload(
     unconfirmedAbsencesCount,
     conductAtRisk,
     annualLessonsForTeachers,
+    allRecentLessons,
   ] = await Promise.all([
     prisma.user.count({ where: studentWhere }),
     prisma.user.count({ where: { role: "TEACHER", isActive: true } }),
@@ -328,9 +330,6 @@ export async function loadAdminDashboardPayload(
         conductPoints: true,
         class: { select: { id: true, name: true } },
         responsibles: { select: { id: true } },
-        grades: selectedSemesterId
-          ? { where: { semesterId: selectedSemesterId } }
-          : true,
         studentContracts: {
           where: { endDate: { gte: now } },
           select: { id: true },
@@ -386,10 +385,16 @@ export async function loadAdminDashboardPayload(
       select: { startTime: true, endTime: true, teacherId: true },
     }),
     prisma.companyContract.findMany({
-      include: {
+      where: { endDate: { gte: now } },
+      select: {
+        id: true,
+        studentId: true,
+        companyName: true,
+        endDate: true,
         student: { select: { id: true, firstName: true, lastName: true, classId: true } },
       },
       orderBy: { endDate: "asc" },
+      take: 20,
     }),
     prisma.user.findMany({
       where: {
@@ -455,6 +460,14 @@ export async function loadAdminDashboardPayload(
         teacher: { select: { firstName: true, lastName: true } },
       },
     }),
+    // Leçons sur 12 semaines pour le graphique hebdomadaire RH
+    prisma.lesson.findMany({
+      where: {
+        startTime: { gte: subDays(now, 84) },
+        isCancelled: false,
+      },
+      select: { startTime: true, endTime: true, teacherId: true },
+    }),
   ]);
 
   // 3. Calculs des KPIs principaux
@@ -493,11 +506,11 @@ export async function loadAdminDashboardPayload(
   );
 
   // Couverture de contrat d'alternance/stage des élèves
-  const activeContracts = companyContracts.filter(
-    (c) => c.endDate >= now && studentIds.has(c.studentId),
-  );
+  const studentsWithContract = students.filter(
+    (s) => s.studentContracts && s.studentContracts.length > 0
+  ).length;
   const contractCoveragePct =
-    students.length > 0 ? (activeContracts.length / students.length) * 100 : 0;
+    students.length > 0 ? (studentsWithContract / students.length) * 100 : 0;
 
   // Pourcentage d'élèves ayant au moins un responsable légal lié en BDD
   const parentLinkPct =
@@ -610,13 +623,6 @@ export async function loadAdminDashboardPayload(
 
   // Analyse des heures programmées vs assurées sur 12 semaines pour les KPI RH
   const hrHoursWeekly: { week: string; planned: number; realized: number; gap: number }[] = [];
-  const allRecentLessons = await prisma.lesson.findMany({
-    where: {
-      startTime: { gte: subDays(now, 84) },
-      isCancelled: false,
-    },
-    select: { startTime: true, endTime: true, teacherId: true },
-  });
   for (let i = 11; i >= 0; i--) {
     const weekStart = startOfWeek(subDays(now, i * 7), { weekStartsOn: 1 });
     const weekEnd = endOfWeek(weekStart, { weekStartsOn: 1 });
@@ -901,4 +907,27 @@ export async function loadAdminDashboardPayload(
       pendingSubstitutions,
     },
   };
+}
+
+/**
+ * Charge le payload du tableau de bord administrateur en utilisant le cache Next.js (unstable_cache).
+ * Permet d'éviter de saturer la base de données PostgreSQL lors de rechargements rapprochés (TTL 60s).
+ */
+export async function loadAdminDashboardPayload(
+  filters: AdminDashboardFilters = {},
+): Promise<AdminDashboardPayload> {
+  const semesterKey = filters.semesterId ?? "current";
+  const classKey = filters.classId ?? "all";
+  const periodKey = filters.period ?? "30d";
+
+  const getCachedPayload = unstable_cache(
+    async () => calculateAdminDashboardPayload(filters),
+    ["admin-dashboard-payload", semesterKey, classKey, periodKey],
+    {
+      revalidate: 60,
+      tags: ["admin-dashboard"],
+    }
+  );
+
+  return getCachedPayload();
 }

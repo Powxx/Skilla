@@ -3,7 +3,7 @@
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth-options";
 import prisma from "@/lib/prisma";
-import bcrypt from "bcrypt";
+import bcrypt from "bcryptjs";
 import { unstable_cache, revalidateTag, revalidatePath } from "next/cache";
 
 // --- EXISTING FUNCTIONS ---

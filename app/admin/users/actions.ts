@@ -3,7 +3,7 @@
 import prisma from "@/lib/prisma";
 import { authOptions } from "@/lib/auth-options";
 import { Prisma, Role } from "@prisma/client";
-import bcrypt from "bcrypt";
+import bcrypt from "bcryptjs";
 import { getServerSession } from "next-auth/next";
 import { revalidatePath } from "next/cache";
 import { formatUserName } from "@/lib/user-utils";
@@ -51,8 +51,7 @@ export async function updateAdminPermissions(input: {
   const session = await requireAdmin();
   const isGenAdmin = Boolean(
     (session?.user as any)?.isGeneralAdmin ||
-    session?.user?.role === "SUPER_ADMIN" ||
-    session?.user?.email?.toLowerCase() === "admin@skilla.edu"
+    session?.user?.role === "SUPER_ADMIN"
   );
   if (!isGenAdmin) {
     return { ok: false, error: "Action réservée à l'Administrateur Général." };
@@ -264,7 +263,7 @@ export async function updateUser(input: {
   }
 
   let username = existing.username;
-  if (!username || existing.firstName !== firstName || existing.lastName !== lastName) {
+  if (!username) {
     username = await generateUniqueUsername(firstName, lastName);
   }
 
@@ -474,17 +473,21 @@ export async function importUsersAction(users: Array<{
   if (!session) return { ok: false, error: "Accès réservé aux administrateurs." };
 
   let count = 0;
+  const defaultPasswordHash = await bcrypt.hash("Skilla2026!", 10);
+
   for (const user of users) {
     const email = user.email?.trim() ? user.email.trim().toLowerCase() : null;
     const firstName = user.firstName.trim();
     const lastName = user.lastName.trim();
     const fullName = formatUserName(firstName, lastName);
     const role = user.role;
-    const password = user.password || "Skilla2026!";
 
     if (!firstName || !lastName || !role) continue;
 
-    const passwordHash = await bcrypt.hash(password, 10);
+    const passwordHash = user.password && user.password !== "Skilla2026!"
+      ? await bcrypt.hash(user.password, 10)
+      : defaultPasswordHash;
+
     const generatedUsername = await generateUniqueUsername(firstName, lastName);
 
     try {

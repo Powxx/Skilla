@@ -152,13 +152,24 @@ export async function getLessonHomeworkStats(lessonId: string) {
  */
 export async function adminToggleStudentHomeworkDone(lessonId: string, targetStudentId: string) {
   const session = await getServerSession(authOptions);
-  if (
-    !session?.user ||
-    (session.user.role !== "TEACHER" &&
-      session.user.role !== "ADMIN" &&
-      session.user.role !== "SUPER_ADMIN")
-  ) {
-    throw new Error("Non autorisé");
+  if (!session?.user?.id) throw new Error("Non autorisé");
+  const isAdmin = session.user.role === "ADMIN" || session.user.role === "SUPER_ADMIN";
+  const lesson = await prisma.lesson.findUnique({
+    where: { id: lessonId },
+    select: { id: true, teacherId: true, substituteId: true, classId: true }
+  });
+  if (!lesson) throw new Error("Cours introuvable.");
+
+  if (!isAdmin && lesson.teacherId !== session.user.id && lesson.substituteId !== session.user.id) {
+    throw new Error("Vous ne pouvez modifier les devoirs que pour vos propres cours.");
+  }
+
+  // Vérifier que l'étudiant appartient bien à la classe du cours
+  const student = await prisma.user.findFirst({
+    where: { id: targetStudentId, classId: lesson.classId, role: "STUDENT" }
+  });
+  if (!student) {
+    throw new Error("Cet élève n'appartient pas à la classe de ce cours.");
   }
 
   const existing = await prisma.homeworkCompletion.findUnique({

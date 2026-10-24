@@ -143,12 +143,8 @@ export async function getMessages(conversationId: string, page: number = 1, page
   }).then(messages => messages.reverse()); // Remettre dans l'ordre chronologique
 }
 
-function isGeneralAdminUser(u: { email?: string | null; username?: string | null; firstName?: string | null; lastName?: string | null; isGeneralAdmin?: boolean | null }): boolean {
-  if (u.isGeneralAdmin) return true;
-  if (u.email?.toLowerCase() === "admin@skilla.edu") return true;
-  if (u.username?.toLowerCase() === "admin") return true;
-  if (u.firstName?.toLowerCase() === "admin" && (u.lastName?.toLowerCase() === "general" || u.lastName?.toLowerCase() === "général" || u.lastName?.toLowerCase() === "skilla")) return true;
-  return false;
+function isGeneralAdminUser(u: { isGeneralAdmin?: boolean | null }): boolean {
+  return Boolean(u.isGeneralAdmin);
 }
 
 export async function sendMessage(recipientId: string, content: string) {
@@ -186,33 +182,32 @@ export async function sendMessage(recipientId: string, content: string) {
   if (isSenderAdmin || (isRecipientAdmin && !recipientIsGeneralAdmin)) {
     // Ok
   } else if ((sender.role === 'STUDENT' || sender.role === 'RESPONSIBLE') && recipient.role === 'TEACHER') {
-    // Vérifier si le prof enseigne à l'élève
-    const studentId = sender.role === 'STUDENT' ? sender.id : (sender.students[0]?.id || "");
+    // Vérifier si le prof enseigne à l'élève ou à l'un des enfants du parent
+    const studentIds = sender.role === 'STUDENT' ? [sender.id] : (sender.students || []).map(s => s.id);
     
-    // Vérifier si le prof a des leçons avec la classe de l'élève
     const hasRelationship = await prisma.lesson.findFirst({
-        where: {
-            teacherId: recipient.id,
-            class: { students: { some: { id: studentId } } }
-        }
+      where: {
+        teacherId: recipient.id,
+        class: { students: { some: { id: { in: studentIds } } } }
+      }
     });
 
     if (!hasRelationship) {
-        throw new Error("Vous ne pouvez contacter que vos professeurs.");
+      throw new Error(sender.role === 'STUDENT' ? "Vous ne pouvez contacter que vos professeurs." : "Vous ne pouvez contacter que les professeurs de vos enfants.");
     }
   } else if (sender.role === 'TEACHER' && (recipient.role === 'STUDENT' || recipient.role === 'RESPONSIBLE')) {
-      // Prof peut contacter ses élèves
-      const studentId = recipient.role === 'STUDENT' ? recipient.id : (recipient.students[0]?.id || "");
-      
-      const hasRelationship = await prisma.lesson.findFirst({
-        where: {
-            teacherId: sender.id,
-            class: { students: { some: { id: studentId } } }
-        }
+    // Prof peut contacter ses élèves ou leurs responsables
+    const studentIds = recipient.role === 'STUDENT' ? [recipient.id] : (recipient.students || []).map(s => s.id);
+    
+    const hasRelationship = await prisma.lesson.findFirst({
+      where: {
+        teacherId: sender.id,
+        class: { students: { some: { id: { in: studentIds } } } }
+      }
     });
 
     if (!hasRelationship) {
-        throw new Error("Vous ne pouvez contacter que vos élèves.");
+      throw new Error("Vous ne pouvez contacter que vos élèves ou leurs responsables.");
     }
   } else {
     throw new Error("Conversation non autorisée entre ces rôles.");

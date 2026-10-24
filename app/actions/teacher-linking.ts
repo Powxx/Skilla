@@ -70,6 +70,8 @@ export async function linkAdminToTeacher(teacherId: string | null) {
     data: { linkedTeacherId: teacherId }
   });
 
-  revalidatePath("/", "layout");
+  revalidatePath("/admin/settings");
+  revalidatePath("/admin/users");
+  revalidatePath("/prof/planning");
   return { ok: true };
 }

@@ -21,22 +21,17 @@ if (vapidKeys.publicKey && vapidKeys.privateKey) {
 
 export async function subscribeToPush(subscription: any) {
   const session = await getServerSession(authOptions);
-  if (!session?.user?.email) throw new Error("Non authentifié");
-
-  const user = await prisma.user.findUnique({
-    where: { email: session.user.email },
-  });
-
-  if (!user) throw new Error("Utilisateur non trouvé");
+  if (!session?.user?.id) throw new Error("Non authentifié");
 
   await prisma.pushSubscription.upsert({
     where: { endpoint: subscription.endpoint },
     update: {
+      userId: session.user.id,
       p256dh: subscription.keys.p256dh,
       auth: subscription.keys.auth,
     },
     create: {
-      userId: user.id,
+      userId: session.user.id,
       endpoint: subscription.endpoint,
       p256dh: subscription.keys.p256dh,
       auth: subscription.keys.auth,

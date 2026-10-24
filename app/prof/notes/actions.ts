@@ -5,7 +5,16 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth-options";
 import { getEffectiveTeacherId } from "@/lib/teacher-utils";
 
+async function requireTeacherOrAdmin() {
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.id || (session.user.role !== "TEACHER" && session.user.role !== "ADMIN" && session.user.role !== "SUPER_ADMIN")) {
+        throw new Error("Accès réservé aux enseignants et administrateurs.");
+    }
+    return session;
+}
+
 export async function getClassDetailsForGrading(classId: string, teacherId: string) {
+    await requireTeacherOrAdmin();
     const classData = await prisma.class.findUnique({
         where: { id: classId },
         include: {
@@ -35,6 +44,7 @@ export type StudentForGradeEntry = {
 };
 
 export async function getStudentsByClass(classId: string): Promise<StudentForGradeEntry[]> {
+    await requireTeacherOrAdmin();
     const c = await prisma.class.findUnique({
         where: { id: classId },
         include: {
@@ -82,6 +92,7 @@ export async function getStudentsForClassAndSubject(
     classId: string, 
     subjectId: string
 ): Promise<StudentsForGradingResult> {
+    await requireTeacherOrAdmin();
     if (!classId || !subjectId) {
         return { enrolledStudents: [], dispensedStudents: [] };
     }

@@ -1,7 +1,7 @@
 import type { NextAuthOptions } from "next-auth";
 import type { Role } from "@prisma/client";
 import CredentialsProvider from "next-auth/providers/credentials";
-import bcrypt from "bcrypt";
+import bcrypt from "bcryptjs";
 import prisma from "@/lib/prisma";
 import { updateLoginStreak } from "@/app/actions/gamification";
 import { formatUserName } from "@/lib/user-utils";
@@ -84,9 +84,7 @@ export const authOptions: NextAuthOptions = {
           const isGenAdmin = Boolean(
             user.isGeneralAdmin ||
             user.role === "SUPER_ADMIN" ||
-            user.email?.toLowerCase() === "admin@skilla.edu" ||
-            user.username?.toLowerCase() === "admin" ||
-            (user.firstName?.toLowerCase() === "admin" && user.lastName?.toLowerCase()?.includes("general"))
+            user.email?.toLowerCase() === "admin@skilla.edu"
           );
 
           // Retourne l'objet User décoré de ses habilitations RBAC qui sera encrypté dans le JWT

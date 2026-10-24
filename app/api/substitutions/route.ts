@@ -55,7 +55,31 @@ export async function POST(request: Request) {
 
   try {
     const { lessonId } = await request.json();
+    if (!lessonId) {
+      return NextResponse.json({ error: "ID du cours manquant." }, { status: 400 });
+    }
+
     const effectiveTeacherId = await getEffectiveTeacherId(session.user.id);
+    const lesson = await prisma.lesson.findUnique({
+      where: { id: lessonId },
+      select: { id: true, teacherId: true, isCancelled: true }
+    });
+
+    if (!lesson) {
+      return NextResponse.json({ error: "Cours introuvable." }, { status: 404 });
+    }
+
+    const isAdmin = session.user.role === "ADMIN" || session.user.role === "SUPER_ADMIN";
+    if (!isAdmin && lesson.teacherId !== effectiveTeacherId) {
+      return NextResponse.json({ error: "Vous ne pouvez demander un remplacement que pour vos propres cours." }, { status: 403 });
+    }
+
+    const existingPending = await prisma.substitutionRequest.findFirst({
+      where: { lessonId, status: "PENDING" }
+    });
+    if (existingPending) {
+      return NextResponse.json({ error: "Une demande de remplacement est déjà en attente pour ce cours." }, { status: 400 });
+    }
 
     const subRequest = await prisma.substitutionRequest.create({
       data: {
@@ -80,34 +104,40 @@ export async function PUT(request: Request) {
   try {
     const { id, status, substituteTeacherId, subjectId } = await request.json();
 
-    const subRequest = await prisma.substitutionRequest.update({
-      where: { id },
-      data: { status, substituteTeacherId },
-      include: { lesson: true }
-    });
-
-    // If approved, update the lesson's substitute teacher and subject
-    if (status === "APPROVED" && substituteTeacherId) {
-      const updatedLesson = await prisma.lesson.update({
-        where: { id: subRequest.lessonId },
-        data: { 
-          substituteId: substituteTeacherId,
-          subjectId: subjectId || undefined // Change subject if provided
-        },
-        include: { 
-          class: { include: { students: true } }, 
-          subject: true,
-          teacher: { select: { firstName: true, lastName: true } },
-          substitute: { select: { firstName: true, lastName: true } }
-        }
+    const [subRequest, updatedLesson] = await prisma.$transaction(async (tx) => {
+      const subReq = await tx.substitutionRequest.update({
+        where: { id },
+        data: { status, substituteTeacherId },
+        include: { lesson: true }
       });
 
-      // Notify Students
+      let lessonUpdated = null;
+      if (status === "APPROVED" && substituteTeacherId) {
+        lessonUpdated = await tx.lesson.update({
+          where: { id: subReq.lessonId },
+          data: { 
+            substituteId: substituteTeacherId,
+            subjectId: subjectId || undefined
+          },
+          include: { 
+            class: { include: { students: true } }, 
+            subject: true,
+            teacher: { select: { firstName: true, lastName: true } },
+            substitute: { select: { firstName: true, lastName: true } }
+          }
+        });
+      }
+      return [subReq, lessonUpdated];
+    });
+
+    // Notification des élèves si le remplacement est validé
+    if (status === "APPROVED" && updatedLesson) {
       const isEnabled = await checkEventEnabled("SUBSTITUTION_VALIDATED");
       if (isEnabled) {
+        const subjectName = updatedLesson.isFreeLesson ? (updatedLesson.customSubject || "Cours libre") : (updatedLesson.subject?.name || "Sans matière");
+        const subTeacherName = updatedLesson.substitute?.lastName || updatedLesson.teacher?.lastName || "l'intervenant";
+        
         for (const student of updatedLesson.class.students) {
-          const subjectName = updatedLesson.isFreeLesson ? (updatedLesson.customSubject || "Cours libre") : (updatedLesson.subject?.name || "Sans matière");
-          const subTeacherName = updatedLesson.substitute?.lastName || updatedLesson.teacher?.lastName || "l'intervenant";
           createNotification({
             userId: student.id,
             title: "Remplacement validé",

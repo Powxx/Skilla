@@ -1,4 +1,7 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
+import { getServerSession } from "next-auth/next";
+import { authOptions } from "@/lib/auth-options";
 import prisma from "@/lib/prisma";
 import { setDispensation } from "@/app/admin/students/actions";
 
@@ -6,6 +9,11 @@ export const dynamic = 'force-dynamic';
 export const metadata = { title: "Dispenses — Administration" };
 
 export default async function AdminDispensesPage({ searchParams }: { searchParams: Promise<{ classId?: string }> }) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user || (session.user.role !== "ADMIN" && session.user.role !== "SUPER_ADMIN")) {
+    redirect("/login");
+  }
+
   const { classId } = await searchParams;
 
   const classes = await prisma.class.findMany({ include: { students: { include: { dispensations: true } } } });

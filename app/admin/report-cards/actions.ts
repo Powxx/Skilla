@@ -1,10 +1,31 @@
 "use server";
 
 import prisma from "@/lib/prisma";
+import { getServerSession } from "next-auth/next";
+import { authOptions } from "@/lib/auth-options";
 import { revalidatePath } from "next/cache";
 import { createNotification, checkEventEnabled } from "@/app/actions/notifications";
 
+async function requireAdmin() {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.id || (session.user.role !== "ADMIN" && session.user.role !== "SUPER_ADMIN")) {
+    throw new Error("Action réservée aux administrateurs.");
+  }
+  return session;
+}
+
+async function requireStaffOrSelf(targetStudentId?: string) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.id) throw new Error("Non autorisé.");
+  const role = session.user.role;
+  const isStaff = role === "ADMIN" || role === "SUPER_ADMIN" || role === "TEACHER";
+  const isSelf = Boolean(targetStudentId && session.user.id === targetStudentId);
+  if (!isStaff && !isSelf) throw new Error("Non autorisé.");
+  return session;
+}
+
 export async function calculateStudentAverages(studentId: string, semesterId: string) {
+  await requireStaffOrSelf(studentId);
   const student = await prisma.user.findUnique({
     where: { id: studentId },
     select: { classId: true }
@@ -94,6 +115,7 @@ export async function saveReportCard(data: {
   distinction?: string;
   subjectComments?: { subjectId: string; comment: string }[];
 }) {
+  await requireAdmin();
   // 1. Sauvegarder ou mettre à jour les commentaires de matières
   if (data.subjectComments) {
       for (const sc of data.subjectComments) {
@@ -162,6 +184,7 @@ export async function saveReportCard(data: {
 }
 
 export async function toggleClassReportCardsVisibility(classId: string, visible: boolean) {
+  await requireAdmin();
   await prisma.class.update({
     where: { id: classId },
     data: { reportCardsVisible: visible }

@@ -206,7 +206,12 @@ export async function saveGradesBatch(
 export async function updateGrade(id: string, value: number, coefficient: number, comment?: string | null) {
   const session = await getServerSession(authOptions);
   if (!session?.user || (session.user.role !== "TEACHER" && session.user.role !== "ADMIN" && session.user.role !== "SUPER_ADMIN")) {
-    throw new Error("Non autorisé");
+    return { ok: false, error: "Non autorisé" };
+  }
+
+  const grade = await prisma.grade.findUnique({ where: { id } });
+  if (!grade) {
+    return { ok: false, error: "Note introuvable." };
   }
 
   const isAdmin = session.user.role === "ADMIN" || session.user.role === "SUPER_ADMIN";
@@ -214,20 +219,26 @@ export async function updateGrade(id: string, value: number, coefficient: number
   const allowedTeacherIds = [session.user.id];
   if (effectiveTeacherId) allowedTeacherIds.push(effectiveTeacherId);
 
-  const whereClause = isAdmin ? { id } : { id, teacherId: { in: allowedTeacherIds } };
+  const isOwner = Boolean(grade.teacherId && allowedTeacherIds.includes(grade.teacherId));
+  if (!isAdmin && !isOwner) {
+    return { ok: false, error: "Vous ne pouvez modifier que les notes que vous avez saisies." };
+  }
 
   try {
     await prisma.grade.update({
-      where: whereClause,
+      where: { id },
       data: {
         value,
         coefficient,
-        comment
-      }
+        comment: comment?.trim() || null,
+      },
     });
     revalidatePath("/prof/notes");
+    revalidatePath("/student/grades");
+    revalidatePath("/admin/dashboard");
     return { ok: true };
   } catch (e) {
+    console.error("[updateGrade] Error:", e);
     return { ok: false, error: "Erreur lors de la mise à jour." };
   }
 }
@@ -235,7 +246,12 @@ export async function updateGrade(id: string, value: number, coefficient: number
 export async function deleteGrade(id: string) {
   const session = await getServerSession(authOptions);
   if (!session?.user || (session.user.role !== "TEACHER" && session.user.role !== "ADMIN" && session.user.role !== "SUPER_ADMIN")) {
-    throw new Error("Non autorisé");
+    return { ok: false, error: "Non autorisé" };
+  }
+
+  const grade = await prisma.grade.findUnique({ where: { id } });
+  if (!grade) {
+    return { ok: false, error: "Note introuvable." };
   }
 
   const isAdmin = session.user.role === "ADMIN" || session.user.role === "SUPER_ADMIN";
@@ -243,15 +259,21 @@ export async function deleteGrade(id: string) {
   const allowedTeacherIds = [session.user.id];
   if (effectiveTeacherId) allowedTeacherIds.push(effectiveTeacherId);
 
-  const whereClause = isAdmin ? { id } : { id, teacherId: { in: allowedTeacherIds } };
+  const isOwner = Boolean(grade.teacherId && allowedTeacherIds.includes(grade.teacherId));
+  if (!isAdmin && !isOwner) {
+    return { ok: false, error: "Vous ne pouvez supprimer que les notes que vous avez saisies." };
+  }
 
   try {
     await prisma.grade.delete({
-      where: whereClause
+      where: { id },
     });
     revalidatePath("/prof/notes");
+    revalidatePath("/student/grades");
+    revalidatePath("/admin/dashboard");
     return { ok: true };
   } catch (e) {
+    console.error("[deleteGrade] Error:", e);
     return { ok: false, error: "Erreur lors de la suppression." };
   }
 }

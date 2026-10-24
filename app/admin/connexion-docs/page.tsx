@@ -9,8 +9,17 @@ export default async function ConnexionDocsPage() {
   if (!session?.user || (session.user.role !== "ADMIN" && session.user.role !== "SUPER_ADMIN")) redirect("/login");
 
   const users = await prisma.user.findMany({
-    select: { id: true, firstName: true, lastName: true, email: true },
-    orderBy: { lastName: 'asc' }
+    where: { isActive: true },
+    select: {
+      id: true,
+      firstName: true,
+      lastName: true,
+      email: true,
+      username: true,
+      role: true,
+      class: { select: { id: true, name: true } },
+    },
+    orderBy: [{ lastName: 'asc' }, { firstName: 'asc' }]
   });
 
   return (

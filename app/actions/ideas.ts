@@ -74,8 +74,6 @@ export async function createAdminIdea(data: {
       OR: [
         { isGeneralAdmin: true },
         { role: "SUPER_ADMIN" },
-        { email: { equals: "admin@skilla.edu", mode: "insensitive" } },
-        { username: { equals: "admin", mode: "insensitive" } },
       ],
       isActive: true,
     },
@@ -104,7 +102,6 @@ export async function createAdminIdea(data: {
 
   revalidatePath("/admin/idees");
   revalidatePath("/admin");
-  revalidatePath("/", "layout");
 
   return idea;
 }
@@ -221,7 +218,6 @@ export async function updateAdminIdeaStatus(data: {
 
   revalidatePath("/admin/idees");
   revalidatePath("/admin");
-  revalidatePath("/", "layout");
 
   return updated;
 }

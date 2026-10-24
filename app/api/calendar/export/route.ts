@@ -5,14 +5,37 @@ import { authOptions } from "@/lib/auth-options";
 import * as ics from "ics";
 
 export async function GET(request: Request) {
+  const { searchParams } = new URL(request.url);
+  const token = searchParams.get("token");
+  const classId = searchParams.get("classId");
+  const teacherId = searchParams.get("teacherId");
+
+  // 1. Support de l'abonnement calendrier externe (Google Calendar, Outlook, Apple Calendar) via token
+  if (token) {
+    const user = await prisma.user.findUnique({
+      where: { calendarToken: token },
+      select: { id: true, role: true, classId: true }
+    });
+
+    if (!user) {
+      return NextResponse.json({ error: "Token de calendrier invalide ou révoqué" }, { status: 404 });
+    }
+
+    if (user.role === "TEACHER") {
+      return exportCalendar({ teacherId: user.id, isTeacherView: true });
+    }
+    if (user.role === "STUDENT") {
+      if (!user.classId) return NextResponse.json({ error: "Aucune classe assignée" }, { status: 400 });
+      return exportCalendar({ classId: user.classId });
+    }
+    return exportCalendar({ classId: classId || undefined, teacherId: teacherId || undefined });
+  }
+
+  // 2. Export manuel depuis l'interface web (authentifié par cookie de session)
   const session = await getServerSession(authOptions);
   if (!session?.user) {
     return NextResponse.json({ error: "Non autorisé" }, { status: 401 });
   }
-
-  const { searchParams } = new URL(request.url);
-  const classId = searchParams.get("classId");
-  const teacherId = searchParams.get("teacherId");
 
   // Security checks similar to lessons route
   const role = session.user.role;

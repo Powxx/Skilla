@@ -86,8 +86,10 @@ export async function markAsRead(notificationId: string) {
     data: { isRead: true, readAt: new Date() },
   });
   
-  // Revalide la mise en page racine pour mettre à jour la cloche de notification
-  revalidatePath("/", "layout");
+  // Revalidation ciblée des vues de notifications sans purger le layout racine global
+  revalidatePath("/admin/notifications");
+  revalidatePath("/prof/notifications");
+  return { ok: true };
 }
 
 /**
@@ -107,7 +109,7 @@ export async function markAllAsRead(userId?: string) {
     data: { isRead: true, readAt: new Date() },
   });
 
-  revalidatePath("/", "layout");
+  revalidatePath("/admin/notifications");
   revalidatePath("/prof/notifications");
   return { ok: true, count: result.count };
 }

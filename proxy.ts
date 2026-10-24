@@ -72,6 +72,7 @@ export const config = {
     "/messages/:path*",
     "/meetings/:path*",
     "/settings/:path*",
-    "/survey/:path*"
+    "/survey/:path*",
+    "/reclamation/:path*"
   ],
 };

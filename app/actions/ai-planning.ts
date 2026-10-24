@@ -53,6 +53,7 @@ export async function saveOptimizedSchedule(lessons: any[]) {
       lessons.map(lesson => {
         // Gère les classes combinées (IDs séparés par des virgules, ex: "class1, class2")
         const classIds = String(lesson.classId).split(',').map(s => s.trim());
+        const sharedGroupId = classIds.length > 1 ? `grp_${crypto.randomUUID()}` : null;
         
         // Crée un cours pour chaque classe participant au cours fusionné
         return classIds.map(clId => 
@@ -64,6 +65,7 @@ export async function saveOptimizedSchedule(lessons: any[]) {
               teacherId: lesson.teacherId,
               classId: clId,
               roomId: lesson.roomId,
+              groupId: sharedGroupId,
             }
           })
         );

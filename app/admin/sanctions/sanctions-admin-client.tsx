@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
+import { useRouter } from "next/navigation";
 import { Plus, Trash2, Edit3, Search, ShieldAlert, Clock, AlertTriangle, X, Star, Activity } from "lucide-react";
 import {
   createSanctionType, updateSanctionType, deleteSanctionType,
@@ -37,6 +38,7 @@ type Props = {
 };
 
 export default function SanctionsAdminClient({ initialSanctions, initialTypes, students, pointsEnabled, actionEvents }: Props) {
+  const router = useRouter();
   const [tab, setTab] = useState<"issued" | "config">("issued");
   const [sanctions, setSanctions] = useState<SanctionInstance[]>(initialSanctions);
   const [types, setTypes] = useState<SanctionType[]>(initialTypes);
@@ -50,6 +52,10 @@ export default function SanctionsAdminClient({ initialSanctions, initialTypes, s
   const [pending, setPending] = useState(false);
   const typeDialogRef = useRef<HTMLDialogElement>(null);
   const assignDialogRef = useRef<HTMLDialogElement>(null);
+
+  useEffect(() => {
+    setSanctions(initialSanctions);
+  }, [initialSanctions]);
 
   useEffect(() => {
     const dlg = typeDialogRef.current;
@@ -105,13 +111,23 @@ export default function SanctionsAdminClient({ initialSanctions, initialTypes, s
     if (!studentId || !sanctionTypeId || !reason.trim()) { setAssignError("Élève, type et motif sont obligatoires."); setPending(false); return; }
     try {
       await assignSanction({ studentId, sanctionTypeId, reason, duration, date, pointsCost });
-      window.location.reload();
+      setAssignModalOpen(false);
+      router.refresh();
     } catch (err: any) { setAssignError(err.message); } finally { setPending(false); }
   };
 
   const handleStatusChange = async (id: string, status: SanctionStatus) => {
+    const previous = sanctions.find((s) => s.id === id)?.status;
     setSanctions(sanctions.map((s) => s.id === id ? { ...s, status } : s));
-    try { await updateSanctionStatus(id, status); } catch { window.location.reload(); }
+    try {
+      await updateSanctionStatus(id, status);
+      router.refresh();
+    } catch (err: any) {
+      if (previous) {
+        setSanctions(sanctions.map((s) => s.id === id ? { ...s, status: previous } : s));
+      }
+      alert(err?.message || "Erreur lors de la mise à jour du statut.");
+    }
   };
 
   const handleDeleteType = async (id: string, name: string) => {

@@ -73,7 +73,21 @@ export async function massDuplicateLessons(
 
   const holidays = await prisma.holiday.findMany();
   const creations: any[] = [];
-  const errors: string[] = [];
+  let skippedConflicts = 0;
+
+  // Pré-chargement des cours existants sur la période cible pour éviter les collisions
+  const maxWeeks = occurrences * intervalWeeks + 4;
+  const maxEndDate = addWeeks(sourceEnd, maxWeeks);
+  const existingLessons = await prisma.lesson.findMany({
+    where: {
+      startTime: { gte: addWeeks(sourceStart, intervalWeeks), lte: maxEndDate },
+      isCancelled: false,
+    },
+    select: { startTime: true, endTime: true, teacherId: true, roomId: true, classId: true }
+  });
+
+  const isOverlapping = (startA: Date, endA: Date, startB: Date, endB: Date) =>
+    startA < endB && endA > startB;
 
   for (const lesson of sourceLessons) {
     let weeksAdded = 1; // On commence à 1 (la première occurence copiée sera +1 * intervalWeeks)
@@ -81,19 +95,34 @@ export async function massDuplicateLessons(
 
     const recurrenceId = occurrences > 1 ? `rec_${crypto.randomUUID()}` : null;
 
-    while (duplicatedCount < occurrences) {
+    while (duplicatedCount < occurrences && weeksAdded < occurrences * 4) {
       const nextStart = addWeeks(lesson.startTime, weeksAdded * intervalWeeks);
       const nextEnd = addWeeks(lesson.endTime, weeksAdded * intervalWeeks);
 
-      // Check holidays
+      // 1. Vérification des jours fériés
       const isHoliday = holidays.some((h) => isSameDay(new Date(h.date), nextStart));
       if (isHoliday) {
         weeksAdded++;
         continue;
       }
 
-      // We could add more strict conflict checking here, 
-      // but to keep it performant and simple for bulk copy, we just queue creation.
+      // 2. Détection préventive des conflits (classe, professeur, salle)
+      const hasConflict = [...existingLessons, ...creations].some((existing) => {
+        if (!isOverlapping(nextStart, nextEnd, new Date(existing.startTime), new Date(existing.endTime))) {
+          return false;
+        }
+        if (existing.classId === lesson.classId) return true;
+        if (lesson.teacherId && existing.teacherId === lesson.teacherId) return true;
+        if (lesson.roomId && existing.roomId === lesson.roomId) return true;
+        return false;
+      });
+
+      if (hasConflict) {
+        skippedConflicts++;
+        weeksAdded++;
+        continue;
+      }
+
       creations.push({
         startTime: nextStart,
         endTime: nextEnd,
@@ -114,7 +143,7 @@ export async function massDuplicateLessons(
     }
   }
 
-  // Create all
+  // Création par lot en base de données
   if (creations.length > 0) {
     await prisma.lesson.createMany({
       data: creations,
@@ -122,7 +151,7 @@ export async function massDuplicateLessons(
   }
 
   revalidatePath("/admin/planning");
-  return { success: true, duplicatedLessons: creations.length };
+  return { success: true, duplicatedLessons: creations.length, skippedConflicts };
 }
 
 export async function getLessonsForTimeframe(teacherId: string, startStr: string, endStr: string) {

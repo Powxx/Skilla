@@ -461,7 +461,12 @@ export async function deleteSanction(id: string) {
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) throw new Error("Non autorisé");
 
-  const sanction = await prisma.sanction.findUnique({ where: { id } });
+  const sanction = await prisma.sanction.findUnique({
+    where: { id },
+    include: {
+      student: { select: { id: true, conductPoints: true, firstName: true, lastName: true } },
+    },
+  });
   if (!sanction) throw new Error("Sanction introuvable.");
 
   const isIssuer = sanction.givenById === session.user.id;
@@ -469,16 +474,34 @@ export async function deleteSanction(id: string) {
   if (!isAdmin && !isIssuer) throw new Error("Non autorisé à supprimer cette sanction.");
 
   const pointsEnabled = await isPointsSystemEnabled();
-  
-  // Transaction de restauration des points de conduite de l'élève
+  const operations: any[] = [];
+
+  // Restauration des points de conduite avec plafond strict de 100 dans la transaction
   if (pointsEnabled && sanction.pointsCost > 0) {
-    await prisma.user.update({
-      where: { id: sanction.studentId },
-      data: { conductPoints: { increment: sanction.pointsCost } },
-    });
+    const currentPoints = sanction.student?.conductPoints ?? 100;
+    const restoredPoints = Math.min(100, currentPoints + sanction.pointsCost);
+
+    operations.push(
+      prisma.user.update({
+        where: { id: sanction.studentId },
+        data: { conductPoints: restoredPoints },
+      })
+    );
+
+    operations.push(
+      prisma.sanctionActionEvent.create({
+        data: {
+          studentId: sanction.studentId,
+          type: "POINTS_RESTORED",
+          description: `Sanction annulée : ${sanction.pointsCost} point(s) de conduite restitué(s) (${currentPoints} → ${restoredPoints}).`,
+        },
+      })
+    );
   }
 
-  await prisma.sanction.delete({ where: { id } });
+  operations.push(prisma.sanction.delete({ where: { id } }));
+
+  await prisma.$transaction(operations);
 
   revalidatePath("/admin/sanctions");
   revalidatePath("/prof/sanctions");
@@ -494,6 +517,7 @@ export async function deleteSanction(id: string) {
 
 /**
  * Server Action : Ajoute un commentaire de suivi sur une sanction.
+ * Vérifie l'autorisation de l'utilisateur (Admin, élève concerné, auteur de la sanction, responsable ou tuteur).
  */
 export async function addSanctionComment(sanctionId: string, body: string) {
   const session = await getServerSession(authOptions);
@@ -503,6 +527,33 @@ export async function addSanctionComment(sanctionId: string, body: string) {
   const enabled = await isCommentsEnabled();
   if (!enabled) throw new Error("Le système de commentaires est désactivé.");
 
+  const sanction = await prisma.sanction.findUnique({
+    where: { id: sanctionId },
+    include: {
+      student: {
+        select: {
+          id: true,
+          responsibles: { select: { id: true } },
+          studentContracts: { select: { tutorId: true } },
+        },
+      },
+    },
+  });
+
+  if (!sanction) throw new Error("Sanction introuvable.");
+
+  const userId = session.user.id;
+  const role = session.user.role;
+  const isAdmin = role === "ADMIN" || role === "SUPER_ADMIN";
+  const isStudent = sanction.studentId === userId;
+  const isIssuer = sanction.givenById === userId;
+  const isParent = sanction.student.responsibles.some((r) => r.id === userId);
+  const isTutor = sanction.student.studentContracts.some((c) => c.tutorId === userId);
+
+  if (!isAdmin && !isStudent && !isIssuer && !isParent && !isTutor) {
+    throw new Error("Vous n'êtes pas autorisé à commenter cette sanction.");
+  }
+
   const comment = await prisma.sanctionComment.create({
     data: { sanctionId, authorId: session.user.id, body: body.trim() },
     include: { author: { select: { firstName: true, lastName: true, role: true } } },
@@ -511,6 +562,8 @@ export async function addSanctionComment(sanctionId: string, body: string) {
   revalidatePath("/student/sanctions");
   revalidatePath("/parent/sanctions");
   revalidatePath("/employer/sanctions");
+  revalidatePath("/admin/sanctions");
+  revalidatePath("/prof/sanctions");
   return { ok: true, comment };
 }
 

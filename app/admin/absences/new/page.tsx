@@ -6,17 +6,36 @@ import { revalidatePath } from "next/cache";
 
 async function createAttendance(formData: FormData) {
   "use server";
+  const session = await getServerSession(authOptions);
+  if (!session?.user || (session.user.role !== "ADMIN" && session.user.role !== "SUPER_ADMIN")) {
+    throw new Error("Action réservée aux administrateurs.");
+  }
   const studentId = formData.get("studentId") as string;
   const lessonId = formData.get("lessonId") as string;
   const status = formData.get("status") as string;
   
-  await prisma.attendance.create({
-    data: {
-      studentId,
-      lessonId,
-      status: status as any
-    }
+  if (!studentId || !lessonId || !status) {
+    throw new Error("Champs obligatoires manquants.");
+  }
+
+  const existing = await prisma.attendance.findFirst({
+    where: { lessonId, studentId }
   });
+
+  if (existing) {
+    await prisma.attendance.update({
+      where: { id: existing.id },
+      data: { status: status as any }
+    });
+  } else {
+    await prisma.attendance.create({
+      data: {
+        studentId,
+        lessonId,
+        status: status as any
+      }
+    });
+  }
   revalidatePath("/admin/absences");
 }
 
@@ -24,8 +43,8 @@ export default async function AdminCreateAbsencePage() {
   const session = await getServerSession(authOptions);
   if (!session?.user || (session.user.role !== "ADMIN" && session.user.role !== "SUPER_ADMIN")) redirect("/login");
 
-  const students = await prisma.user.findMany({ where: { role: "STUDENT", isActive: true }, select: { id: true, firstName: true, lastName: true } });
-  const lessons = await prisma.lesson.findMany({ include: { subject: true } });
+  const students = await prisma.user.findMany({ where: { role: "STUDENT", isActive: true }, select: { id: true, firstName: true, lastName: true }, orderBy: { lastName: "asc" } });
+  const lessons = await prisma.lesson.findMany({ where: { isCancelled: false }, include: { subject: true, class: { select: { name: true } } }, orderBy: { startTime: "desc" }, take: 100 });
 
   return (
     <div className="p-8">
