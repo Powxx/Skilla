@@ -48,6 +48,16 @@ function weightedAverage(grades: GradeLite[]): number | null {
 }
 
 /**
+ * Calcule l'écart-type d'une série de valeurs numériques (mesure de dispersion des notes).
+ */
+function calculateStandardDeviation(values: number[]): number | null {
+  if (values.length < 2) return null;
+  const mean = values.reduce((acc, v) => acc + v, 0) / values.length;
+  const variance = values.reduce((acc, v) => acc + Math.pow(v - mean, 2), 0) / values.length;
+  return Math.round(Math.sqrt(variance) * 10) / 10;
+}
+
+/**
  * Calcule le nombre d'heures écoulées entre deux dates.
  */
 function lessonHours(start: Date, end: Date): number {
@@ -155,8 +165,16 @@ export type AdminDashboardPayload = {
     students: number;
     teachers: number;
     classes: number;
-    attendanceRate: number;
+    attendanceRate: number; // Taux d'assiduité réglementaire (Présents + Excusés + Retards)
+    unjustifiedAbsenceRate: number; // Taux d'absentéisme injustifié (décrochage)
+    pendingJustifications: number; // Absences à justifier (< 48h)
+    overdueAbsences: number; // Absences injustifiées / hors délai (> 48h)
     generalAverage: number | null;
+    gradeStdDev: number | null; // Indicateur 2 : Dispersion / Écart-type des notes
+    gradeCompletionPct: number; // Indicateur 1 : Taux de complétude des notes par matière
+    rollCallValidationRate: number; // Indicateur 9 : Taux d'appels validés dans les temps
+    roomOccupancyRate: number; // Indicateur 10 : Taux d'occupation des salles
+    parentActivationPct: number; // Indicateur 13 : Taux d'activation des comptes parents
     sanctionsCount: number;
     reportCardsPct: number;
     competencyAcquiredPct: number;
@@ -170,8 +188,23 @@ export type AdminDashboardPayload = {
     pendingRollCalls: number;
     teacherAttendanceRate: number;
   };
+  monthlyLoginsByRole: {
+    role: string;
+    label: string;
+    total: number;
+    activeMonthly: number;
+    percentage: number;
+  }[];
   charts: {
-    attendanceWeekly: { week: string; rate: number }[];
+    attendanceWeekly: {
+      week: string;
+      rate: number;
+      unjustifiedRate: number;
+      present: number;
+      excused: number;
+      unjustified: number;
+      pending: number;
+    }[];
     classAverages: { className: string; average: number }[];
     sanctionsByType: { type: string; count: number }[];
     hrHoursWeekly: { week: string; planned: number; realized: number; gap: number }[];
@@ -186,7 +219,20 @@ export type AdminDashboardPayload = {
   };
   miniTables: {
     topClasses: { classId: string; className: string; average: number }[];
-    atRiskClasses: { classId: string; className: string; attendanceRate: number; average: number | null }[];
+    atRiskClasses: {
+      classId: string;
+      className: string;
+      attendanceRate: number;
+      unjustifiedRate: number;
+      average: number | null;
+    }[];
+    atRiskStudents: {
+      id: string;
+      studentName: string;
+      className: string;
+      unjustifiedCount: number;
+      conductPoints: number;
+    }[];
     weakCompetencies: { name: string; acquiredPct: number; total: number }[];
     recentDisciplineEvents: {
       id: string;
@@ -292,7 +338,7 @@ async function calculateAdminDashboardPayload(
   const schoolYearStart = currentSchoolYear?.startDate ?? subDays(now, 365);
   const schoolYearEnd = currentSchoolYear?.endDate ?? now;
 
-  // 2. Agrégation des données de base en parallèle (KPIs, absences, notes, sanctions)
+  // 2. Agrégation des données de base en parallèle (KPIs, absences, notes, sanctions, logistique, connexions)
   const [
     studentsCount,
     teachersCount,
@@ -312,10 +358,15 @@ async function calculateAdminDashboardPayload(
     pendingMeetings,
     pendingSubstitutions,
     pendingRollCalls,
-    unconfirmedAbsencesCount,
+    pendingJustificationsCount,
+    overdueAbsencesCount,
     conductAtRisk,
     annualLessonsForTeachers,
     allRecentLessons,
+    allSubjects,
+    rooms,
+    roomLessons,
+    allActiveUsers,
   ] = await Promise.all([
     prisma.user.count({ where: studentWhere }),
     prisma.user.count({ where: { role: "TEACHER", isActive: true } }),
@@ -342,6 +393,7 @@ async function calculateAdminDashboardPayload(
         value: true,
         coefficient: true,
         studentId: true,
+        subjectId: true,
         student: { select: { classId: true } },
       },
     }),
@@ -358,6 +410,7 @@ async function calculateAdminDashboardPayload(
       },
       select: {
         status: true,
+        isConfirmed: true,
         lesson: { select: { startTime: true, endTime: true } },
         studentId: true,
       },
@@ -433,10 +486,29 @@ async function calculateAdminDashboardPayload(
         isAttendanceValidated: false, // Cours passés dont l'appel n'a pas été validé
       },
     }),
+    // Absences en attente de justification sous le délai légal de 48h (flux normal de régularisation)
     prisma.attendance.count({
       where: {
-        status: { in: ["ABSENT", "EXCUSED"] },
+        status: "ABSENT",
         isConfirmed: false,
+        lesson: {
+          startTime: { gte: subDays(now, 2) },
+          isCancelled: false,
+          ...(selectedClassId ? { classId: selectedClassId } : {}),
+        },
+        ...(selectedClassId ? { student: { classId: selectedClassId } } : {}),
+      },
+    }),
+    // Absences en souffrance / non régularisées dépassant le délai de 48h
+    prisma.attendance.count({
+      where: {
+        status: "ABSENT",
+        isConfirmed: false,
+        lesson: {
+          startTime: { lt: subDays(now, 2) },
+          isCancelled: false,
+          ...(selectedClassId ? { classId: selectedClassId } : {}),
+        },
         ...(selectedClassId ? { student: { classId: selectedClassId } } : {}),
       },
     }),
@@ -460,13 +532,37 @@ async function calculateAdminDashboardPayload(
         teacher: { select: { firstName: true, lastName: true } },
       },
     }),
-    // Leçons sur 12 semaines pour le graphique hebdomadaire RH
+    // Leçons sur 12 semaines pour le graphique hebdomadaire RH et le suivi des émargements
     prisma.lesson.findMany({
       where: {
         startTime: { gte: subDays(now, 84) },
         isCancelled: false,
       },
-      select: { startTime: true, endTime: true, teacherId: true },
+      select: { startTime: true, endTime: true, teacherId: true, isAttendanceValidated: true },
+    }),
+    // Liste des matières pour le suivi de complétude des notes (Indicateur 1)
+    prisma.subject.findMany({
+      select: { id: true, name: true },
+      orderBy: { name: "asc" },
+    }),
+    // Salles pour le calcul du taux d'occupation (Indicateur 10)
+    prisma.room.findMany({
+      select: { id: true, name: true, capacity: true },
+    }),
+    // Cours en salle sur la période pour le taux d'occupation (Indicateur 10)
+    prisma.lesson.findMany({
+      where: {
+        startTime: { gte: periodStart },
+        endTime: { lte: now },
+        isCancelled: false,
+        roomId: { not: null },
+      },
+      select: { startTime: true, endTime: true, roomId: true },
+    }),
+    // Utilisateurs actifs pour l'activation parent (Indicateur 13) et connexions mensuelles
+    prisma.user.findMany({
+      where: { isActive: true },
+      select: { id: true, role: true, lastLoginAt: true },
     }),
   ]);
 
@@ -477,15 +573,113 @@ async function calculateAdminDashboardPayload(
   // Calcul de la moyenne générale de l'école ou de la classe filtrée
   const generalAverage = weightedAverage(filteredGrades);
 
-  // Taux de présence des élèves sur la période cible
+  // Indicateur 2 : Indice de dispersion des notes (Écart-type standard)
+  const gradeStdDev = calculateStandardDeviation(filteredGrades.map((g) => g.value));
+
+  // Indicateur 1 : Taux de complétude des notes par matière (matières ayant >= 2 notes)
+  const subjectGradeCountMap = new Map<string, number>();
+  for (const g of filteredGrades) {
+    if (g.subjectId) {
+      subjectGradeCountMap.set(g.subjectId, (subjectGradeCountMap.get(g.subjectId) ?? 0) + 1);
+    }
+  }
+  const totalSubjectsEvaluated = allSubjects.length;
+  const subjectsWithMinGrades = allSubjects.filter(
+    (s) => (subjectGradeCountMap.get(s.id) ?? 0) >= 2
+  ).length;
+  const gradeCompletionPct =
+    totalSubjectsEvaluated > 0
+      ? Math.round((subjectsWithMinGrades / totalSubjectsEvaluated) * 100)
+      : 0;
+
+  // Indicateur 9 : Taux de validation des émargements dans les délais (appels validés sur les cours passés de la période)
+  const periodPastLessons = allRecentLessons.filter(
+    (l) => l.endTime <= now && l.startTime >= periodStart
+  );
+  const validatedLessonsCount = periodPastLessons.filter((l) => l.isAttendanceValidated).length;
+  const rollCallValidationRate =
+    periodPastLessons.length > 0
+      ? Math.round((validatedLessonsCount / periodPastLessons.length) * 100)
+      : 100;
+
+  // Indicateur 10 : Taux d'occupation des salles de cours
+  const periodDays = Math.max(7, Math.ceil((now.getTime() - periodStart.getTime()) / (1000 * 60 * 60 * 24)));
+  const totalOccupiedRoomHours = roomLessons.reduce(
+    (acc, l) => acc + (l.endTime.getTime() - l.startTime.getTime()) / (1000 * 60 * 60),
+    0
+  );
+  // Capacité hebdomadaire par salle estimée à 45h (du lundi au vendredi, 8h-17h)
+  const roomCapacityHours = rooms.length * (periodDays / 7) * 45;
+  const roomOccupancyRate =
+    roomCapacityHours > 0
+      ? Math.min(100, Math.round((totalOccupiedRoomHours / roomCapacityHours) * 100))
+      : 0;
+
+  // Indicateur 13 : Taux d'activation des comptes parents / responsables
+  const allParents = allActiveUsers.filter((u) => u.role === "RESPONSIBLE");
+  const activeParents = allParents.filter((u) => u.lastLoginAt != null).length;
+  const parentActivationPct =
+    allParents.length > 0 ? Math.round((activeParents / allParents.length) * 100) : 0;
+
+  // Indicateur de connexion mensuelle active par type d'utilisateur
+  const thirtyDaysAgo = subDays(now, 30);
+  const ROLE_LABELS: Record<string, string> = {
+    STUDENT: "Étudiants",
+    TEACHER: "Formateurs",
+    RESPONSIBLE: "Parents",
+    COMPANY_TUTOR: "Tuteurs entreprise",
+    ADMIN: "Administration",
+  };
+
+  const monthlyLoginsByRole = (["STUDENT", "TEACHER", "RESPONSIBLE", "COMPANY_TUTOR", "ADMIN"] as const).map(
+    (role) => {
+      const usersInRole = allActiveUsers.filter((u) => u.role === role);
+      const total = usersInRole.length;
+      const activeMonthly = usersInRole.filter(
+        (u) => u.lastLoginAt && u.lastLoginAt >= thirtyDaysAgo
+      ).length;
+      const percentage = total > 0 ? Math.round((activeMonthly / total) * 100) : 0;
+      return {
+        role,
+        label: ROLE_LABELS[role] ?? role,
+        total,
+        activeMonthly,
+        percentage,
+      };
+    }
+  );
+
+  // Taux de présence et d'absentéisme des élèves sur la période cible
   const periodAttendances = attendances.filter(
     (a) => a.lesson.startTime >= periodStart,
   );
-  const presentCount = periodAttendances.filter((a) => a.status === "PRESENT").length;
+
+  // Présents ou Retards (l'élève était physiquement en cours)
+  const presentCount = periodAttendances.filter(
+    (a) => a.status === "PRESENT" || a.status === "LATE"
+  ).length;
+
+  // Absences justifiées / excusées (ne pénalisent pas l'assiduité réglementaire)
+  const excusedCount = periodAttendances.filter((a) => a.status === "EXCUSED").length;
+
+  // Absences injustifiées fermes (confirmées par admin ou ayant dépassé le délai de 48h)
+  const unjustifiedCount = periodAttendances.filter(
+    (a) => a.status === "ABSENT" && (a.isConfirmed || a.lesson.startTime < subDays(now, 2))
+  ).length;
+
+  const totalPeriodLessons = periodAttendances.length;
+
+  // Taux d'assiduité réglementaire : (Présents + Excusés) / Total
   const attendanceRate =
-    periodAttendances.length > 0
-      ? (presentCount / periodAttendances.length) * 100
+    totalPeriodLessons > 0
+      ? Math.round(((presentCount + excusedCount) / totalPeriodLessons) * 1000) / 10
       : 100;
+
+  // Taux d'absentéisme injustifié (véritable décrochage)
+  const unjustifiedAbsenceRate =
+    totalPeriodLessons > 0
+      ? Math.round((unjustifiedCount / totalPeriodLessons) * 1000) / 10
+      : 0;
 
   // Pourcentage de livrets/bulletins déjà complétés
   const reportCardsPct =
@@ -524,7 +718,7 @@ async function calculateAdminDashboardPayload(
       ? surveys.reduce((acc, s) => acc + s.rating, 0) / surveys.length
       : null;
 
-  // 4. Statistiques par classe (Moyenne générale et présence)
+  // 4. Statistiques par classe (Moyenne générale, assiduité réglementaire et absentéisme injustifié)
   const classStats = classes
     .filter((c) => !selectedClassId || c.id === selectedClassId)
     .map((cls) => {
@@ -534,14 +728,22 @@ async function calculateAdminDashboardPayload(
       const avg = weightedAverage(classGrades);
 
       const classAtt = periodAttendances.filter((a) => classStudentIds.has(a.studentId));
-      const classPresent = classAtt.filter((a) => a.status === "PRESENT").length;
-      const classAttRate = classAtt.length > 0 ? (classPresent / classAtt.length) * 100 : 100;
+      const classRegCount = classAtt.filter(
+        (a) => a.status === "PRESENT" || a.status === "LATE" || a.status === "EXCUSED"
+      ).length;
+      const classUnjustifiedCount = classAtt.filter(
+        (a) => a.status === "ABSENT" && (a.isConfirmed || a.lesson.startTime < subDays(now, 2))
+      ).length;
+
+      const classAttRate = classAtt.length > 0 ? Math.round((classRegCount / classAtt.length) * 1000) / 10 : 100;
+      const classUnjustifiedRate = classAtt.length > 0 ? Math.round((classUnjustifiedCount / classAtt.length) * 1000) / 10 : 0;
 
       return {
         classId: cls.id,
         className: cls.name,
         average: avg,
         attendanceRate: classAttRate,
+        unjustifiedRate: classUnjustifiedRate,
         studentCount: classStudents.length,
       };
     })
@@ -558,17 +760,42 @@ async function calculateAdminDashboardPayload(
       average: Math.round((c.average ?? 0) * 100) / 100,
     }));
 
-  // Classes en difficulté (Présence < 85% ou Moyenne < 10/20)
+  // Classes en difficulté (Absentéisme injustifié > 10% OU Assiduité réglementaire < 85% OU Moyenne < 10/20)
+  // Les absences à justifier ou médicalement justifiées ne pénalisent plus injustement les classes !
   const atRiskClasses = classStats
-    .filter((c) => c.attendanceRate < 85 || (c.average != null && c.average < 10))
-    .sort((a, b) => a.attendanceRate - b.attendanceRate)
+    .filter((c) => c.unjustifiedRate > 10 || c.attendanceRate < 85 || (c.average != null && c.average < 10))
+    .sort((a, b) => b.unjustifiedRate - a.unjustifiedRate || a.attendanceRate - b.attendanceRate)
     .slice(0, 5)
     .map((c) => ({
       classId: c.classId,
       className: c.className,
       attendanceRate: Math.round(c.attendanceRate),
+      unjustifiedRate: Math.round(c.unjustifiedRate),
       average: c.average != null ? Math.round(c.average * 100) / 100 : null,
     }));
+
+  // Veille Décrochage : Identification des élèves ayant des absences injustifiées répétées
+  const studentUnjustifiedMap = new Map<string, number>();
+  for (const a of periodAttendances) {
+    if (a.status === "ABSENT" && (a.isConfirmed || a.lesson.startTime < subDays(now, 2))) {
+      studentUnjustifiedMap.set(a.studentId, (studentUnjustifiedMap.get(a.studentId) ?? 0) + 1);
+    }
+  }
+
+  const atRiskStudents = students
+    .map((s) => {
+      const count = studentUnjustifiedMap.get(s.id) ?? 0;
+      return {
+        id: s.id,
+        studentName: formatStudentName(s.firstName, s.lastName),
+        className: s.class?.name || "Sans classe",
+        unjustifiedCount: count,
+        conductPoints: s.conductPoints ?? 100,
+      };
+    })
+    .filter((s) => s.unjustifiedCount >= 2 || s.conductPoints <= 50)
+    .sort((a, b) => b.unjustifiedCount - a.unjustifiedCount || a.conductPoints - b.conductPoints)
+    .slice(0, 6);
 
   // Extraction des compétences non acquises pour amélioration pédagogique (Qualiopi)
   const competencyMap = new Map<string, { total: number; acquired: number }>();
@@ -598,18 +825,35 @@ async function calculateAdminDashboardPayload(
     .map(([type, count]) => ({ type, count }))
     .sort((a, b) => b.count - a.count);
 
-  // Taux de présence hebdomadaire glissant sur 12 semaines
-  const attendanceWeekly: { week: string; rate: number }[] = [];
+  // Taux de présence hebdomadaire glissant sur 12 semaines avec ventilation réglementaire vs injustifié
+  const attendanceWeekly: AdminDashboardPayload["charts"]["attendanceWeekly"] = [];
   for (let i = 11; i >= 0; i--) {
     const weekStart = startOfWeek(subDays(now, i * 7), { weekStartsOn: 1 });
     const weekEnd = endOfWeek(weekStart, { weekStartsOn: 1 });
     const weekAtt = attendances.filter(
       (a) => a.lesson.startTime >= weekStart && a.lesson.startTime <= weekEnd,
     );
-    const weekPresent = weekAtt.filter((a) => a.status === "PRESENT").length;
+    const total = weekAtt.length;
+    const pres = weekAtt.filter((a) => a.status === "PRESENT" || a.status === "LATE").length;
+    const exc = weekAtt.filter((a) => a.status === "EXCUSED").length;
+    const pending = weekAtt.filter(
+      (a) => a.status === "ABSENT" && !a.isConfirmed && a.lesson.startTime >= subDays(now, 2)
+    ).length;
+    const unj = weekAtt.filter(
+      (a) => a.status === "ABSENT" && (a.isConfirmed || a.lesson.startTime < subDays(now, 2))
+    ).length;
+
+    const rate = total > 0 ? Math.round(((pres + exc) / total) * 100) : 100;
+    const unjustifiedRate = total > 0 ? Math.round((unj / total) * 100) : 0;
+
     attendanceWeekly.push({
       week: format(weekStart, "d MMM", { locale: fr }),
-      rate: weekAtt.length > 0 ? Math.round((weekPresent / weekAtt.length) * 100) : 100,
+      rate,
+      unjustifiedRate,
+      present: pres,
+      excused: exc,
+      unjustified: unj,
+      pending,
     });
   }
 
@@ -741,12 +985,21 @@ async function calculateAdminDashboardPayload(
       href: "/admin/absences",
     });
   }
-  if (unconfirmedAbsencesCount > 0) {
+  if (overdueAbsencesCount > 0) {
     alerts.push({
-      id: "unconfirmed-absences",
-      severity: "warning",
-      label: "Absences non confirmées (suivi admin)",
-      count: unconfirmedAbsencesCount,
+      id: "overdue-absences",
+      severity: "critical",
+      label: "Absences injustifiées hors délai (> 48h)",
+      count: overdueAbsencesCount,
+      href: "/admin/absences?status=UNCONFIRMED",
+    });
+  }
+  if (pendingJustificationsCount > 0) {
+    alerts.push({
+      id: "pending-justifications",
+      severity: "info",
+      label: "Absences à justifier en cours (< 48h)",
+      count: pendingJustificationsCount,
       href: "/admin/absences?status=UNCONFIRMED",
     });
   }
@@ -844,7 +1097,15 @@ async function calculateAdminDashboardPayload(
       teachers: teachersCount,
       classes: classesCount,
       attendanceRate: Math.round(attendanceRate),
+      unjustifiedAbsenceRate: Math.round(unjustifiedAbsenceRate),
+      pendingJustifications: pendingJustificationsCount,
+      overdueAbsences: overdueAbsencesCount,
       generalAverage: generalAverage != null ? Math.round(generalAverage * 100) / 100 : null,
+      gradeStdDev,
+      gradeCompletionPct,
+      rollCallValidationRate,
+      roomOccupancyRate,
+      parentActivationPct,
       sanctionsCount: sanctions.length,
       reportCardsPct: Math.round(reportCardsPct),
       competencyAcquiredPct: Math.round(competencyAcquiredPct),
@@ -858,6 +1119,7 @@ async function calculateAdminDashboardPayload(
       pendingRollCalls,
       teacherAttendanceRate,
     },
+    monthlyLoginsByRole,
     charts: {
       attendanceWeekly,
       classAverages,
@@ -869,6 +1131,7 @@ async function calculateAdminDashboardPayload(
     miniTables: {
       topClasses,
       atRiskClasses,
+      atRiskStudents,
       weakCompetencies,
       recentDisciplineEvents: disciplineEvents.map((e) => ({
         id: e.id,

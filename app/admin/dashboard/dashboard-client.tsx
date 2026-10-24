@@ -32,6 +32,7 @@ import {
   ArrowRight,
   Activity,
   X,
+  UserX,
 } from "lucide-react";
 import type { AdminDashboardPayload } from "@/lib/admin-dashboard-data";
 import { EVENT_TYPE_LABELS } from "@/lib/sanctions-ui";
@@ -102,7 +103,7 @@ function KpiCard({
 export default function AdminDashboardClient({ payload }: Props) {
   const router = useRouter();
   const pathname = usePathname();
-  const { filterOptions, alerts, kpis, charts, miniTables, qualiopi, schoolName, qualiopiEnabled } = payload;
+  const { filterOptions, alerts, kpis, charts, miniTables, qualiopi, schoolName, qualiopiEnabled, monthlyLoginsByRole } = payload;
 
   const [dismissedIds, setDismissedIds] = useState<string[]>([]);
 
@@ -227,15 +228,23 @@ export default function AdminDashboardClient({ payload }: Props) {
       <section className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3">
         <KpiCard label="Élèves actifs" value={kpis.students} sub={`${kpis.classes} classes`} href="/admin/users?role=STUDENT" />
         <KpiCard label="Professeurs" value={kpis.teachers} href="/admin/users?role=TEACHER" />
-        <KpiCard label="Assiduité" value={`${kpis.attendanceRate}%`} color={kpis.attendanceRate >= 90 ? "text-emerald-600" : kpis.attendanceRate >= 80 ? "text-amber-600" : "text-red-600"} href="/admin/absences" />
+        <KpiCard label="Assiduité réglem." value={`${kpis.attendanceRate}%`} sub="Présents + Excusés" color={kpis.attendanceRate >= 90 ? "text-emerald-600" : kpis.attendanceRate >= 80 ? "text-amber-600" : "text-red-600"} href="/admin/absences" />
+        <KpiCard label="Décrochage injustifié" value={`${kpis.unjustifiedAbsenceRate}%`} sub="Absences non justifiées" color={kpis.unjustifiedAbsenceRate <= 5 ? "text-emerald-600" : kpis.unjustifiedAbsenceRate <= 10 ? "text-amber-600" : "text-red-600"} href="/admin/absences?status=UNCONFIRMED" />
+        <KpiCard label="À justifier (<48h)" value={kpis.pendingJustifications} sub="En attente justificatif" color="text-sky-600" href="/admin/absences?status=UNCONFIRMED" />
+        <KpiCard label="Hors délai (>48h)" value={kpis.overdueAbsences} sub="À relancer / sanctionner" color={kpis.overdueAbsences > 0 ? "text-red-600" : "text-slate-400"} href="/admin/absences?status=UNCONFIRMED" />
         <KpiCard label="Moyenne générale" value={formatAvg(kpis.generalAverage)} color="text-blue-600" href="/admin/report-cards" />
+        <KpiCard label="Dispersion notes" value={kpis.gradeStdDev != null ? `±${kpis.gradeStdDev}` : "—"} sub="Écart-type / 20" color="text-indigo-600" href="/admin/report-cards" />
+        <KpiCard label="Complétude notes" value={`${kpis.gradeCompletionPct}%`} sub="Matières ≥ 2 notes" color={kpis.gradeCompletionPct >= 80 ? "text-emerald-600" : "text-amber-600"} href="/admin/report-cards" />
         <KpiCard label="Bulletins validés" value={`${kpis.reportCardsPct}%`} href="/admin/recap/report-cards" />
         <KpiCard label="Compétences acquises" value={`${kpis.competencyAcquiredPct}%`} href="/admin/recap/competencies" />
         <KpiCard label="Sanctions (période)" value={kpis.sanctionsCount} color="text-red-600" href="/admin/sanctions" />
         <KpiCard label="Heures réalisées" value={`${kpis.hrHoursRealized}h`} sub={`/ ${kpis.hrHoursProjected}h projetées`} href="/admin/hr" />
         <KpiCard label="Contrats actifs" value={`${kpis.contractCoveragePct}%`} href="/admin/relations/contracts" />
         <KpiCard label="Parents liés" value={`${kpis.parentLinkPct}%`} href="/admin/recap" />
+        <KpiCard label="Activation parents" value={`${kpis.parentActivationPct}%`} sub="Comptes connectés" color={kpis.parentActivationPct >= 70 ? "text-emerald-600" : "text-amber-600"} href="/admin/recap" />
         <KpiCard label="Présence profs" value={`${kpis.teacherAttendanceRate}%`} color={kpis.teacherAttendanceRate >= 95 ? "text-emerald-600" : kpis.teacherAttendanceRate >= 85 ? "text-amber-600" : "text-red-600"} href="/admin/absences" />
+        <KpiCard label="Émargements à temps" value={`${kpis.rollCallValidationRate}%`} sub="Appels validés" color={kpis.rollCallValidationRate >= 90 ? "text-emerald-600" : "text-amber-600"} href="/admin/absences" />
+        <KpiCard label="Occupation salles" value={`${kpis.roomOccupancyRate}%`} sub="Heures occupées" color="text-blue-600" href="/admin/settings" />
         <KpiCard label="Appels en attente" value={kpis.pendingRollCalls} color={kpis.pendingRollCalls > 0 ? "text-amber-600" : "text-emerald-600"} href="/admin/absences" />
         {qualiopiEnabled && (
           <>
@@ -247,17 +256,34 @@ export default function AdminDashboardClient({ payload }: Props) {
 
       <section className="grid gap-6 lg:grid-cols-2">
         <div className="bg-white rounded-3xl border border-slate-200 shadow-sm p-6">
-          <h2 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-4">
-            Évolution assiduité (12 sem.)
-          </h2>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
+            <h2 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">
+              Évolution assiduité & décrochage (12 sem.)
+            </h2>
+            <div className="flex items-center gap-3 text-[9px] font-black uppercase">
+              <span className="flex items-center gap-1.5 text-emerald-600">
+                <span className="h-2 w-2 rounded-full bg-emerald-500" /> Assiduité réglem.
+              </span>
+              <span className="flex items-center gap-1.5 text-red-500">
+                <span className="h-2 w-2 rounded-full bg-red-500" /> Injustifié
+              </span>
+            </div>
+          </div>
           <div className="h-56">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={charts.attendanceWeekly} margin={{ top: 5, right: 10, bottom: 5, left: -20 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
                 <XAxis dataKey="week" stroke="#94a3b8" fontSize={9} tickLine={false} />
                 <YAxis domain={[0, 100]} stroke="#94a3b8" fontSize={9} tickLine={false} unit="%" />
-                <Tooltip contentStyle={{ borderRadius: 12, border: "none", fontSize: 11 }} formatter={(v) => [`${v}%`, "Présence"]} />
-                <Line type="monotone" dataKey="rate" stroke="#10b981" strokeWidth={2.5} dot={{ r: 3, fill: "#10b981" }} />
+                <Tooltip
+                  contentStyle={{ borderRadius: 12, border: "none", fontSize: 11 }}
+                  formatter={(v: any, name: any) => [
+                    `${v}%`,
+                    name === "rate" ? "Assiduité réglem. (Présents + Excusés)" : "Absentéisme injustifié (décrochage)"
+                  ]}
+                />
+                <Line type="monotone" dataKey="rate" name="rate" stroke="#10b981" strokeWidth={2.5} dot={{ r: 3, fill: "#10b981" }} />
+                <Line type="monotone" dataKey="unjustifiedRate" name="unjustifiedRate" stroke="#ef4444" strokeWidth={2} strokeDasharray="4 4" dot={{ r: 2.5, fill: "#ef4444" }} />
               </LineChart>
             </ResponsiveContainer>
           </div>
@@ -507,15 +533,23 @@ export default function AdminDashboardClient({ payload }: Props) {
             <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-900 flex items-center gap-2">
               <FileWarning className="h-3.5 w-3.5 text-amber-500" /> Classes à surveiller
             </h3>
+            <span className="text-[9px] font-bold text-slate-400 uppercase">Injustifié &gt; 10%</span>
           </div>
           <ul className="divide-y divide-slate-50 p-2">
             {miniTables.atRiskClasses.length === 0 ? (
               <li className="p-4 text-center text-[10px] text-emerald-600 font-bold uppercase">Tout va bien ✓</li>
             ) : miniTables.atRiskClasses.map((c) => (
               <li key={c.classId} className="px-3 py-2.5 text-xs">
-                <div className="flex justify-between font-bold text-slate-800">{c.className}</div>
-                <div className="flex gap-3 mt-0.5 text-[10px] text-slate-500">
-                  <span>Assid. {c.attendanceRate}%</span>
+                <div className="flex justify-between items-center font-bold text-slate-800">
+                  <span>{c.className}</span>
+                  {c.unjustifiedRate > 0 && (
+                    <span className="text-[9px] font-black text-red-600 bg-red-50 border border-red-100 px-2 py-0.5 rounded-full">
+                      {c.unjustifiedRate}% injustifié
+                    </span>
+                  )}
+                </div>
+                <div className="flex gap-3 mt-1 text-[10px] text-slate-500">
+                  <span>Assid. réglem. {c.attendanceRate}%</span>
                   {c.average != null && <span>Moy. {c.average}/20</span>}
                 </div>
               </li>
@@ -543,7 +577,36 @@ export default function AdminDashboardClient({ payload }: Props) {
         </div>
       </section>
 
-      <section className="grid gap-6 lg:grid-cols-2">
+      <section className="grid gap-6 lg:grid-cols-3">
+        <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
+          <div className="px-5 py-4 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
+            <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-900 flex items-center gap-2">
+              <UserX className="h-3.5 w-3.5 text-red-500" /> Veille Décrochage (Élèves)
+            </h3>
+            <Link href="/admin/absences?status=UNCONFIRMED" className="text-[9px] font-black text-blue-600 uppercase">Gérer →</Link>
+          </div>
+          <ul className="divide-y divide-slate-50">
+            {miniTables.atRiskStudents.length === 0 ? (
+              <li className="p-6 text-center text-[10px] text-emerald-600 font-bold uppercase">Aucun décrochage critique ✓</li>
+            ) : miniTables.atRiskStudents.map((s) => (
+              <li key={s.id} className="px-5 py-3 text-xs flex justify-between items-center">
+                <div>
+                  <p className="font-black text-slate-800">{s.studentName}</p>
+                  <p className="text-[10px] text-slate-400 font-bold">{s.className}</p>
+                </div>
+                <div className="text-right">
+                  <span className="text-[10px] font-black text-red-600 bg-red-50 px-2 py-0.5 rounded-full inline-block">
+                    {s.unjustifiedCount} injustifiée(s)
+                  </span>
+                  <p className={`text-[9px] font-bold mt-0.5 ${s.conductPoints <= 50 ? "text-red-600 font-black" : "text-slate-400"}`}>
+                    {s.conductPoints} pts conduite
+                  </p>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </div>
+
         <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
           <div className="px-5 py-4 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
             <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-900 flex items-center gap-2">
@@ -589,6 +652,67 @@ export default function AdminDashboardClient({ payload }: Props) {
               </li>
             ))}
           </ul>
+        </div>
+      </section>
+
+      {/* Section : Connexions mensuelles actives par profil (30 derniers jours) */}
+      <section className="bg-white rounded-3xl border border-slate-200 shadow-sm p-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-6">
+          <div>
+            <h2 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] flex items-center gap-2">
+              <Users className="h-4 w-4 text-blue-600" />
+              Connexions mensuelles actives par profil (30 derniers jours)
+            </h2>
+            <p className="text-xs text-slate-500 mt-0.5">
+              Pourcentage d&apos;utilisateurs s&apos;étant connectés au moins une fois ce mois-ci par catégorie
+            </p>
+          </div>
+          <Link
+            href="/admin/users"
+            className="text-[9px] font-black text-blue-600 uppercase tracking-wider hover:underline self-start sm:self-auto"
+          >
+            Annuaire usagers →
+          </Link>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+          {monthlyLoginsByRole.map((item) => {
+            const isHigh = item.percentage >= 80;
+            const isMedium = item.percentage >= 50;
+            const barColor = isHigh ? "bg-emerald-500" : isMedium ? "bg-amber-500" : "bg-red-500";
+            const textColor = isHigh ? "text-emerald-700" : isMedium ? "text-amber-700" : "text-red-700";
+            const badgeBg = isHigh ? "bg-emerald-50 border-emerald-100" : isMedium ? "bg-amber-50 border-amber-100" : "bg-red-50 border-red-100";
+
+            return (
+              <div
+                key={item.role}
+                className="p-4 rounded-2xl border border-slate-100 bg-slate-50/70 flex flex-col justify-between gap-3 hover:bg-slate-50 transition"
+              >
+                <div>
+                  <div className="flex items-center justify-between gap-2 mb-1.5">
+                    <span className="text-[10px] font-black text-slate-700 uppercase tracking-wider truncate">
+                      {item.label}
+                    </span>
+                    <span
+                      className={`text-[10px] font-black px-2 py-0.5 rounded-full border ${badgeBg} ${textColor}`}
+                    >
+                      {item.percentage}%
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-400 font-bold">
+                    <span className="text-slate-900 font-black">{item.activeMonthly}</span> / {item.total} actifs
+                  </p>
+                </div>
+
+                <div className="w-full h-2 rounded-full bg-slate-200 overflow-hidden">
+                  <div
+                    className={`h-full rounded-full transition-all duration-700 ${barColor}`}
+                    style={{ width: `${item.percentage}%` }}
+                  />
+                </div>
+              </div>
+            );
+          })}
         </div>
       </section>
 
