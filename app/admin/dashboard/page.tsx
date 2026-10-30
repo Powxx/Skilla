@@ -3,6 +3,7 @@ import DashboardDataFetcher from "./dashboard-data-fetcher";
 import DashboardShellSkeleton from "./dashboard-shell-skeleton";
 
 export const dynamic = "force-dynamic";
+export const maxDuration = 60;
 
 export const metadata = {
   title: "Tour de Contrôle — Administration",

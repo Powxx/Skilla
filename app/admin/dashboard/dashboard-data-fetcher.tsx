@@ -44,9 +44,19 @@ export default async function DashboardDataFetcher({
         <h2 className="text-xl font-black text-slate-900 uppercase tracking-tight mb-2">
           Impossible de charger la Tour de Contrôle
         </h2>
-        <p className="text-sm text-slate-500 max-w-md mb-6">
+        <p className="text-sm text-slate-500 max-w-md mb-4">
           Une erreur temporaire est survenue lors de l&apos;agrégation des indicateurs de l&apos;école.
         </p>
+        {error != null ? (
+          <details className="w-full max-w-md text-left mb-6 bg-red-50/50 border border-red-200/60 rounded-xl p-3 text-xs text-red-700">
+            <summary className="font-semibold cursor-pointer select-none">
+              Détails techniques de l&apos;erreur
+            </summary>
+            <p className="mt-2 font-mono text-[11px] break-all whitespace-pre-wrap">
+              {error instanceof Error ? error.message : String(error)}
+            </p>
+          </details>
+        ) : null}
         <Link
           href="/admin/dashboard"
           className="px-5 py-2.5 bg-slate-900 text-white rounded-xl text-xs font-bold uppercase tracking-wider hover:bg-slate-800 transition"

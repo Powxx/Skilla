@@ -410,40 +410,19 @@ export async function calculateAdminDashboardPayload(
   const schoolYearStart = currentSchoolYear?.startDate ?? subDays(now, 365);
   const schoolYearEnd = currentSchoolYear?.endDate ?? now;
 
-  // 2. Agrégation des données de base en parallèle (KPIs, absences, notes, sanctions, logistique, connexions)
+  // 2. Agrégation des données par lots (optimisation du pool de connexions PgBouncer)
+  const classesCount = classes.length;
+
+  // Lot A : Scolarité, notes, assiduité et évaluations
   const [
-    studentsCount,
     teachersCount,
-    classesCount,
     students,
     grades,
     attendances,
-    sanctions,
     reportCards,
     evaluations,
-    lessonsThisMonth,
-    companyContracts,
-    studentsWithParents,
-    disciplineEvents,
-    complaints,
-    surveys,
-    pendingMeetings,
-    pendingSubstitutions,
-    pendingRollCalls,
-    pendingJustificationsCount,
-    overdueAbsencesCount,
-    conductAtRisk,
-    annualLessonsForTeachers,
-    allRecentLessons,
-    allSubjects,
-    rooms,
-    roomLessons,
-    allActiveUsers,
-    periodLessonsForContent,
   ] = await Promise.all([
-    prisma.user.count({ where: studentWhere }),
     prisma.user.count({ where: { role: "TEACHER", isActive: true } }),
-    prisma.class.count(),
     prisma.user.findMany({
       where: studentWhere,
       select: {
@@ -477,9 +456,7 @@ export async function calculateAdminDashboardPayload(
           isCancelled: false,
           ...(selectedClassId ? { classId: selectedClassId } : {}),
         },
-        ...(selectedClassId
-          ? { student: { classId: selectedClassId } }
-          : {}),
+        ...(selectedClassId ? { student: { classId: selectedClassId } } : {}),
       },
       select: {
         status: true,
@@ -487,13 +464,6 @@ export async function calculateAdminDashboardPayload(
         lesson: { select: { startTime: true, endTime: true } },
         studentId: true,
       },
-    }),
-    prisma.sanction.findMany({
-      where: {
-        date: { gte: periodStart },
-        ...(selectedClassId ? { student: { classId: selectedClassId } } : {}),
-      },
-      include: { sanctionType: { select: { name: true } } },
     }),
     selectedSemesterId || previousSemester?.id
       ? prisma.reportCard.findMany({
@@ -510,6 +480,87 @@ export async function calculateAdminDashboardPayload(
       where: selectedSemesterId ? { semesterId: selectedSemesterId } : undefined,
       select: { competency: true, level: true },
     }),
+  ]);
+
+  const studentsCount = students.length;
+  const conductAtRisk = students.filter((s) => (s.conductPoints ?? 100) <= 50).length;
+  const twoDaysAgo = subDays(now, 2);
+  const unconfirmedAbsences = attendances.filter((a) => a.status === "ABSENT" && !a.isConfirmed);
+  const pendingJustificationsCount = unconfirmedAbsences.filter((a) => a.lesson.startTime >= twoDaysAgo).length;
+  const overdueAbsencesCount = unconfirmedAbsences.filter((a) => a.lesson.startTime < twoDaysAgo).length;
+
+  // Lot B : Emploi du temps, charge annuelle professeurs et occupation des salles
+  const [
+    annualLessonsForTeachers,
+    allRecentLessons,
+    allSubjects,
+    rooms,
+    roomLessons,
+    periodLessonsForContent,
+    pendingRollCalls,
+    lessonsThisMonth,
+  ] = await Promise.all([
+    prisma.lesson.findMany({
+      where: {
+        startTime: { gte: schoolYearStart },
+        endTime: { lte: schoolYearEnd },
+      },
+      select: {
+        startTime: true,
+        endTime: true,
+        isCancelled: true,
+        teacherId: true,
+        teacher: { select: { firstName: true, lastName: true } },
+      },
+    }),
+    prisma.lesson.findMany({
+      where: {
+        startTime: { gte: subDays(now, 84) },
+      },
+      select: { startTime: true, endTime: true, teacherId: true, isCancelled: true, isAttendanceValidated: true },
+    }),
+    prisma.subject.findMany({
+      select: { id: true, name: true },
+      orderBy: { name: "asc" },
+    }),
+    prisma.room.findMany({
+      select: { id: true, name: true, capacity: true },
+    }),
+    prisma.lesson.findMany({
+      where: {
+        startTime: { gte: periodStart },
+        endTime: { lte: now },
+        isCancelled: false,
+        roomId: { not: null },
+      },
+      select: { startTime: true, endTime: true, roomId: true },
+    }),
+    prisma.lesson.findMany({
+      where: {
+        startTime: { gte: periodStart },
+        endTime: { lte: now },
+        isCancelled: false,
+        ...(selectedClassId ? { classId: selectedClassId } : {}),
+      },
+      select: {
+        id: true,
+        startTime: true,
+        endTime: true,
+        summary: true,
+        homework: true,
+        subjectId: true,
+        subject: { select: { id: true, name: true } },
+        teacherId: true,
+        teacher: { select: { id: true, firstName: true, lastName: true } },
+      },
+    }),
+    prisma.lesson.count({
+      where: {
+        startTime: { lt: now },
+        isCancelled: false,
+        isAttendanceValidated: false,
+      },
+    }),
     prisma.lesson.findMany({
       where: {
         startTime: { gte: monthStart },
@@ -518,6 +569,19 @@ export async function calculateAdminDashboardPayload(
       },
       select: { startTime: true, endTime: true, teacherId: true },
     }),
+  ]);
+
+  // Lot C : Contrats alternance, vie scolaire, gouvernance et Qualiopi
+  const [
+    companyContracts,
+    disciplineEvents,
+    complaints,
+    surveys,
+    pendingMeetings,
+    pendingSubstitutions,
+    allActiveUsers,
+    sanctions,
+  ] = await Promise.all([
     prisma.companyContract.findMany({
       where: { endDate: { gte: now } },
       select: {
@@ -529,13 +593,6 @@ export async function calculateAdminDashboardPayload(
       },
       orderBy: { endDate: "asc" },
       take: 20,
-    }),
-    prisma.user.findMany({
-      where: {
-        ...studentWhere,
-        responsibles: { some: {} },
-      },
-      select: { id: true },
     }),
     prisma.sanctionActionEvent.findMany({
       take: 8,
@@ -560,109 +617,16 @@ export async function calculateAdminDashboardPayload(
       : Promise.resolve([]),
     prisma.meetingRequest.count({ where: { status: "PENDING" } }),
     prisma.substitutionRequest.count({ where: { status: "PENDING" } }),
-    prisma.lesson.count({
-      where: {
-        startTime: { lt: now },
-        isCancelled: false,
-        isAttendanceValidated: false, // Cours passés dont l'appel n'a pas été validé
-      },
-    }),
-    // Absences en attente de justification sous le délai légal de 48h (flux normal de régularisation)
-    prisma.attendance.count({
-      where: {
-        status: "ABSENT",
-        isConfirmed: false,
-        lesson: {
-          startTime: { gte: subDays(now, 2) },
-          isCancelled: false,
-          ...(selectedClassId ? { classId: selectedClassId } : {}),
-        },
-        ...(selectedClassId ? { student: { classId: selectedClassId } } : {}),
-      },
-    }),
-    // Absences en souffrance / non régularisées dépassant le délai de 48h
-    prisma.attendance.count({
-      where: {
-        status: "ABSENT",
-        isConfirmed: false,
-        lesson: {
-          startTime: { lt: subDays(now, 2) },
-          isCancelled: false,
-          ...(selectedClassId ? { classId: selectedClassId } : {}),
-        },
-        ...(selectedClassId ? { student: { classId: selectedClassId } } : {}),
-      },
-    }),
-    prisma.user.count({
-      where: {
-        ...studentWhere,
-        conductPoints: { lte: 50 }, // Étudiants sous le premier palier d'alerte de conduite
-      },
-    }),
-    // Charge de cours annuelle pour le suivi des contrats profs (Ressources Humaines)
-    prisma.lesson.findMany({
-      where: {
-        startTime: { gte: schoolYearStart },
-        endTime: { lte: schoolYearEnd },
-      },
-      select: {
-        startTime: true,
-        endTime: true,
-        isCancelled: true,
-        teacherId: true,
-        teacher: { select: { firstName: true, lastName: true } },
-      },
-    }),
-    // Leçons sur 12 semaines pour le graphique hebdomadaire RH et le suivi des émargements (avec cours annulés pour contrôle des écarts)
-    prisma.lesson.findMany({
-      where: {
-        startTime: { gte: subDays(now, 84) },
-      },
-      select: { startTime: true, endTime: true, teacherId: true, isCancelled: true, isAttendanceValidated: true },
-    }),
-    // Liste des matières pour le suivi de complétude des notes (Indicateur 1)
-    prisma.subject.findMany({
-      select: { id: true, name: true },
-      orderBy: { name: "asc" },
-    }),
-    // Salles pour le calcul du taux d'occupation (Indicateur 10)
-    prisma.room.findMany({
-      select: { id: true, name: true, capacity: true },
-    }),
-    // Cours en salle sur la période pour le taux d'occupation (Indicateur 10)
-    prisma.lesson.findMany({
-      where: {
-        startTime: { gte: periodStart },
-        endTime: { lte: now },
-        isCancelled: false,
-        roomId: { not: null },
-      },
-      select: { startTime: true, endTime: true, roomId: true },
-    }),
-    // Utilisateurs actifs pour l'activation parent (Indicateur 13) et connexions mensuelles
     prisma.user.findMany({
       where: { isActive: true },
       select: { id: true, role: true, lastLoginAt: true },
     }),
-    // Cours passés sur la période pour le suivi des contenus pédagogiques / cahier de texte
-    prisma.lesson.findMany({
+    prisma.sanction.findMany({
       where: {
-        startTime: { gte: periodStart },
-        endTime: { lte: now },
-        isCancelled: false,
-        ...(selectedClassId ? { classId: selectedClassId } : {}),
+        date: { gte: periodStart },
+        ...(selectedClassId ? { student: { classId: selectedClassId } } : {}),
       },
-      select: {
-        id: true,
-        startTime: true,
-        endTime: true,
-        summary: true,
-        homework: true,
-        subjectId: true,
-        subject: { select: { id: true, name: true } },
-        teacherId: true,
-        teacher: { select: { id: true, firstName: true, lastName: true } },
-      },
+      include: { sanctionType: { select: { name: true } } },
     }),
   ]);
 
@@ -989,8 +953,11 @@ export async function calculateAdminDashboardPayload(
     students.length > 0 ? (studentsWithContract / students.length) * 100 : 0;
 
   // Pourcentage d'élèves ayant au moins un responsable légal lié en BDD
+  const studentsWithParentsCount = students.filter(
+    (s) => s.responsibles && s.responsibles.length > 0
+  ).length;
   const parentLinkPct =
-    students.length > 0 ? (studentsWithParents.length / students.length) * 100 : 0;
+    students.length > 0 ? (studentsWithParentsCount / students.length) * 100 : 0;
 
   // Statistiques Qualiopi
   const openComplaintsList = complaints.filter((c) => c.status === "OPEN");
@@ -1107,7 +1074,7 @@ export async function calculateAdminDashboardPayload(
   // Distribution des sanctions pour graphiques administratifs
   const sanctionsByTypeMap = new Map<string, number>();
   for (const s of sanctions) {
-    const name = s.sanctionType.name;
+    const name = s.sanctionType?.name || "Sanction";
     sanctionsByTypeMap.set(name, (sanctionsByTypeMap.get(name) ?? 0) + 1);
   }
   const sanctionsByType = Array.from(sanctionsByTypeMap.entries())
@@ -1283,12 +1250,12 @@ export async function calculateAdminDashboardPayload(
   const expiringContracts = companyContracts
     .filter((c) => {
       const daysLeft = Math.ceil((c.endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-      return daysLeft >= 0 && daysLeft <= 90 && (!selectedClassId || c.student.classId === selectedClassId);
+      return daysLeft >= 0 && daysLeft <= 90 && (!selectedClassId || c.student?.classId === selectedClassId);
     })
     .slice(0, 8)
     .map((c) => ({
       id: c.id,
-      studentName: formatStudentName(c.student.firstName, c.student.lastName),
+      studentName: c.student ? formatStudentName(c.student.firstName, c.student.lastName) : "Étudiant",
       companyName: c.companyName,
       endDate: c.endDate.toISOString(),
       daysLeft: Math.ceil((c.endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)),
@@ -1487,7 +1454,7 @@ export async function calculateAdminDashboardPayload(
         id: e.id,
         type: e.type,
         description: e.description,
-        studentName: formatStudentName(e.student.firstName, e.student.lastName),
+        studentName: e.student ? formatStudentName(e.student.firstName, e.student.lastName) : "Élève",
         createdAt: e.createdAt.toISOString(),
       })),
       expiringContracts,
@@ -1504,7 +1471,7 @@ export async function calculateAdminDashboardPayload(
             subject: c.subject,
             status: c.status,
             createdAt: c.createdAt.toISOString(),
-            senderName: formatUserName(c.sender.firstName, c.sender.lastName, "Un usager"),
+            senderName: c.sender ? formatUserName(c.sender.firstName, c.sender.lastName, "Un usager") : "Un usager",
           })),
           ratingDistribution,
         }
