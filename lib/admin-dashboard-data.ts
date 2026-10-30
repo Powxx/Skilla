@@ -1,7 +1,5 @@
 import prisma from "@/lib/prisma";
-import { unstable_cache } from "next/cache";
 import { formatTeacherName, formatStudentName, formatUserName } from "@/lib/user-utils";
-import { getGlobalSettings } from "@/app/actions/settings";
 import { QUALIOPI_ENABLED_KEY } from "@/lib/qualiopi";
 import {
   subDays,
@@ -345,7 +343,7 @@ function resolvePeriodStart(period: AdminDashboardPeriod, semester: { startDate:
  * @param filters Filtres de sélection (période, classe, semestre).
  * @returns Le payload complet d'indicateurs et graphiques.
  */
-async function calculateAdminDashboardPayload(
+export async function calculateAdminDashboardPayload(
   filters: AdminDashboardFilters = {},
 ): Promise<AdminDashboardPayload> {
   const now = new Date();
@@ -358,7 +356,7 @@ async function calculateAdminDashboardPayload(
       include: { schoolYear: { select: { name: true } } },
     }),
     prisma.class.findMany({ orderBy: { name: "asc" }, select: { id: true, name: true } }),
-    getGlobalSettings(),
+    prisma.globalSetting.findMany(),
     prisma.schoolYear.findMany({ orderBy: { startDate: "desc" } }),
   ]);
 
@@ -1526,24 +1524,16 @@ async function calculateAdminDashboardPayload(
 }
 
 /**
- * Charge le payload du tableau de bord administrateur en utilisant le cache Next.js (unstable_cache).
- * Permet d'éviter de saturer la base de données PostgreSQL lors de rechargements rapprochés (TTL 60s).
+ * Charge le payload du tableau de bord administrateur.
+ * Exécute l'agrégation en parallèle avec gestion d'erreurs pour garantir la fiabilité du rendu Server Component.
  */
 export async function loadAdminDashboardPayload(
   filters: AdminDashboardFilters = {},
 ): Promise<AdminDashboardPayload> {
-  const semesterKey = filters.semesterId ?? "current";
-  const classKey = filters.classId ?? "all";
-  const periodKey = filters.period ?? "30d";
-
-  const getCachedPayload = unstable_cache(
-    async () => calculateAdminDashboardPayload(filters),
-    ["admin-dashboard-payload", semesterKey, classKey, periodKey],
-    {
-      revalidate: 60,
-      tags: ["admin-dashboard"],
-    }
-  );
-
-  return getCachedPayload();
+  try {
+    return await calculateAdminDashboardPayload(filters);
+  } catch (error) {
+    console.error("[AdminDashboard] Erreur lors du chargement du payload:", error);
+    throw error;
+  }
 }

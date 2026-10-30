@@ -137,7 +137,7 @@ export default function AdminDashboardClient({ payload }: Props) {
     setDismissedIds(getDismissedAlerts());
   }, []);
 
-  const visibleAlerts = alerts.filter((a) => !dismissedIds.includes(a.id));
+  const visibleAlerts = (alerts || []).filter((a) => !dismissedIds.includes(a.id));
 
   const handleDismiss = useCallback((id: string) => {
     dismissAlert(id);
@@ -478,7 +478,7 @@ export default function AdminDashboardClient({ payload }: Props) {
                 </span>
               </div>
               <div className="h-48">
-                {charts.gradeDistribution?.every((d) => d.count === 0) ? (
+                {!charts?.gradeDistribution || charts.gradeDistribution.length === 0 || charts.gradeDistribution.every((d) => d.count === 0) ? (
                   <div className="h-full flex items-center justify-center text-[10px] text-slate-400 font-bold uppercase">
                     Aucune note émise
                   </div>
@@ -627,7 +627,7 @@ export default function AdminDashboardClient({ payload }: Props) {
               <Link href="/admin/devoirs?tab=missing" className="text-[9px] font-bold text-blue-600">Relancer →</Link>
             </div>
             <ul className="divide-y divide-slate-100 text-xs">
-              {miniTables.teachersMissingContent?.length === 0 ? (
+              {!miniTables?.teachersMissingContent || miniTables.teachersMissingContent.length === 0 ? (
                 <li className="py-2 text-center text-emerald-600 font-bold text-[10px]">Cahier de texte 100% à jour ✓</li>
               ) : (
                 miniTables.teachersMissingContent.slice(0, 4).map((t) => (
@@ -801,7 +801,7 @@ export default function AdminDashboardClient({ payload }: Props) {
                 </span>
               </div>
               <div className="h-48">
-                {charts.attendanceDistribution?.every((d) => d.count === 0) ? (
+                {!charts?.attendanceDistribution || charts.attendanceDistribution.length === 0 || charts.attendanceDistribution.every((d) => d.count === 0) ? (
                   <div className="h-full flex items-center justify-center text-[10px] text-slate-400 font-bold uppercase">
                     Aucun émargement
                   </div>
@@ -924,7 +924,7 @@ export default function AdminDashboardClient({ payload }: Props) {
               </span>
               <div className="flex items-center gap-1.5">
                 <span className="text-[9px] font-black text-red-600 bg-red-50 border border-red-100 px-1.5 py-0.5 rounded-full">
-                  Top {Math.min(5, miniTables.atRiskStudents.length)}
+                  Top {Math.min(5, miniTables?.atRiskStudents?.length || 0)}
                 </span>
                 <Link href="/admin/absences?status=UNCONFIRMED" className="text-[9px] font-bold text-blue-600 hover:underline">
                   Action →
@@ -932,7 +932,7 @@ export default function AdminDashboardClient({ payload }: Props) {
               </div>
             </div>
             <ul className="divide-y divide-slate-100 text-xs">
-              {miniTables.atRiskStudents.length === 0 ? (
+              {!miniTables?.atRiskStudents || miniTables.atRiskStudents.length === 0 ? (
                 <li className="py-2 text-center text-emerald-600 font-bold text-[10px]">Aucun décrochage critique ✓</li>
               ) : (
                 miniTables.atRiskStudents.slice(0, 5).map((s, idx) => (
@@ -1658,7 +1658,7 @@ export default function AdminDashboardClient({ payload }: Props) {
                   </span>
                 </div>
                 <div className="h-48">
-                  {qualiopi.ratingDistribution?.every((d) => d.count === 0) ? (
+                  {!qualiopi?.ratingDistribution || qualiopi.ratingDistribution.length === 0 || qualiopi.ratingDistribution.every((d) => d.count === 0) ? (
                     <div className="h-full flex items-center justify-center text-[10px] text-slate-400 font-bold uppercase">
                       Aucune enquête saisie
                     </div>
@@ -1712,8 +1712,13 @@ export default function AdminDashboardClient({ payload }: Props) {
                   <span className="text-[9px] font-bold text-slate-400">6 derniers mois</span>
                 </div>
                 <div className="h-48">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={charts.satisfactionMonthly} margin={{ top: 5, right: 15, bottom: 5, left: -20 }}>
+                  {!charts?.satisfactionMonthly || charts.satisfactionMonthly.length === 0 ? (
+                    <div className="h-full flex items-center justify-center text-[10px] text-slate-400 font-bold uppercase">
+                      Aucune donnée
+                    </div>
+                  ) : (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <LineChart data={charts.satisfactionMonthly} margin={{ top: 5, right: 15, bottom: 5, left: -20 }}>
                       <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
                       <XAxis dataKey="month" stroke="#94a3b8" fontSize={8} />
                       <YAxis domain={[0, 5]} stroke="#94a3b8" fontSize={8} />
@@ -1728,7 +1733,8 @@ export default function AdminDashboardClient({ payload }: Props) {
                       />
                     </LineChart>
                   </ResponsiveContainer>
-                </div>
+                )}
+              </div>
               </div>
               <div className="pt-2 border-t border-slate-200 text-[10px] text-slate-500 flex justify-between items-center">
                 <span>Indicateur Qualiopi n°30 (Recueil des appréciations)</span>
