@@ -26,7 +26,7 @@ export default async function DashboardDataFetcher({
   const period: AdminDashboardPeriod =
     periodRaw === "7d" || periodRaw === "30d" || periodRaw === "90d" || periodRaw === "semester"
       ? periodRaw
-      : "30d";
+      : "semester";
 
   const payload = await loadAdminDashboardPayload({ semesterId, classId, period });
 

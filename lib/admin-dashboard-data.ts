@@ -173,7 +173,12 @@ export type AdminDashboardPayload = {
     gradeStdDev: number | null; // Indicateur 2 : Dispersion / Écart-type des notes
     gradeCompletionPct: number; // Indicateur 1 : Taux de complétude des notes par matière
     rollCallValidationRate: number; // Indicateur 9 : Taux d'appels validés dans les temps
-    roomOccupancyRate: number; // Indicateur 10 : Taux d'occupation des salles
+    roomOccupancyRate: number; // Indicateur 10 : Taux d'occupation global des salles
+    totalOccupiedRoomHours: number; // Volume total d'heures occupées en salle
+    totalAvailableRoomHours: number; // Capacité totale d'heures en salle
+    courseContentFillRate: number; // Taux de remplissage des contenus de cours (Cahier de texte)
+    missingContentCount: number; // Cours passés sans résumé/contenu saisi
+    totalPastLessonsCount: number; // Total cours passés
     parentActivationPct: number; // Indicateur 13 : Taux d'activation des comptes parents
     sanctionsCount: number;
     reportCardsPct: number;
@@ -207,7 +212,15 @@ export type AdminDashboardPayload = {
     }[];
     classAverages: { className: string; average: number }[];
     sanctionsByType: { type: string; count: number }[];
-    hrHoursWeekly: { week: string; planned: number; realized: number; gap: number }[];
+    hrHoursWeekly: {
+      week: string;
+      planned: number;
+      realized: number;
+      gap: number;
+      isInconsistent: boolean;
+      inconsistencyType: "deficit" | "surplus" | "none";
+      cancelledCount: number;
+    }[];
     satisfactionMonthly: { month: string; avg: number; count: number }[];
     teacherWorkloadByTeacher: {
       teacherName: string;
@@ -215,6 +228,44 @@ export type AdminDashboardPayload = {
       planned: number;
       total: number;
       percentage: number;
+    }[];
+    roomOccupancyByRoom: {
+      roomId: string;
+      roomName: string;
+      capacity: number | null;
+      occupiedHours: number;
+      availableHours: number;
+      occupancyRate: number;
+    }[];
+    roomOccupancyWeekly: {
+      week: string;
+      occupiedHours: number;
+      occupancyRate: number;
+    }[];
+    courseContentWeekly: {
+      week: string;
+      totalLessons: number;
+      withContent: number;
+      fillRate: number;
+    }[];
+    courseContentBySubject: {
+      subjectName: string;
+      total: number;
+      filled: number;
+      fillRate: number;
+    }[];
+    attendanceDistribution: {
+      name: string;
+      count: number;
+      percentage: number;
+      color: string;
+    }[];
+    gradeDistribution: {
+      bracket: string;
+      label: string;
+      count: number;
+      percentage: number;
+      color: string;
     }[];
   };
   miniTables: {
@@ -247,6 +298,13 @@ export type AdminDashboardPayload = {
       companyName: string;
       endDate: string;
       daysLeft: number;
+    }[];
+    teachersMissingContent: {
+      teacherId: string;
+      teacherName: string;
+      missingCount: number;
+      totalLessons: number;
+      fillRate: number;
     }[];
   };
   qualiopi: {
@@ -315,6 +373,22 @@ async function calculateAdminDashboardPayload(
 
   const selectedSemesterId = filters.semesterId ?? currentSemester?.id ?? null;
   const selectedSemester = semesters.find((s) => s.id === selectedSemesterId) ?? currentSemester;
+
+  // Détermine la période / semestre précédent pour les alertes sur les livrables périodiques (bulletins de notes)
+  const previousSemester =
+    semesters
+      .filter(
+        (s) =>
+          s.id !== (selectedSemester?.id ?? selectedSemesterId) &&
+          (selectedSemester ? s.endDate <= selectedSemester.startDate : s.endDate <= now),
+      )
+      .sort((a, b) => b.endDate.getTime() - a.endDate.getTime())[0] ??
+    (() => {
+      const sortedByStart = [...semesters].sort((a, b) => a.startDate.getTime() - b.startDate.getTime());
+      const idx = sortedByStart.findIndex((s) => s.id === (selectedSemester?.id ?? selectedSemesterId));
+      return idx > 0 ? sortedByStart[idx - 1] : null;
+    })();
+
   const selectedClassId = filters.classId ?? null;
   const periodStart = resolvePeriodStart(period, selectedSemester);
 
@@ -367,6 +441,7 @@ async function calculateAdminDashboardPayload(
     rooms,
     roomLessons,
     allActiveUsers,
+    periodLessonsForContent,
   ] = await Promise.all([
     prisma.user.count({ where: studentWhere }),
     prisma.user.count({ where: { role: "TEACHER", isActive: true } }),
@@ -422,8 +497,16 @@ async function calculateAdminDashboardPayload(
       },
       include: { sanctionType: { select: { name: true } } },
     }),
-    selectedSemesterId
-      ? prisma.reportCard.findMany({ where: { semesterId: selectedSemesterId } })
+    selectedSemesterId || previousSemester?.id
+      ? prisma.reportCard.findMany({
+          where: {
+            semesterId: {
+              in: Array.from(
+                new Set([selectedSemesterId, previousSemester?.id].filter((id): id is string => Boolean(id))),
+              ),
+            },
+          },
+        })
       : Promise.resolve([]),
     prisma.evaluation.findMany({
       where: selectedSemesterId ? { semesterId: selectedSemesterId } : undefined,
@@ -532,13 +615,12 @@ async function calculateAdminDashboardPayload(
         teacher: { select: { firstName: true, lastName: true } },
       },
     }),
-    // Leçons sur 12 semaines pour le graphique hebdomadaire RH et le suivi des émargements
+    // Leçons sur 12 semaines pour le graphique hebdomadaire RH et le suivi des émargements (avec cours annulés pour contrôle des écarts)
     prisma.lesson.findMany({
       where: {
         startTime: { gte: subDays(now, 84) },
-        isCancelled: false,
       },
-      select: { startTime: true, endTime: true, teacherId: true, isAttendanceValidated: true },
+      select: { startTime: true, endTime: true, teacherId: true, isCancelled: true, isAttendanceValidated: true },
     }),
     // Liste des matières pour le suivi de complétude des notes (Indicateur 1)
     prisma.subject.findMany({
@@ -563,6 +645,26 @@ async function calculateAdminDashboardPayload(
     prisma.user.findMany({
       where: { isActive: true },
       select: { id: true, role: true, lastLoginAt: true },
+    }),
+    // Cours passés sur la période pour le suivi des contenus pédagogiques / cahier de texte
+    prisma.lesson.findMany({
+      where: {
+        startTime: { gte: periodStart },
+        endTime: { lte: now },
+        isCancelled: false,
+        ...(selectedClassId ? { classId: selectedClassId } : {}),
+      },
+      select: {
+        id: true,
+        startTime: true,
+        endTime: true,
+        summary: true,
+        homework: true,
+        subjectId: true,
+        subject: { select: { id: true, name: true } },
+        teacherId: true,
+        teacher: { select: { id: true, firstName: true, lastName: true } },
+      },
     }),
   ]);
 
@@ -592,9 +694,9 @@ async function calculateAdminDashboardPayload(
       ? Math.round((subjectsWithMinGrades / totalSubjectsEvaluated) * 100)
       : 0;
 
-  // Indicateur 9 : Taux de validation des émargements dans les délais (appels validés sur les cours passés de la période)
+  // Indicateur 9 : Taux de validation des émargements dans les délais (appels validés sur les cours passés de la période, hors cours annulés)
   const periodPastLessons = allRecentLessons.filter(
-    (l) => l.endTime <= now && l.startTime >= periodStart
+    (l) => l.endTime <= now && l.startTime >= periodStart && !l.isCancelled
   );
   const validatedLessonsCount = periodPastLessons.filter((l) => l.isAttendanceValidated).length;
   const rollCallValidationRate =
@@ -602,18 +704,136 @@ async function calculateAdminDashboardPayload(
       ? Math.round((validatedLessonsCount / periodPastLessons.length) * 100)
       : 100;
 
-  // Indicateur 10 : Taux d'occupation des salles de cours
+  // Indicateur 10 : Taux d'occupation des salles de cours sur la période / semestre
   const periodDays = Math.max(7, Math.ceil((now.getTime() - periodStart.getTime()) / (1000 * 60 * 60 * 24)));
-  const totalOccupiedRoomHours = roomLessons.reduce(
-    (acc, l) => acc + (l.endTime.getTime() - l.startTime.getTime()) / (1000 * 60 * 60),
-    0
-  );
+  const totalOccupiedRoomHours = Math.round(
+    roomLessons.reduce(
+      (acc, l) => acc + (l.endTime.getTime() - l.startTime.getTime()) / (1000 * 60 * 60),
+      0
+    ) * 10
+  ) / 10;
   // Capacité hebdomadaire par salle estimée à 45h (du lundi au vendredi, 8h-17h)
-  const roomCapacityHours = rooms.length * (periodDays / 7) * 45;
+  const roomAvailableHours = Math.max(1, Math.round((periodDays / 7) * 45));
+  const totalAvailableRoomHours = rooms.length * roomAvailableHours;
   const roomOccupancyRate =
-    roomCapacityHours > 0
-      ? Math.min(100, Math.round((totalOccupiedRoomHours / roomCapacityHours) * 100))
+    totalAvailableRoomHours > 0
+      ? Math.min(100, Math.round((totalOccupiedRoomHours / totalAvailableRoomHours) * 100))
       : 0;
+
+  // Calcul du taux d'occupation individuel par salle
+  const roomOccupancyMap = new Map<string, number>();
+  for (const l of roomLessons) {
+    if (l.roomId) {
+      const dur = (l.endTime.getTime() - l.startTime.getTime()) / (1000 * 60 * 60);
+      roomOccupancyMap.set(l.roomId, (roomOccupancyMap.get(l.roomId) ?? 0) + dur);
+    }
+  }
+
+  const roomOccupancyByRoom = rooms
+    .map((r) => {
+      const hours = Math.round((roomOccupancyMap.get(r.id) ?? 0) * 10) / 10;
+      const rate = Math.min(100, Math.round((hours / roomAvailableHours) * 100));
+      return {
+        roomId: r.id,
+        roomName: r.name,
+        capacity: r.capacity,
+        occupiedHours: hours,
+        availableHours: roomAvailableHours,
+        occupancyRate: rate,
+      };
+    })
+    .sort((a, b) => b.occupancyRate - a.occupancyRate);
+
+  // Évolution de l'occupation des salles sur 12 semaines
+  const roomOccupancyWeekly: { week: string; occupiedHours: number; occupancyRate: number }[] = [];
+  const weeklyAvailableCapacity = rooms.length * 45;
+  for (let i = 11; i >= 0; i--) {
+    const weekStart = startOfWeek(subDays(now, i * 7), { weekStartsOn: 1 });
+    const weekEnd = endOfWeek(weekStart, { weekStartsOn: 1 });
+    const weekLessons = roomLessons.filter((l) => l.startTime >= weekStart && l.startTime <= weekEnd);
+    const hours = Math.round(
+      weekLessons.reduce(
+        (acc, l) => acc + (l.endTime.getTime() - l.startTime.getTime()) / (1000 * 60 * 60),
+        0
+      ) * 10
+    ) / 10;
+    const rate = weeklyAvailableCapacity > 0 ? Math.min(100, Math.round((hours / weeklyAvailableCapacity) * 100)) : 0;
+    roomOccupancyWeekly.push({
+      week: format(weekStart, "d MMM", { locale: fr }),
+      occupiedHours: hours,
+      occupancyRate: rate,
+    });
+  }
+
+  // Taux de remplissage des contenus de cours (Cahier de texte)
+  const totalPastLessonsCount = periodLessonsForContent.length;
+  const lessonsWithContent = periodLessonsForContent.filter(
+    (l) => l.summary && l.summary.trim().length > 0
+  );
+  const lessonsWithContentCount = lessonsWithContent.length;
+  const missingContentCount = totalPastLessonsCount - lessonsWithContentCount;
+  const courseContentFillRate =
+    totalPastLessonsCount > 0
+      ? Math.round((lessonsWithContentCount / totalPastLessonsCount) * 100)
+      : 100;
+
+  // Évolution hebdomadaire du remplissage du cahier de texte (12 semaines)
+  const courseContentWeekly: { week: string; totalLessons: number; withContent: number; fillRate: number }[] = [];
+  for (let i = 11; i >= 0; i--) {
+    const weekStart = startOfWeek(subDays(now, i * 7), { weekStartsOn: 1 });
+    const weekEnd = endOfWeek(weekStart, { weekStartsOn: 1 });
+    const weekLessons = periodLessonsForContent.filter((l) => l.startTime >= weekStart && l.startTime <= weekEnd);
+    const withCont = weekLessons.filter((l) => l.summary && l.summary.trim().length > 0).length;
+    const tot = weekLessons.length;
+    const rate = tot > 0 ? Math.round((withCont / tot) * 100) : 100;
+    courseContentWeekly.push({
+      week: format(weekStart, "d MMM", { locale: fr }),
+      totalLessons: tot,
+      withContent: withCont,
+      fillRate: rate,
+    });
+  }
+
+  // Remplissage par matière
+  const subjectContentMap = new Map<string, { total: number; filled: number }>();
+  for (const l of periodLessonsForContent) {
+    const subName = l.subject?.name || "Sans matière";
+    const entry = subjectContentMap.get(subName) ?? { total: 0, filled: 0 };
+    entry.total += 1;
+    if (l.summary && l.summary.trim().length > 0) entry.filled += 1;
+    subjectContentMap.set(subName, entry);
+  }
+  const courseContentBySubject = Array.from(subjectContentMap.entries())
+    .map(([subjectName, data]) => ({
+      subjectName,
+      total: data.total,
+      filled: data.filled,
+      fillRate: data.total > 0 ? Math.round((data.filled / data.total) * 100) : 100,
+    }))
+    .sort((a, b) => a.fillRate - b.fillRate)
+    .slice(0, 10);
+
+  // Formateurs avec contenus manquants (pour relance ciblée)
+  const teacherContentMap = new Map<string, { name: string; total: number; filled: number }>();
+  for (const l of periodLessonsForContent) {
+    if (!l.teacherId || !l.teacher) continue;
+    const tName = formatTeacherName(l.teacher.firstName, l.teacher.lastName);
+    const entry = teacherContentMap.get(l.teacherId) ?? { name: tName, total: 0, filled: 0 };
+    entry.total += 1;
+    if (l.summary && l.summary.trim().length > 0) entry.filled += 1;
+    teacherContentMap.set(l.teacherId, entry);
+  }
+  const teachersMissingContent = Array.from(teacherContentMap.entries())
+    .map(([teacherId, data]) => ({
+      teacherId,
+      teacherName: data.name,
+      missingCount: data.total - data.filled,
+      totalLessons: data.total,
+      fillRate: data.total > 0 ? Math.round((data.filled / data.total) * 100) : 100,
+    }))
+    .filter((t) => t.missingCount > 0)
+    .sort((a, b) => b.missingCount - a.missingCount)
+    .slice(0, 8);
 
   // Indicateur 13 : Taux d'activation des comptes parents / responsables
   const allParents = allActiveUsers.filter((u) => u.role === "RESPONSIBLE");
@@ -681,10 +901,74 @@ async function calculateAdminDashboardPayload(
       ? Math.round((unjustifiedCount / totalPeriodLessons) * 1000) / 10
       : 0;
 
-  // Pourcentage de livrets/bulletins déjà complétés
+  // Répartition globale de l'assiduité pour graphique camembert
+  const rawPresent = periodAttendances.filter((a) => a.status === "PRESENT").length;
+  const rawLate = periodAttendances.filter((a) => a.status === "LATE").length;
+  const rawExcused = periodAttendances.filter((a) => a.status === "EXCUSED").length;
+  const rawUnjustified = periodAttendances.filter((a) => a.status === "ABSENT").length;
+  const totalAtt = periodAttendances.length;
+
+  const attendanceDistribution = [
+    { name: "Présents", count: rawPresent, percentage: totalAtt > 0 ? Math.round((rawPresent / totalAtt) * 100) : 0, color: "#10b981" },
+    { name: "Retards", count: rawLate, percentage: totalAtt > 0 ? Math.round((rawLate / totalAtt) * 100) : 0, color: "#f59e0b" },
+    { name: "Excusés", count: rawExcused, percentage: totalAtt > 0 ? Math.round((rawExcused / totalAtt) * 100) : 0, color: "#3b82f6" },
+    { name: "Injustifiés", count: rawUnjustified, percentage: totalAtt > 0 ? Math.round((rawUnjustified / totalAtt) * 100) : 0, color: "#ef4444" },
+  ];
+
+  // Répartition des notes par tranches de niveau pour graphique camembert / barres
+  const totalGrades = filteredGrades.length;
+  const gradeDistribution = [
+    {
+      bracket: "< 8",
+      label: "Insuffisant (< 8)",
+      count: filteredGrades.filter((g) => g.value < 8).length,
+      percentage: totalGrades > 0 ? Math.round((filteredGrades.filter((g) => g.value < 8).length / totalGrades) * 100) : 0,
+      color: "#ef4444",
+    },
+    {
+      bracket: "8 - 10",
+      label: "Fragile (8 - 10)",
+      count: filteredGrades.filter((g) => g.value >= 8 && g.value < 10).length,
+      percentage: totalGrades > 0 ? Math.round((filteredGrades.filter((g) => g.value >= 8 && g.value < 10).length / totalGrades) * 100) : 0,
+      color: "#f97316",
+    },
+    {
+      bracket: "10 - 12",
+      label: "Moyen (10 - 12)",
+      count: filteredGrades.filter((g) => g.value >= 10 && g.value < 12).length,
+      percentage: totalGrades > 0 ? Math.round((filteredGrades.filter((g) => g.value >= 10 && g.value < 12).length / totalGrades) * 100) : 0,
+      color: "#eab308",
+    },
+    {
+      bracket: "12 - 14",
+      label: "Satisfaisant (12 - 14)",
+      count: filteredGrades.filter((g) => g.value >= 12 && g.value < 14).length,
+      percentage: totalGrades > 0 ? Math.round((filteredGrades.filter((g) => g.value >= 12 && g.value < 14).length / totalGrades) * 100) : 0,
+      color: "#3b82f6",
+    },
+    {
+      bracket: "14 - 16",
+      label: "Bien (14 - 16)",
+      count: filteredGrades.filter((g) => g.value >= 14 && g.value < 16).length,
+      percentage: totalGrades > 0 ? Math.round((filteredGrades.filter((g) => g.value >= 14 && g.value < 16).length / totalGrades) * 100) : 0,
+      color: "#6366f1",
+    },
+    {
+      bracket: "≥ 16",
+      label: "Très bien (≥ 16)",
+      count: filteredGrades.filter((g) => g.value >= 16).length,
+      percentage: totalGrades > 0 ? Math.round((filteredGrades.filter((g) => g.value >= 16).length / totalGrades) * 100) : 0,
+      color: "#10b981",
+    },
+  ];
+
+  // Pourcentage de livrets/bulletins déjà complétés (période sélectionnée)
+  const currentSemesterReportCards = selectedSemesterId
+    ? reportCards.filter((rc) => rc.semesterId === selectedSemesterId)
+    : [];
   const reportCardsPct =
     students.length > 0 && selectedSemesterId
-      ? (reportCards.filter((rc) => studentIds.has(rc.studentId)).length / students.length) * 100
+      ? (currentSemesterReportCards.filter((rc) => studentIds.has(rc.studentId)).length / students.length) * 100
       : 0;
 
   // Pourcentage de compétences acquises (Niveau d'évaluation >= 3)
@@ -774,7 +1058,7 @@ async function calculateAdminDashboardPayload(
       average: c.average != null ? Math.round(c.average * 100) / 100 : null,
     }));
 
-  // Veille Décrochage : Identification des élèves ayant des absences injustifiées répétées
+  // Veille Décrochage : Identification des élèves ayant des absences injustifiées répétées (au moins 5 élèves)
   const studentUnjustifiedMap = new Map<string, number>();
   for (const a of periodAttendances) {
     if (a.status === "ABSENT" && (a.isConfirmed || a.lesson.startTime < subDays(now, 2))) {
@@ -782,7 +1066,7 @@ async function calculateAdminDashboardPayload(
     }
   }
 
-  const atRiskStudents = students
+  const allMappedStudents = students
     .map((s) => {
       const count = studentUnjustifiedMap.get(s.id) ?? 0;
       return {
@@ -793,9 +1077,16 @@ async function calculateAdminDashboardPayload(
         conductPoints: s.conductPoints ?? 100,
       };
     })
-    .filter((s) => s.unjustifiedCount >= 2 || s.conductPoints <= 50)
-    .sort((a, b) => b.unjustifiedCount - a.unjustifiedCount || a.conductPoints - b.conductPoints)
-    .slice(0, 6);
+    .sort((a, b) => b.unjustifiedCount - a.unjustifiedCount || a.conductPoints - b.conductPoints);
+
+  // Filtrer les élèves ayant des absences injustifiées ou des points de conduite impactés
+  const prioritizedAtRisk = allMappedStudents.filter((s) => s.unjustifiedCount >= 1 || s.conductPoints < 100);
+  // S'assurer de renvoyer au moins 5 élèves (jusqu'à 10) pour la veille décrochage
+  const atRiskStudents = (
+    prioritizedAtRisk.length >= 5
+      ? prioritizedAtRisk
+      : Array.from(new Map([...prioritizedAtRisk, ...allMappedStudents].map((s) => [s.id, s])).values())
+  ).slice(0, 10);
 
   // Extraction des compétences non acquises pour amélioration pédagogique (Qualiopi)
   const competencyMap = new Map<string, { total: number; acquired: number }>();
@@ -866,22 +1157,60 @@ async function calculateAdminDashboardPayload(
     .sort((a, b) => b.average - a.average);
 
   // Analyse des heures programmées vs assurées sur 12 semaines pour les KPI RH
-  const hrHoursWeekly: { week: string; planned: number; realized: number; gap: number }[] = [];
+  const hrHoursWeekly: AdminDashboardPayload["charts"]["hrHoursWeekly"] = [];
   for (let i = 11; i >= 0; i--) {
     const weekStart = startOfWeek(subDays(now, i * 7), { weekStartsOn: 1 });
     const weekEnd = endOfWeek(weekStart, { weekStartsOn: 1 });
     const weekLessons = allRecentLessons.filter(
       (l) => l.startTime >= weekStart && l.startTime <= weekEnd,
     );
+    const isPastWeek = weekEnd < now;
+    const isCurrentWeek = weekStart <= now && weekEnd >= now;
+
+    // Heures programmées totales à l'emploi du temps
     const planned = calculateMergedTeacherHours(weekLessons);
+    // Heures effectivement assurées (non annulées et créneau terminé)
     const realized = calculateMergedTeacherHours(
-      weekLessons.filter((l) => l.endTime < now)
+      weekLessons.filter((l) => !l.isCancelled && l.endTime < now),
     );
+
+    const cancelledCount = weekLessons.filter((l) => l.isCancelled).length;
+    const gap = Math.round((planned - realized) * 10) / 10;
+
+    let isInconsistent = false;
+    let inconsistencyType: "deficit" | "surplus" | "none" = "none";
+
+    if (isPastWeek && planned > 0) {
+      if (gap > 0.1 || cancelledCount > 0) {
+        isInconsistent = true;
+        inconsistencyType = "deficit";
+      } else if (gap < -0.1) {
+        isInconsistent = true;
+        inconsistencyType = "surplus";
+      }
+    } else if (isCurrentWeek) {
+      const pastLessonsThisWeek = weekLessons.filter((l) => l.endTime < now);
+      const plannedSoFar = calculateMergedTeacherHours(pastLessonsThisWeek);
+      const realizedSoFar = calculateMergedTeacherHours(
+        pastLessonsThisWeek.filter((l) => !l.isCancelled),
+      );
+      if (plannedSoFar - realizedSoFar > 0.1 || cancelledCount > 0) {
+        isInconsistent = true;
+        inconsistencyType = "deficit";
+      } else if (realized > planned + 0.1) {
+        isInconsistent = true;
+        inconsistencyType = "surplus";
+      }
+    }
+
     hrHoursWeekly.push({
       week: format(weekStart, "d MMM", { locale: fr }),
       planned: Math.round(planned * 10) / 10,
       realized: Math.round(realized * 10) / 10,
-      gap: Math.round((planned - realized) * 10) / 10,
+      gap,
+      isInconsistent,
+      inconsistencyType,
+      cancelledCount,
     });
   }
 
@@ -969,9 +1298,12 @@ async function calculateAdminDashboardPayload(
 
   const studentsWithoutParent = students.filter((s) => s.responsibles.length === 0).length;
   const studentsWithoutContract = students.filter((s) => s.studentContracts.length === 0).length;
-  const missingReportCards =
-    students.length > 0 && selectedSemesterId
-      ? students.length - reportCards.filter((rc) => studentIds.has(rc.studentId)).length
+  const previousSemesterReportCards = previousSemester
+    ? reportCards.filter((rc) => rc.semesterId === previousSemester.id)
+    : [];
+  const missingPreviousReportCards =
+    students.length > 0 && previousSemester
+      ? students.length - previousSemesterReportCards.filter((rc) => studentIds.has(rc.studentId)).length
       : 0;
 
   // 5. Génération dynamique des alertes système
@@ -1003,12 +1335,12 @@ async function calculateAdminDashboardPayload(
       href: "/admin/absences?status=UNCONFIRMED",
     });
   }
-  if (missingReportCards > 0) {
+  if (missingPreviousReportCards > 0 && previousSemester) {
     alerts.push({
       id: "report-cards",
       severity: "warning",
-      label: "Bulletins manquants",
-      count: missingReportCards,
+      label: `Bulletins manquants (${previousSemester.name})`,
+      count: missingPreviousReportCards,
       href: "/admin/recap/report-cards",
     });
   }
@@ -1066,6 +1398,15 @@ async function calculateAdminDashboardPayload(
       href: "/admin/relations/contracts",
     });
   }
+  if (missingContentCount > 0) {
+    alerts.push({
+      id: "missing-content",
+      severity: missingContentCount > 10 ? "warning" : "info",
+      label: "Cours sans cahier de texte",
+      count: missingContentCount,
+      href: "/admin/devoirs?tab=missing",
+    });
+  }
   if (qualiopiEnabled && openComplaintsList.length > 0) {
     alerts.push({
       id: "complaints",
@@ -1105,6 +1446,11 @@ async function calculateAdminDashboardPayload(
       gradeCompletionPct,
       rollCallValidationRate,
       roomOccupancyRate,
+      totalOccupiedRoomHours,
+      totalAvailableRoomHours,
+      courseContentFillRate,
+      missingContentCount,
+      totalPastLessonsCount,
       parentActivationPct,
       sanctionsCount: sanctions.length,
       reportCardsPct: Math.round(reportCardsPct),
@@ -1127,6 +1473,12 @@ async function calculateAdminDashboardPayload(
       hrHoursWeekly,
       satisfactionMonthly: qualiopiEnabled ? satisfactionMonthly : [],
       teacherWorkloadByTeacher,
+      roomOccupancyByRoom,
+      roomOccupancyWeekly,
+      courseContentWeekly,
+      courseContentBySubject,
+      attendanceDistribution,
+      gradeDistribution,
     },
     miniTables: {
       topClasses,
@@ -1141,6 +1493,7 @@ async function calculateAdminDashboardPayload(
         createdAt: e.createdAt.toISOString(),
       })),
       expiringContracts,
+      teachersMissingContent,
     },
     qualiopi: qualiopiEnabled
       ? {

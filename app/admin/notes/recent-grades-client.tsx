@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { 
@@ -420,6 +421,14 @@ export default function RecentGradesClient({
                         {/* Actions */}
                         <td className="py-3.5 px-4 text-right">
                           <div className="flex items-center justify-end gap-1.5">
+                            {/* Bouton direct vers le Cahier de Texte & Devoirs de ce cours */}
+                            <Link
+                              href={`/admin/devoirs?classId=${grade.student.classId || "ALL"}&subjectId=${grade.subject.id}&tab=ALL`}
+                              className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition"
+                              title="Accéder au cahier de texte & devoirs de ce cours"
+                            >
+                              <BookOpen className="h-4 w-4" />
+                            </Link>
                             <button
                               onClick={() => openEditModal(grade)}
                               className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition"

@@ -27,6 +27,7 @@ export default async function UsersDataFetcher({
   const q = getParam(searchParams?.q)?.trim() ?? "";
   const roleRaw = getParam(searchParams?.role)?.trim() ?? "";
   const roleFilter = parseRole(roleRaw);
+  const connRaw = getParam(searchParams?.conn)?.trim() ?? "";
   
   const cursorParam = getParam(searchParams?.cursor)?.trim();
   const dir = getParam(searchParams?.dir) === 'prev' ? 'prev' : 'next';
@@ -38,6 +39,25 @@ export default async function UsersDataFetcher({
 
   if (roleFilter) {
     clauses.push({ role: roleFilter });
+  }
+
+  if (connRaw === "never") {
+    clauses.push({ lastLoginAt: null });
+  } else if (connRaw === "inactive30") {
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    clauses.push({
+      OR: [
+        { lastLoginAt: null },
+        { lastLoginAt: { lt: thirtyDaysAgo } },
+      ],
+    });
+  } else if (connRaw === "recent7") {
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    clauses.push({
+      lastLoginAt: { gte: sevenDaysAgo },
+    });
   }
 
   if (q.length > 0) {
@@ -92,6 +112,7 @@ export default async function UsersDataFetcher({
         canImpersonate: true,
         isGeneralAdmin: true,
         isActive: true,
+        lastLoginAt: true,
         _count: { select: { lessons: true } },
       },
     }),
@@ -129,6 +150,7 @@ export default async function UsersDataFetcher({
       canImpersonate: u.canImpersonate,
       isGeneralAdmin: u.isGeneralAdmin ?? false,
       isActive: u.isActive,
+      lastLoginAt: u.lastLoginAt ? u.lastLoginAt.toISOString() : null,
     };
   });
 
@@ -141,6 +163,7 @@ export default async function UsersDataFetcher({
       classes={classes}
       initialQuery={q}
       initialRole={roleRaw}
+      initialConn={connRaw}
     />
   );
 }

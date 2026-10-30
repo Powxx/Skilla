@@ -8,8 +8,10 @@ import { useRouter } from "next/navigation";
 import { createUser, deleteUserSafe, updateUser, importUsersAction, updateAdminPermissions } from "./actions";
 import { useRef } from "react";
 import { useSession } from "next-auth/react";
-import { Shield, ShieldAlert, ShieldCheck, Key, FileText, X, MessageSquare, Phone, Eye } from "lucide-react";
+import { Shield, ShieldAlert, ShieldCheck, Key, FileText, X, MessageSquare, Phone, Eye, Clock } from "lucide-react";
 import { MessageButton } from "@/components/chat/MessageButton";
+import { format } from "date-fns";
+import { fr } from "date-fns/locale";
 
 const inputClass =
   "w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-sky-600 focus:ring-2 focus:ring-sky-600/20";
@@ -36,6 +38,7 @@ export type ListedUserRow = {
   username: string | null;
   phone: string | null;
   company: string | null;
+  lastLoginAt: string | null;
 };
 
 type ClassOption = { id: string; name: string };
@@ -48,6 +51,7 @@ type Props = {
   classes: ClassOption[];
   initialQuery: string;
   initialRole: string;
+  initialConn?: string;
 };
 
 const ROLE_OPTIONS: { value: Role | ""; label: string }[] = [
@@ -87,7 +91,7 @@ function canDeleteListedUser(u: ListedUserRow): boolean {
 }
 
 export default function UsersShell(props: Props) {
-  const { users, total, page, pageSize, classes, initialQuery, initialRole } = props;
+  const { users, total, page, pageSize, classes, initialQuery, initialRole, initialConn } = props;
   const router = useRouter();
   const { data: session, update: updateSession } = useSession();
   const isSuperAdmin = session?.user?.role === Role.SUPER_ADMIN || (session?.user as any)?.isGeneralAdmin === true;
@@ -131,7 +135,8 @@ export default function UsersShell(props: Props) {
       Nom: u.lastName,
       Email: u.email,
       Rôle: u.role,
-      Classe: u.studentClass?.name || ""
+      Classe: u.studentClass?.name || "",
+      "Dernière connexion": u.lastLoginAt ? format(new Date(u.lastLoginAt), "dd/MM/yyyy HH:mm") : "Jamais connecté"
     }));
     const csv = Papa.unparse(data);
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
@@ -187,6 +192,7 @@ export default function UsersShell(props: Props) {
     const p = new URLSearchParams();
     if (initialQuery.trim()) p.set("q", initialQuery.trim());
     if (initialRole) p.set("role", initialRole);
+    if (initialConn && initialConn !== "all") p.set("conn", initialConn);
     if (pg > 1) p.set("page", String(pg));
     if (cursor) {
       p.set("cursor", cursor);
@@ -240,6 +246,15 @@ export default function UsersShell(props: Props) {
             ))}
           </select>
         </div>
+        <div className="w-full sm:w-44">
+          <span className="mb-1 block text-[9px] font-black text-slate-400 uppercase tracking-widest">Connexion</span>
+          <select name="conn" defaultValue={initialConn || "all"} className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs outline-none focus:ring-blue-500/20">
+            <option value="all">Toutes connexions</option>
+            <option value="never">⚠️ Jamais connectés</option>
+            <option value="inactive30">⏳ Inactifs (&gt; 30 jours)</option>
+            <option value="recent7">⚡ Récents (&lt; 7 jours)</option>
+          </select>
+        </div>
         <div className="flex gap-2 w-full sm:w-auto">
           <button type="submit" className="flex-1 sm:flex-none px-4 py-2 bg-blue-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-blue-700 transition shadow-sm">Filtrer</button>
           <Link href="/admin/users" className="px-4 py-2 bg-slate-50 border border-slate-200 text-slate-400 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-100 transition">Reset</Link>
@@ -258,13 +273,14 @@ export default function UsersShell(props: Props) {
                 <th className="px-5 py-3 font-black text-slate-400 uppercase tracking-widest text-[9px]">Contact (Email / Tél)</th>
                 <th className="px-5 py-3 font-black text-slate-400 uppercase tracking-widest text-[9px]">Rôle</th>
                 <th className="hidden px-5 py-3 font-black text-slate-400 uppercase tracking-widest text-[9px] lg:table-cell">Profil</th>
+                <th className="px-5 py-3 font-black text-slate-400 uppercase tracking-widest text-[9px]">Dernière connexion</th>
                 <th className="px-5 py-3 font-black text-slate-400 uppercase tracking-widest text-[9px] text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50">
               {users.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="px-5 py-12 text-center text-slate-400 font-bold uppercase tracking-widest italic text-[10px]">Aucun résultat.</td>
+                  <td colSpan={6} className="px-5 py-12 text-center text-slate-400 font-bold uppercase tracking-widest italic text-[10px]">Aucun résultat.</td>
                 </tr>
               ) : (
                 users.map((u) => (
@@ -294,6 +310,59 @@ export default function UsersShell(props: Props) {
                     </td>
                     <td className="hidden px-5 py-3 lg:table-cell text-[10px] font-bold text-slate-400 uppercase tracking-tighter">
                       {u.hasStudentProfile ? (u.studentClass?.name || "Sans classe") : u.hasTeacherProfile ? `${u.teacherCourseCount} cours` : "—"}
+                    </td>
+                    <td className="px-5 py-3">
+                      {(() => {
+                        if (!u.lastLoginAt) {
+                          return (
+                            <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[9px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
+                              <span className="h-1.5 w-1.5 rounded-full bg-amber-400" />
+                              Jamais connecté
+                            </span>
+                          );
+                        }
+                        const loginDate = new Date(u.lastLoginAt);
+                        const diffDays = Math.floor((Date.now() - loginDate.getTime()) / (1000 * 60 * 60 * 24));
+                        const formattedFull = format(loginDate, "dd/MM/yyyy à HH:mm", { locale: fr });
+
+                        if (diffDays === 0) {
+                          return (
+                            <div className="flex flex-col" title={formattedFull}>
+                              <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[9px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 w-fit">
+                                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                                Aujourd&apos;hui
+                              </span>
+                              <span className="text-[9px] text-slate-400 font-mono mt-0.5 ml-1">
+                                {format(loginDate, "HH:mm")}
+                              </span>
+                            </div>
+                          );
+                        }
+                        if (diffDays <= 7) {
+                          return (
+                            <div className="flex flex-col" title={formattedFull}>
+                              <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[9px] font-bold bg-sky-50 text-sky-700 border border-sky-200 w-fit">
+                                <span className="h-1.5 w-1.5 rounded-full bg-sky-400" />
+                                Il y a {diffDays} j
+                              </span>
+                              <span className="text-[9px] text-slate-400 font-mono mt-0.5 ml-1">
+                                {format(loginDate, "dd/MM")}
+                              </span>
+                            </div>
+                          );
+                        }
+                        return (
+                          <div className="flex flex-col" title={formattedFull}>
+                            <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[9px] font-bold bg-slate-100 text-slate-600 border border-slate-200 w-fit">
+                              <span className={`h-1.5 w-1.5 rounded-full ${diffDays > 30 ? "bg-red-400" : "bg-slate-400"}`} />
+                              {diffDays > 30 ? `Inactif (${diffDays} j)` : `Il y a ${diffDays} j`}
+                            </span>
+                            <span className="text-[9px] text-slate-400 font-mono mt-0.5 ml-1">
+                              {format(loginDate, "dd/MM/yy")}
+                            </span>
+                          </div>
+                        );
+                      })()}
                     </td>
                     <td className="px-5 py-3 text-right">
                       <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition">

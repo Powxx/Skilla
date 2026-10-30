@@ -81,6 +81,14 @@ export const authOptions: NextAuthOptions = {
           
           if (!isPasswordValid) return null;
 
+          // Mise à jour de la date de dernière connexion
+          await prisma.user.update({
+            where: { id: user.id },
+            data: { lastLoginAt: new Date() },
+          }).catch((err) => {
+            console.error("Erreur lors de la mise à jour de lastLoginAt:", err);
+          });
+
           const isGenAdmin = Boolean(
             user.isGeneralAdmin ||
             user.role === "SUPER_ADMIN" ||

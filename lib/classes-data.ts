@@ -71,10 +71,51 @@ export async function getClassStudentsData(classId: string, semesterId?: string)
     };
   });
 
+  // 3. Compute student rankings based on their general average
+  const rankedList = [...students]
+    .filter((s) => s.average !== null)
+    .sort((a, b) => (b.average as number) - (a.average as number));
+
+  const totalRanked = rankedList.length;
+
+  const rankMap = new Map<string, { rank: number; rankFormatted: string }>();
+  let currentRank = 1;
+  for (let i = 0; i < rankedList.length; i++) {
+    if (i > 0 && (rankedList[i].average as number) < (rankedList[i - 1].average as number)) {
+      currentRank = i + 1;
+    }
+    const rankStr = currentRank === 1 ? "1er" : `${currentRank}e`;
+    rankMap.set(rankedList[i].id, {
+      rank: currentRank,
+      rankFormatted: `${rankStr} / ${totalRanked}`,
+    });
+  }
+
+  // Attach rank to students and sort by rank (1er -> dernier, puis sans note par ordre alphabétique)
+  const studentsWithRanks = students
+    .map((s) => ({
+      ...s,
+      rank: rankMap.get(s.id)?.rank ?? null,
+      rankFormatted: rankMap.get(s.id)?.rankFormatted ?? null,
+      totalRanked,
+    }))
+    .sort((a, b) => {
+      if (a.rank !== null && b.rank !== null) return a.rank - b.rank;
+      if (a.rank !== null) return -1;
+      if (b.rank !== null) return 1;
+      return (a.lastName || "").localeCompare(b.lastName || "");
+    });
+
   // Class stats
   const studentsWithAverages = students.filter(s => s.average !== null);
   const classAverage = studentsWithAverages.length > 0
     ? studentsWithAverages.reduce((acc, s) => acc + (s.average as number), 0) / studentsWithAverages.length
+    : null;
+
+  const topStudent = rankedList[0] ?? null;
+  const bestAverage = topStudent?.average ?? null;
+  const topStudentName = topStudent
+    ? `${(topStudent.lastName || "").toUpperCase()} ${topStudent.firstName || ""}`.trim()
     : null;
 
   // Class attendance rate
@@ -112,12 +153,15 @@ export async function getClassStudentsData(classId: string, semesterId?: string)
   return {
     classId: classData.id,
     className: classData.name,
-    students,
+    students: studentsWithRanks,
     stats: {
       totalStudents: students.length,
       classAverage: classAverage !== null ? Math.round(classAverage * 100) / 100 : null,
       attendanceRate: Math.round(classAttendanceRate),
       atRiskCount,
+      totalRanked,
+      bestAverage,
+      topStudentName,
     }
   };
 }

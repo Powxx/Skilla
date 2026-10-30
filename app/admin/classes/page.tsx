@@ -111,7 +111,9 @@ export default async function AdminClassesPage(props: PageProps) {
                   <p className="text-xl font-black text-slate-950 mt-1">
                     {classData.stats.classAverage !== null ? `${classData.stats.classAverage}/20` : "N/A"}
                   </p>
-                  <p className="text-[8px] font-bold text-slate-400 uppercase mt-0.5">Moyenne générale du semestre</p>
+                  <p className="text-[8px] font-bold text-slate-400 uppercase mt-0.5">
+                    {classData.stats.bestAverage !== null ? `1er : ${classData.stats.bestAverage}/20` : "Moyenne générale"}
+                  </p>
                 </div>
               </div>
 
@@ -153,6 +155,9 @@ export default async function AdminClassesPage(props: PageProps) {
                 <table className="w-full text-left text-xs border-collapse">
                   <thead>
                     <tr className="border-b border-slate-100 bg-white">
+                      <th scope="col" className="px-6 py-4 font-black text-slate-400 uppercase tracking-widest text-[9px] w-28">
+                        Classement
+                      </th>
                       <th scope="col" className="px-6 py-4 font-black text-slate-400 uppercase tracking-widest text-[9px]">
                         Élève
                       </th>
@@ -176,7 +181,7 @@ export default async function AdminClassesPage(props: PageProps) {
                   <tbody className="divide-y divide-slate-50">
                     {classData.students.length === 0 ? (
                       <tr>
-                        <td colSpan={6} className="px-6 py-12 text-center text-slate-400 font-bold uppercase tracking-widest italic">
+                        <td colSpan={7} className="px-6 py-12 text-center text-slate-400 font-bold uppercase tracking-widest italic">
                           Aucun élève actif trouvé dans cette classe.
                         </td>
                       </tr>
@@ -208,6 +213,39 @@ export default async function AdminClassesPage(props: PageProps) {
 
                         return (
                           <tr key={student.id} className="hover:bg-slate-50/50 transition-colors group">
+                            {/* Classement */}
+                            <td className="px-6 py-4">
+                              {student.rank !== null ? (
+                                <div className="flex flex-col">
+                                  {student.rank === 1 ? (
+                                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-black bg-gradient-to-r from-amber-100 via-amber-50 to-yellow-100 text-amber-900 border border-amber-300 shadow-sm ring-1 ring-amber-400/20 w-fit">
+                                      <span>🥇</span>
+                                      <span>1er</span>
+                                    </span>
+                                  ) : student.rank === 2 ? (
+                                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-black bg-slate-100 text-slate-800 border border-slate-300 shadow-sm w-fit">
+                                      <span>🥈</span>
+                                      <span>2e</span>
+                                    </span>
+                                  ) : student.rank === 3 ? (
+                                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-black bg-orange-50 text-orange-800 border border-orange-200 shadow-sm w-fit">
+                                      <span>🥉</span>
+                                      <span>3e</span>
+                                    </span>
+                                  ) : (
+                                    <span className="inline-flex items-center px-2 py-0.5 rounded-lg text-xs font-black bg-slate-50 text-slate-700 border border-slate-200 w-fit">
+                                      {student.rank}e
+                                    </span>
+                                  )}
+                                  <span className="text-[9px] font-bold text-slate-400 mt-0.5">
+                                    sur {student.totalRanked}
+                                  </span>
+                                </div>
+                              ) : (
+                                <span className="text-slate-300 italic text-[11px] font-medium">—</span>
+                              )}
+                            </td>
+
                             <td className="px-6 py-4">
                               <div className="flex items-center gap-3">
                                 <div className="h-8 w-8 rounded-full bg-slate-100 flex items-center justify-center text-xs font-black text-slate-500 border border-slate-200">
