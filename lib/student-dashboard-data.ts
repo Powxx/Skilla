@@ -30,17 +30,14 @@ export async function loadStudentDashboardPayload(
   const student = await prisma.user.findUnique({
     where,
     include: {
+      dispensations: {
+        select: { subjectId: true },
+      },
       class: {
         include: {
           students: {
             include: { grades: true }
           },
-          lessons: {
-            where: { startTime: { gte: new Date() }, isCancelled: false },
-            orderBy: { startTime: 'asc' },
-            take: 1,
-            include: { subject: true, teacher: true, room: true }
-          }
         }
       },
       grades: {
@@ -51,6 +48,8 @@ export async function loadStudentDashboardPayload(
   });
 
   if (!student) return null;
+
+  const dispensedSubjectIds = student.dispensations.map((d) => d.subjectId);
 
   // 1. Attendance
   const totalLessonsCount = await prisma.attendance.count({ where: { studentId: student.id } });
@@ -82,24 +81,44 @@ export async function loadStudentDashboardPayload(
     if (myIndex !== -1) rank = myIndex + 1;
   }
 
-  // 3. Next Lesson
-  const nextLesson = student.class?.lessons[0] || null;
+  // 3. Next Lesson (excluding dispensed subjects)
+  const nextLesson = student.class
+    ? await prisma.lesson.findFirst({
+        where: {
+          classId: student.class.id,
+          startTime: { gte: new Date() },
+          isCancelled: false,
+          OR: [
+            { subjectId: { notIn: dispensedSubjectIds } },
+            { isFreeLesson: true },
+          ],
+        },
+        orderBy: { startTime: "asc" },
+        include: { subject: true, teacher: true, room: true },
+      })
+    : null;
 
-  // 4. Upcoming Homework
+  // 4. Upcoming Homework (excluding dispensed subjects)
   const now = startOfDay(new Date());
 
   const homeworkLessons = student.class ? await prisma.lesson.findMany({
     where: {
       classId: student.class.id,
       homework: { not: null },
+      isCancelled: false,
       startTime: { 
         gte: now
-      }
+      },
+      OR: [
+        { subjectId: { notIn: dispensedSubjectIds } },
+        { isFreeLesson: true },
+      ],
     },
     orderBy: { startTime: 'asc' },
     take: 20,
     include: { subject: { select: { name: true } } }
   }) : [];
+
 
   console.log(`Debug Homework: Student ${student.id}, Class ${student.class?.id}, Found ${homeworkLessons.length} lessons with homework from ${now.toISOString()}.`);
 

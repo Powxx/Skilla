@@ -14,7 +14,12 @@ export async function GET(
 
   const user = await prisma.user.findUnique({
     where: { calendarToken: token },
-    select: { id: true, role: true, classId: true }
+    select: {
+      id: true,
+      role: true,
+      classId: true,
+      dispensations: { select: { subjectId: true } },
+    },
   });
 
   if (!user) {
@@ -27,6 +32,13 @@ export async function GET(
     whereClause.isFreeLesson = false;
   } else if (user.role === "STUDENT" && user.classId) {
     whereClause.classId = user.classId;
+    const dispensedSubjectIds = user.dispensations.map((d) => d.subjectId);
+    if (dispensedSubjectIds.length > 0) {
+      whereClause.OR = [
+        { subjectId: { notIn: dispensedSubjectIds } },
+        { isFreeLesson: true },
+      ];
+    }
   } else {
     // If admin or other, maybe they want their own lessons if any, 
     // but usually admins want to see everything. For sync, we restrict to their own context.

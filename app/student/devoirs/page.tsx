@@ -16,7 +16,7 @@ export default async function StudentDevoirsPage() {
     redirect("/login");
   }
 
-  // Retrieve current student profile with class
+  // Retrieve current student profile with class and dispensations
   const student = await prisma.user.findUnique({
     where: { id: session.user.id },
     select: {
@@ -24,6 +24,9 @@ export default async function StudentDevoirsPage() {
       firstName: true,
       lastName: true,
       classId: true,
+      dispensations: {
+        select: { subjectId: true },
+      },
       class: {
         select: {
           id: true,
@@ -46,18 +49,27 @@ export default async function StudentDevoirsPage() {
     );
   }
 
-  // Load subjects of the school
+  const dispensedSubjectIds = student.dispensations.map((d) => d.subjectId);
+
+  // Load subjects of the school (excluding dispensed ones for student filter)
   const subjects = await prisma.subject.findMany({
+    where: {
+      id: { notIn: dispensedSubjectIds },
+    },
     select: { id: true, name: true },
     orderBy: { name: "asc" },
   });
 
-  // Load all lessons for the student's class that have homework defined
+  // Load all lessons for the student's class that have homework defined, excluding dispensed subjects
   const lessons = await prisma.lesson.findMany({
     where: {
       classId: student.classId,
       homework: { not: null },
       isCancelled: false,
+      OR: [
+        { subjectId: { notIn: dispensedSubjectIds } },
+        { isFreeLesson: true },
+      ],
     },
     orderBy: {
       startTime: "desc",
@@ -69,6 +81,7 @@ export default async function StudentDevoirsPage() {
     },
     take: 100,
   });
+
 
   // Filter out any entries where homework is empty whitespace
   const validHomeworks: HomeworkItem[] = lessons

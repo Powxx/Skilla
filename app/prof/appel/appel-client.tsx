@@ -1,11 +1,14 @@
-"use client";
-
 import { useEffect, useState, useTransition } from "react";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
-import { getStudentsByClass } from "@/app/prof/notes/actions";
-import type { StudentForGradeEntry } from "@/app/prof/notes/actions";
-import { submitRollCall, updateAttendanceStatus } from "./actions";
+import { ShieldAlert } from "lucide-react";
+import {
+  submitRollCall,
+  updateAttendanceStatus,
+  getStudentsForRollCall,
+  type RollCallStudent,
+  type RollCallDispensedStudent,
+} from "./actions";
 
 export type PresenceState = "present" | "absent" | "late" | "excused";
 
@@ -17,7 +20,8 @@ function initStates(ids: string[]): Record<string, PresenceState> {
 
 export default function AppelClient({ initialLessons }: { initialLessons: any[] }) {
   const [selectedLesson, setSelectedLesson] = useState<any>(null);
-  const [students, setStudents] = useState<StudentForGradeEntry[]>([]);
+  const [students, setStudents] = useState<RollCallStudent[]>([]);
+  const [dispensedStudents, setDispensedStudents] = useState<RollCallDispensedStudent[]>([]);
   const [states, setStates] = useState<Record<string, PresenceState>>({});
   const [lateDurations, setLateDurations] = useState<Record<string, number>>({});
   const [loadErr, setLoadErr] = useState<string | null>(null);
@@ -37,18 +41,21 @@ export default function AppelClient({ initialLessons }: { initialLessons: any[] 
     loadStudents(() => {
       void (async () => {
         try {
-          const rows = await getStudentsByClass(lesson.classId);
-          setStudents(rows);
-          setStates(initStates(rows.map((r) => r.id)));
+          const res = await getStudentsForRollCall(lesson.classId, lesson.subjectId || null);
+          setStudents(res.students);
+          setDispensedStudents(res.dispensedStudents);
+          setStates(initStates(res.students.map((r) => r.id)));
           setLateDurations({});
         } catch {
           setLoadErr("Impossible de charger les élèves.");
           setStudents([]);
+          setDispensedStudents([]);
           setStates({});
         }
       })();
     });
   };
+
 
   const setPresence = (studentId: string, next: PresenceState) => {
     setStates((prev) => ({
@@ -170,19 +177,44 @@ export default function AppelClient({ initialLessons }: { initialLessons: any[] 
         </div>
       )}
 
+      {dispensedStudents.length > 0 && (
+        <div className="p-4 rounded-2xl bg-amber-50/80 border border-amber-200 text-amber-900 text-xs flex items-start gap-3 shadow-xs">
+          <div className="p-2 rounded-xl bg-amber-100 text-amber-800 shrink-0">
+            <ShieldAlert className="h-4 w-4" />
+          </div>
+          <div className="space-y-1">
+            <p className="font-bold text-amber-950 text-sm">
+              {dispensedStudents.length} élève{dispensedStudents.length > 1 ? "s" : ""} dispensé{dispensedStudents.length > 1 ? "s" : ""} de cette matière
+            </p>
+            <p className="text-amber-800 leading-relaxed">
+              {dispensedStudents.map((d) => `${d.lastName.toUpperCase()} ${d.firstName}${d.reason ? ` (${d.reason})` : ""}`).join(", ")}
+              {" — "}
+              <span className="font-semibold text-amber-950">automatiquement exclu{dispensedStudents.length > 1 ? "s" : ""} de la feuille d&apos;appel</span>. Aucune absence ni retard ne leur est imputé.
+            </p>
+          </div>
+        </div>
+      )}
+
       {pendingStudents ? (
         <div className="flex justify-center py-12">
           <div className="h-8 w-8 animate-spin rounded-full border-4 border-slate-200 border-t-blue-600"></div>
         </div>
+      ) : students.length === 0 ? (
+        <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-12 text-center text-slate-500 text-sm">
+          {dispensedStudents.length > 0
+            ? "Tous les élèves de cette classe sont dispensés de cette matière. Aucun appel à effectuer."
+            : "Aucun élève actif trouvé pour cette classe."}
+        </div>
       ) : (
         <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden ring-1 ring-slate-900/[0.04]">
           <div className="bg-slate-50 px-6 py-3 border-b border-slate-100 flex justify-between items-center">
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Élève</span>
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Élève ({students.length})</span>
             <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Présence</span>
           </div>
           <ul className="divide-y divide-slate-100">
             {students.map((s) => {
               const st = states[s.id] || "present";
+
               return (
                 <li key={s.id} className="flex items-center justify-between gap-3 px-4 sm:px-6 py-3 sm:py-4 hover:bg-slate-50/50 transition">
                   <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">

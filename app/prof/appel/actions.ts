@@ -46,8 +46,92 @@ export async function updateAttendanceStatus(
   }
 }
 
+export type RollCallStudent = {
+  id: string;
+  user: {
+    id: string;
+    firstName: string | null;
+    lastName: string | null;
+  };
+};
+
+export type RollCallDispensedStudent = {
+  id: string;
+  firstName: string;
+  lastName: string;
+  reason: string | null;
+};
+
 /**
- * Crée les entrées Attendance pour les élèves.
+ * Récupère les élèves d'une classe pour l'appel d'un cours spécifique.
+ * Les élèves dispensés de la matière sont isolés et exclus de l'appel.
+ */
+export async function getStudentsForRollCall(
+  classId: string,
+  subjectId?: string | null
+): Promise<{
+  students: RollCallStudent[];
+  dispensedStudents: RollCallDispensedStudent[];
+}> {
+  const session = await getServerSession(authOptions);
+  if (!session?.user || (session.user.role !== "TEACHER" && session.user.role !== "ADMIN" && session.user.role !== "SUPER_ADMIN")) {
+    return { students: [], dispensedStudents: [] };
+  }
+
+  if (!classId) return { students: [], dispensedStudents: [] };
+
+  const classData = await prisma.class.findUnique({
+    where: { id: classId },
+    include: {
+      students: {
+        where: { isActive: true },
+        select: {
+          id: true,
+          firstName: true,
+          lastName: true,
+          dispensations: subjectId
+            ? {
+                where: { subjectId },
+                select: { id: true, reason: true },
+              }
+            : false,
+        },
+        orderBy: [{ lastName: "asc" }, { firstName: "asc" }],
+      },
+    },
+  });
+
+  if (!classData) return { students: [], dispensedStudents: [] };
+
+  const students: RollCallStudent[] = [];
+  const dispensedStudents: RollCallDispensedStudent[] = [];
+
+  for (const s of classData.students) {
+    const isDispensed = Array.isArray(s.dispensations) && s.dispensations.length > 0;
+    if (isDispensed) {
+      dispensedStudents.push({
+        id: s.id,
+        firstName: s.firstName || "",
+        lastName: s.lastName || "",
+        reason: s.dispensations[0]?.reason || null,
+      });
+    } else {
+      students.push({
+        id: s.id,
+        user: {
+          id: s.id,
+          firstName: s.firstName,
+          lastName: s.lastName,
+        },
+      });
+    }
+  }
+
+  return { students, dispensedStudents };
+}
+
+/**
+ * Crée les entrées Attendance pour les élèves non dispensés.
  */
 export async function submitRollCall(payload: SubmitRollPayload): Promise<SubmitRollResult> {
   const session = await getServerSession(authOptions);
@@ -66,7 +150,7 @@ export async function submitRollCall(payload: SubmitRollPayload): Promise<Submit
   // 1b. Vérification des droits sur la leçon (en cas de remplacement, seul le remplaçant peut faire l'appel)
   const targetLesson = await prisma.lesson.findUnique({
     where: { id: lessonId },
-    select: { teacherId: true, substituteId: true }
+    select: { teacherId: true, substituteId: true, subjectId: true }
   });
 
   if (!targetLesson) {
@@ -98,19 +182,33 @@ export async function submitRollCall(payload: SubmitRollPayload): Promise<Submit
     return { ok: false, error: "Classe introuvable." };
   }
 
+  // Récupération des élèves dispensés de ce cours
+  const dispensedRecords = targetLesson.subjectId
+    ? await prisma.dispensation.findMany({
+        where: {
+          subjectId: targetLesson.subjectId,
+          studentId: { in: classe.students.map((s) => s.id) },
+        },
+        select: { studentId: true },
+      })
+    : [];
+  const dispensedSet = new Set(dispensedRecords.map((d) => d.studentId));
+
   // 3. Préparation des données pour createMany
-  // On crée une entrée pour CHAQUE élève pour valider l'appel
-  const toCreate = classe.students
-    .map((student) => {
-      const mark = markings[student.id] || "present";
-      
-      return {
-        studentId: student.id,
-        lessonId: lessonId,
-        status: (mark === "late" ? "LATE" : mark === "absent" ? "ABSENT" : mark === "excused" ? "EXCUSED" : "PRESENT") as AttendanceStatus,
-        lateDuration: mark === "late" ? (lateDurations[student.id] || 0) : null,
-      };
-    });
+  // On crée une entrée UNIQUEMENT pour les élèves qui ne sont pas dispensés
+  const studentsToMark = classe.students.filter((s) => !dispensedSet.has(s.id));
+
+  const toCreate = studentsToMark.map((student) => {
+    const mark = markings[student.id] || "present";
+    
+    return {
+      studentId: student.id,
+      lessonId: lessonId,
+      status: (mark === "late" ? "LATE" : mark === "absent" ? "ABSENT" : mark === "excused" ? "EXCUSED" : "PRESENT") as AttendanceStatus,
+      lateDuration: mark === "late" ? (lateDurations[student.id] || 0) : null,
+    };
+  });
+
 
   if (toCreate.length === 0) {
     return { ok: true, created: 0 };

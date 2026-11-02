@@ -14,7 +14,12 @@ export async function GET(request: Request) {
   if (token) {
     const user = await prisma.user.findUnique({
       where: { calendarToken: token },
-      select: { id: true, role: true, classId: true }
+      select: {
+        id: true,
+        role: true,
+        classId: true,
+        dispensations: { select: { subjectId: true } },
+      },
     });
 
     if (!user) {
@@ -26,7 +31,10 @@ export async function GET(request: Request) {
     }
     if (user.role === "STUDENT") {
       if (!user.classId) return NextResponse.json({ error: "Aucune classe assignée" }, { status: 400 });
-      return exportCalendar({ classId: user.classId });
+      return exportCalendar({
+        classId: user.classId,
+        dispensedSubjectIds: user.dispensations.map((d) => d.subjectId),
+      });
     }
     return exportCalendar({ classId: classId || undefined, teacherId: teacherId || undefined });
   }
@@ -40,14 +48,23 @@ export async function GET(request: Request) {
   // Security checks similar to lessons route
   const role = session.user.role;
   if (role === "STUDENT") {
-    const user = await prisma.user.findUnique({ where: { id: session.user.id }, select: { classId: true } });
+    const user = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: {
+        classId: true,
+        dispensations: { select: { subjectId: true } },
+      },
+    });
     if (classId && user?.classId !== classId) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
     // If no classId provided, use student's class
     if (!classId && !teacherId) {
       if (!user?.classId) return NextResponse.json({ error: "No class assigned" }, { status: 400 });
-      return exportCalendar({ classId: user.classId });
+      return exportCalendar({
+        classId: user.classId,
+        dispensedSubjectIds: user.dispensations.map((d) => d.subjectId),
+      });
     }
   }
 
@@ -67,8 +84,19 @@ export async function GET(request: Request) {
 
   // Default export for the requester if no params
   if (role === "STUDENT") {
-      const user = await prisma.user.findUnique({ where: { id: session.user.id } });
-      if (user?.classId) return exportCalendar({ classId: user.classId });
+      const user = await prisma.user.findUnique({
+        where: { id: session.user.id },
+        select: {
+          classId: true,
+          dispensations: { select: { subjectId: true } },
+        },
+      });
+      if (user?.classId) {
+        return exportCalendar({
+          classId: user.classId,
+          dispensedSubjectIds: user.dispensations.map((d) => d.subjectId),
+        });
+      }
   } else if (role === "TEACHER") {
       return exportCalendar({ teacherId: session.user.id, isTeacherView: true });
   }
@@ -76,11 +104,28 @@ export async function GET(request: Request) {
   return NextResponse.json({ error: "Paramètres manquants" }, { status: 400 });
 }
 
-async function exportCalendar({ classId, teacherId, isTeacherView = false }: { classId?: string, teacherId?: string, isTeacherView?: boolean }) {
+async function exportCalendar({
+  classId,
+  teacherId,
+  isTeacherView = false,
+  dispensedSubjectIds = [],
+}: {
+  classId?: string;
+  teacherId?: string;
+  isTeacherView?: boolean;
+  dispensedSubjectIds?: string[];
+}) {
   const whereClause: any = {};
   if (classId) whereClause.classId = classId;
   if (teacherId) whereClause.teacherId = teacherId;
   if (isTeacherView) whereClause.isFreeLesson = false;
+  if (dispensedSubjectIds.length > 0) {
+    whereClause.OR = [
+      { subjectId: { notIn: dispensedSubjectIds } },
+      { isFreeLesson: true },
+    ];
+  }
+
 
   // We export from 1 month ago to 6 months in the future
   const now = new Date();
