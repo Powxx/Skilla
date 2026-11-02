@@ -1,14 +1,20 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth-options";
 import prisma from "@/lib/prisma";
-import { setDispensation } from "@/app/admin/students/actions";
+import AdminDispensesClient from "./admin-dispenses-client";
 
-export const dynamic = 'force-dynamic';
-export const metadata = { title: "Dispenses — Administration" };
+export const dynamic = "force-dynamic";
+export const metadata = {
+  title: "Gestion des Dispenses — Administration",
+  description: "Matrice et gestion des dispenses d'évaluations par classe et par étudiant.",
+};
 
-export default async function AdminDispensesPage({ searchParams }: { searchParams: Promise<{ classId?: string }> }) {
+export default async function AdminDispensesPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ classId?: string }>;
+}) {
   const session = await getServerSession(authOptions);
   if (!session?.user || (session.user.role !== "ADMIN" && session.user.role !== "SUPER_ADMIN")) {
     redirect("/login");
@@ -16,57 +22,60 @@ export default async function AdminDispensesPage({ searchParams }: { searchParam
 
   const { classId } = await searchParams;
 
-  const classes = await prisma.class.findMany({ include: { students: { include: { dispensations: true } } } });
-  const subjects = await prisma.subject.findMany();
+  const [classes, subjects] = await Promise.all([
+    prisma.class.findMany({
+      orderBy: { name: "asc" },
+      include: {
+        requirements: {
+          select: { subjectId: true },
+        },
+        students: {
+          where: { isActive: true },
+          orderBy: [{ lastName: "asc" }, { firstName: "asc" }],
+          include: {
+            dispensations: {
+              select: {
+                id: true,
+                subjectId: true,
+                reason: true,
+              },
+            },
+          },
+        },
+      },
+    }),
+    prisma.subject.findMany({
+      orderBy: { name: "asc" },
+      select: {
+        id: true,
+        name: true,
+      },
+    }),
+  ]);
 
-  const selectedClass = classId ? classes.find(c => c.id === classId) : classes[0];
+  const serializedClasses = classes.map((c) => ({
+    id: c.id,
+    name: c.name,
+    classSubjectIds: c.requirements.map((r) => r.subjectId),
+    students: c.students.map((st) => ({
+      id: st.id,
+      firstName: st.firstName,
+      lastName: st.lastName,
+      email: st.email,
+      dispensations: st.dispensations.map((d) => ({
+        id: d.id,
+        subjectId: d.subjectId,
+        reason: d.reason,
+      })),
+    })),
+  }));
 
   return (
-    <div className="min-h-screen bg-slate-50 p-8">
-      <h1 className="text-2xl font-bold mb-6">Gestion des Dispenses</h1>
-      
-      <div className="flex gap-2 mb-6">
-        {classes.map(c => (
-            <Link key={c.id} href={`/admin/dispenses?classId=${c.id}`} className={`px-4 py-2 rounded-lg ${selectedClass?.id === c.id ? 'bg-blue-600 text-white' : 'bg-white border'}`}>
-                {c.name}
-            </Link>
-        ))}
-      </div>
-
-      {selectedClass && (
-        <div className="bg-white rounded-xl shadow overflow-x-auto">
-            <table className="w-full text-sm">
-                <thead>
-                    <tr className="bg-slate-100 text-left">
-                        <th className="p-3">Élève</th>
-                        {subjects.map(s => <th key={s.id} className="p-3 rotate-180" style={{writingMode: 'vertical-rl'}}>{s.name}</th>)}
-                    </tr>
-                </thead>
-                <tbody>
-                    {selectedClass.students.map(student => (
-                        <tr key={student.id} className="border-t">
-                            <td className="p-3 font-bold truncate max-w-[160px] sm:max-w-xs" title={`${(student.lastName || '').toUpperCase()} ${student.firstName || ''}`}>
-                              <span className="uppercase">{student.lastName}</span> {student.firstName}
-                            </td>
-                            {subjects.map(s => {
-                                const isDispensed = student.dispensations.some(d => d.subjectId === s.id);
-                                return (
-                                    <td key={s.id} className="p-3 text-center">
-                                        <form action={async () => {
-                                            "use server";
-                                            await setDispensation(student.id, s.id, !isDispensed);
-                                        }}>
-                                            <button className={`w-4 h-4 rounded ${isDispensed ? 'bg-red-500' : 'bg-slate-200'}`} />
-                                        </form>
-                                    </td>
-                                );
-                            })}
-                        </tr>
-                    ))}
-                </tbody>
-            </table>
-        </div>
-      )}
-    </div>
+    <AdminDispensesClient
+      classes={serializedClasses}
+      subjects={subjects}
+      initialClassId={classId}
+    />
   );
 }
+

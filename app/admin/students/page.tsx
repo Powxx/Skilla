@@ -95,9 +95,9 @@ export default async function AdminStudentsPage() {
                   </th>
                   <th
                     scope="col"
-                    className="hidden whitespace-nowrap px-5 py-3.5 font-semibold text-slate-700 lg:table-cell"
+                    className="whitespace-nowrap px-5 py-3.5 font-semibold text-slate-700 text-right"
                   >
-                    ID élève
+                    Dispenses
                   </th>
                 </tr>
               </thead>
@@ -139,8 +139,13 @@ export default async function AdminStudentsPage() {
                           {s.class?.name || "Non assigné"}
                         </span>
                       </td>
-                      <td className="px-5 py-4">
-                        <Link href={`/admin/students/${s.id}/dispenses`} className="text-xs text-blue-600 underline">Dispenses</Link>
+                      <td className="px-5 py-4 text-right">
+                        <Link
+                          href={`/admin/students/${s.id}/dispenses`}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200/60 transition shadow-2xs"
+                        >
+                          Gérer les dispenses
+                        </Link>
                       </td>
                     </tr>
                   ))
