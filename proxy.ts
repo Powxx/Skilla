@@ -2,8 +2,26 @@ import { getToken } from "next-auth/jwt";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
+/**
+ * Routes API publiques : authentification NextAuth, cron (protégé par CRON_SECRET)
+ * et flux calendrier (protégés par jeton personnel).
+ */
+function isPublicApiRoute(req: NextRequest): boolean {
+  const { pathname, searchParams } = req.nextUrl;
+  if (pathname.startsWith("/api/auth/")) return true;
+  if (pathname.startsWith("/api/cron/")) return true;
+  if (pathname.startsWith("/api/calendar/sync/")) return true;
+  if (pathname === "/api/calendar/export" && searchParams.has("token")) return true;
+  return false;
+}
+
 export async function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;
+  const isApi = pathname.startsWith("/api/");
+
+  if (isApi && isPublicApiRoute(req)) {
+    return NextResponse.next();
+  }
 
   // Debug des cookies bruts
   const sessionCookie = req.cookies.get("__Secure-next-auth.session-token") || req.cookies.get("next-auth.session-token");
@@ -17,9 +35,14 @@ export async function proxy(req: NextRequest) {
   });
 
 
-  if (!token) {
-    if (sessionCookie) {
+  // Un jeton révoqué (compte désactivé ou supprimé) est traité comme une absence de session
+  if (!token || token.revoked || !token.role) {
+    if (sessionCookie && !token) {
       console.error("ERREUR : Cookie présent mais indéchiffrable. Vérifiez NEXTAUTH_SECRET.");
+    }
+    // Défense en profondeur : les routes API exigent une session (chaque route vérifie aussi ses droits)
+    if (isApi) {
+      return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
     }
     // Ne pas rediriger si on est déjà sur /login ou / (landing page)
     if (pathname === "/login" || pathname === "/") {
@@ -38,6 +61,14 @@ export async function proxy(req: NextRequest) {
       case "RESPONSIBLE": return NextResponse.redirect(new URL("/parent/dashboard", req.url));
       case "COMPANY_TUTOR": return NextResponse.redirect(new URL("/employer/dashboard", req.url));
     }
+  }
+
+  if (isApi) {
+    const isAdminApi = pathname.startsWith("/api/admin/") || pathname.startsWith("/api/hr/");
+    if (isAdminApi && token.role !== "ADMIN" && token.role !== "SUPER_ADMIN") {
+      return NextResponse.json({ error: "Non autorisé" }, { status: 403 });
+    }
+    return NextResponse.next();
   }
 
   // Vérification des droits
@@ -73,6 +104,7 @@ export const config = {
     "/meetings/:path*",
     "/settings/:path*",
     "/survey/:path*",
-    "/reclamation/:path*"
+    "/reclamation/:path*",
+    "/api/:path*"
   ],
 };

@@ -33,6 +33,8 @@ function canManageSuperAdmins(session: Awaited<ReturnType<typeof requireAdmin>>)
   );
 }
 
+const MIN_PASSWORD_LENGTH = 8;
+
 const SUPER_ADMIN_FORBIDDEN = "Seul un Super Admin peut attribuer ou modifier un compte Super Admin.";
 
 function roleLabelsFr(r: Role): string {
@@ -131,6 +133,9 @@ export async function createUser(input: {
 
   if (!password || !firstName || !lastName) {
     return { ok: false, error: "Champs obligatoires manquants." };
+  }
+  if (password.length < MIN_PASSWORD_LENGTH) {
+    return { ok: false, error: `Le mot de passe doit faire au moins ${MIN_PASSWORD_LENGTH} caractères.` };
   }
   if (!ADMIN_ROLES.includes(role)) {
     return { ok: false, error: "Rôle invalide." };
@@ -348,6 +353,9 @@ export async function updateUser(input: {
     company: newRole === Role.COMPANY_TUTOR ? (company?.trim() || null) : null,
   };
 
+  if (newPassword?.trim() && newPassword.trim().length < MIN_PASSWORD_LENGTH) {
+    return { ok: false, error: `Le mot de passe doit faire au moins ${MIN_PASSWORD_LENGTH} caractères.` };
+  }
   if (newPassword?.trim()) {
     data.password = await bcrypt.hash(newPassword.trim(), 10);
   }
@@ -588,7 +596,8 @@ export async function importUsersAction(users: Array<{
     if (!ADMIN_ROLES.includes(role)) continue;
     if (role === Role.SUPER_ADMIN && !canManageSuperAdmins(session)) continue;
 
-    const passwordHash = user.password && user.password !== "Skilla2026!"
+    // Un mot de passe fourni trop court est ignoré au profit du mot de passe par défaut
+    const passwordHash = user.password && user.password !== "Skilla2026!" && user.password.length >= MIN_PASSWORD_LENGTH
       ? await bcrypt.hash(user.password, 10)
       : defaultPasswordHash;
 

@@ -34,5 +34,9 @@ declare module "next-auth/jwt" {
     canManageSettings: boolean;
     canManagePlanning: boolean;
     canManageRH: boolean;
+    /** Horodatage (ms) de la dernière revalidation des droits en base. */
+    refreshedAt?: number;
+    /** Session révoquée (compte désactivé ou supprimé). */
+    revoked?: boolean;
   }
 }
