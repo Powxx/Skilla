@@ -516,6 +516,7 @@ model SubstitutionRequest {
   substituteTeacherId String?
   substituteTeacher   User?              @relation("SubstituteTeacherReq", fields: [substituteTeacherId], references: [id])
   status              SubstitutionStatus @default(PENDING)
+  reason              String?            /// Motif indiqué par l'enseignant (maladie, formation, etc.)
   createdAt           DateTime           @default(now())
 }
 

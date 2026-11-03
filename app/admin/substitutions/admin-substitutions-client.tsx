@@ -80,6 +80,9 @@ export default function AdminSubstitutionsClient({ initialRequests, teachers, al
                       <div className="text-sm font-bold text-slate-700">
                         {req.originalTeacher.lastName} {req.originalTeacher.firstName}
                       </div>
+                      {req.reason && (
+                        <div className="mt-1 text-xs text-slate-500">Motif : {req.reason}</div>
+                      )}
                     </td>
                     <td className="px-6 py-4">
                       <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${

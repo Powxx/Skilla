@@ -56,7 +56,7 @@ export async function POST(request: Request) {
   }
 
   try {
-    const { lessonId } = await request.json();
+    const { lessonId, substituteTeacherId, reason } = await request.json();
     if (!lessonId) {
       return NextResponse.json({ error: "ID du cours manquant." }, { status: 400 });
     }
@@ -64,12 +64,31 @@ export async function POST(request: Request) {
     const effectiveTeacherId = await getEffectiveTeacherId(session.user.id);
     const lesson = await prisma.lesson.findUnique({
       where: { id: lessonId },
-      select: { id: true, teacherId: true, isCancelled: true }
+      select: { id: true, teacherId: true, isCancelled: true, startTime: true }
     });
 
     if (!lesson) {
       return NextResponse.json({ error: "Cours introuvable." }, { status: 404 });
     }
+    if (lesson.isCancelled) {
+      return NextResponse.json({ error: "Ce cours est déjà annulé." }, { status: 400 });
+    }
+    if (lesson.startTime < new Date()) {
+      return NextResponse.json({ error: "Ce cours est déjà passé." }, { status: 400 });
+    }
+
+    let proposedSubstituteId: string | null = null;
+    if (typeof substituteTeacherId === "string" && substituteTeacherId) {
+      const candidate = await prisma.user.findFirst({
+        where: { id: substituteTeacherId, role: "TEACHER", isActive: true },
+        select: { id: true },
+      });
+      if (!candidate || candidate.id === lesson.teacherId) {
+        return NextResponse.json({ error: "Le remplaçant proposé n'est pas valide." }, { status: 400 });
+      }
+      proposedSubstituteId = candidate.id;
+    }
+    const cleanReason = typeof reason === "string" ? reason.trim().slice(0, 500) || null : null;
 
     const isAdmin = session.user.role === "ADMIN" || session.user.role === "SUPER_ADMIN";
     if (!isAdmin && lesson.teacherId !== effectiveTeacherId) {
@@ -87,11 +106,46 @@ export async function POST(request: Request) {
       data: {
         lessonId,
         originalTeacherId: effectiveTeacherId,
+        substituteTeacherId: proposedSubstituteId,
+        reason: cleanReason,
         status: "PENDING"
       }
     });
 
     return NextResponse.json(subRequest);
+  } catch (error) {
+    return apiErrorResponse(error, 400);
+  }
+}
+
+/** Annulation par l'enseignant de sa propre demande encore en attente. */
+export async function DELETE(request: Request) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user || (session.user.role !== "TEACHER" && session.user.role !== "ADMIN" && session.user.role !== "SUPER_ADMIN")) {
+    return NextResponse.json({ error: "Non autorisé" }, { status: 403 });
+  }
+
+  try {
+    const id = new URL(request.url).searchParams.get("id");
+    if (!id) return NextResponse.json({ error: "ID manquant." }, { status: 400 });
+
+    const effectiveTeacherId = await getEffectiveTeacherId(session.user.id);
+    const existing = await prisma.substitutionRequest.findUnique({
+      where: { id },
+      select: { originalTeacherId: true, status: true },
+    });
+    if (!existing) return NextResponse.json({ error: "Demande introuvable." }, { status: 404 });
+
+    const isAdmin = session.user.role === "ADMIN" || session.user.role === "SUPER_ADMIN";
+    if (!isAdmin && existing.originalTeacherId !== effectiveTeacherId) {
+      return NextResponse.json({ error: "Cette demande n'est pas la vôtre." }, { status: 403 });
+    }
+    if (existing.status !== "PENDING") {
+      return NextResponse.json({ error: "Seule une demande en attente peut être annulée." }, { status: 400 });
+    }
+
+    await prisma.substitutionRequest.delete({ where: { id } });
+    return NextResponse.json({ ok: true });
   } catch (error) {
     return apiErrorResponse(error, 400);
   }
