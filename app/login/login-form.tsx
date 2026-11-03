@@ -4,6 +4,9 @@ import { signIn, useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { FormEvent, useEffect, useState } from "react";
 
+// Doit rester identique au message levé par authorize() dans lib/auth-options.ts
+const ACCOUNT_DISABLED_ERROR = "Compte désactivé. Veuillez contacter l'administration.";
+
 // Cette fonction définit tes routes réelles
 function pathAfterLogin(role: string): string {
   switch (role) {
@@ -62,7 +65,11 @@ export default function LoginForm() {
       });
 
       if (result?.error) {
-        setError("Identifiant ou mot de passe incorrect.");
+        setError(
+          result.error === ACCOUNT_DISABLED_ERROR
+            ? ACCOUNT_DISABLED_ERROR
+            : "Identifiant ou mot de passe incorrect."
+        );
         setPending(false);
         return;
       }

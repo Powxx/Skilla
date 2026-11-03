@@ -7,6 +7,9 @@ import prisma from "@/lib/prisma";
 import { updateLoginStreak } from "@/lib/login-streak";
 import { formatUserName } from "@/lib/user-utils";
 
+/** Message renvoyé au formulaire de connexion pour un compte désactivé (mot de passe correct). */
+export const ACCOUNT_DISABLED_ERROR = "Compte désactivé. Veuillez contacter l'administration.";
+
 /** Nombre d'échecs de connexion consécutifs avant verrouillage temporaire du compte. */
 const MAX_FAILED_LOGIN_ATTEMPTS = 5;
 /** Durée du verrouillage du compte après trop d'échecs. */
@@ -149,11 +152,6 @@ export const authOptions: NextAuthOptions = {
 
           if (!user || !user.password) return null;
           
-          // Vérification si le compte a été suspendu par l'administration
-          if (user.isActive === false) {
-            throw new Error("Compte désactivé. Veuillez contacter l'administration.");
-          }
-
           // Compte temporairement verrouillé après trop d'échecs (anti brute-force)
           if (user.lockedUntil && user.lockedUntil > new Date()) {
             return null;
@@ -176,10 +174,16 @@ export const authOptions: NextAuthOptions = {
             return null;
           }
 
-          // Mise à jour de la date de dernière connexion et remise à zéro des échecs
+          // Vérification si le compte a été suspendu par l'administration.
+          // Fait APRÈS la vérification du mot de passe pour ne pas révéler l'état d'un compte sans ses identifiants.
+          if (user.isActive === false) {
+            throw new Error(ACCOUNT_DISABLED_ERROR);
+          }
+
+          // Remise à zéro des échecs (lastLoginAt est mis à jour par updateLoginStreak dans events.signIn)
           await prisma.user.update({
             where: { id: user.id },
-            data: { lastLoginAt: new Date(), failedLoginAttempts: 0, lockedUntil: null },
+            data: { failedLoginAttempts: 0, lockedUntil: null },
           }).catch((err) => {
             console.error("Erreur lors de la mise à jour de lastLoginAt:", err);
           });
@@ -202,6 +206,11 @@ export const authOptions: NextAuthOptions = {
           };
           
         } catch (error) {
+          // Seul le message de compte désactivé est remonté au formulaire ; toute autre erreur reste générique
+          if (error instanceof Error && error.message === ACCOUNT_DISABLED_ERROR) {
+            throw error;
+          }
+          console.error("[auth] Erreur lors de la connexion:", error);
           return null;
         }
       },

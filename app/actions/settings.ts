@@ -11,10 +11,8 @@ import { unstable_cache, revalidateTag, revalidatePath } from "next/cache";
 
 export const getGlobalSettings = unstable_cache(
   async () => {
-    console.log("[SettingsAction] Fetching global settings...");
     try {
       const settings = await prisma.globalSetting.findMany();
-      console.log(`[SettingsAction] Successfully fetched ${settings.length} settings`);
       return settings;
     } catch (e) {
       console.error("[SettingsAction] CRITICAL ERROR FETCHING SETTINGS:", e);
