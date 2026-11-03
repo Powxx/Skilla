@@ -28,7 +28,8 @@ export default function PwaInstallBanner() {
     const isStandalone =
       window.matchMedia("(display-mode: standalone)").matches ||
       (window.navigator as any).standalone === true ||
-      document.referrer.includes("android-app://");
+      document.referrer.includes("android-app://") ||
+      Boolean((window as any).Capacitor?.isNativePlatform?.());
 
     if (isStandalone) {
       // Déjà en mode PWA : ne rien afficher

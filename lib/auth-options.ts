@@ -344,6 +344,7 @@ export const authOptions: NextAuthOptions = {
         sameSite: 'lax',
         path: '/',
         secure: process.env.NODE_ENV === "production",
+        maxAge: 24 * 60 * 60,
       },
     },
   },

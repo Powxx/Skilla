@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Skilla</string>
+    <string name="title_activity_main">Skilla</string>
+    <string name="package_name">fr.ecmacademie.skilla</string>
+    <string name="custom_url_scheme">fr.ecmacademie.skilla</string>
+</resources>

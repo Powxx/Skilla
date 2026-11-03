@@ -10,7 +10,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   const qualiopiEnabled = getSetting(QUALIOPI_ENABLED_KEY) === "true";
 
   return (
-    <div className="flex h-screen bg-slate-50/30 text-slate-900 overflow-hidden">
+    <div className="flex h-dvh bg-slate-50/30 text-slate-900 overflow-hidden">
       <PortalSidebar variant="admin" schoolName={schoolName} qualiopiEnabled={qualiopiEnabled} />
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         <PortalHeaderShell variant="admin" />

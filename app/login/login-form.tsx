@@ -87,7 +87,9 @@ export default function LoginForm() {
           if (role) {
             window.location.href = pathAfterLogin(role);
           } else {
-            window.location.href = "/";
+            setSuccess(false);
+            setPending(false);
+            setError("Session non enregistrée : vérifiez que la date et l'heure de votre PC/émulateur sont exactes.");
           }
         } catch {
           window.location.href = "/";
@@ -102,8 +104,8 @@ export default function LoginForm() {
   }
 
   return (
-    <div className="w-full max-w-[420px] rounded-3xl border border-white/70 bg-white/90 p-8 shadow-[0_22px_60px_-12px_rgba(15,23,42,0.18)] ring-1 ring-slate-900/[0.04] backdrop-blur-sm sm:p-10 transition-all duration-500">
-      <div className="mb-10 flex flex-col items-center text-center">
+    <div className="w-full max-w-[420px] rounded-3xl border border-white/70 bg-white/90 p-6 shadow-[0_22px_60px_-12px_rgba(15,23,42,0.18)] ring-1 ring-slate-900/[0.04] backdrop-blur-sm sm:p-10 transition-all duration-500">
+      <div className="mb-6 sm:mb-10 flex flex-col items-center text-center">
         <div className={`mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-sky-600 to-teal-600 text-lg font-bold tracking-tight text-white shadow-lg transition-transform duration-700 ${success ? 'rotate-[360deg] scale-110' : ''}`}>
           <img src="/SKILLA-Logo.png" alt="SKILLA" />
         </div>
