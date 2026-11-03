@@ -1,6 +1,7 @@
 "use server";
 
 import { getServerSession } from "next-auth/next";
+import { canAccessClass, canAccessLesson } from "@/lib/teacher-access";
 import { revalidatePath } from "next/cache";
 import { authOptions } from "@/lib/auth-options";
 import prisma from "@/lib/prisma";
@@ -29,6 +30,14 @@ export async function updateAttendanceStatus(
   
   if (!session?.user || (session.user.role !== "TEACHER" && session.user.role !== "ADMIN" && session.user.role !== "SUPER_ADMIN")) {
     return { ok: false, error: "Accès réservé aux enseignants et administrateurs." };
+  }
+
+  const attendance = await prisma.attendance.findUnique({
+    where: { id: attendanceId },
+    select: { lesson: { select: { teacherId: true, substituteId: true } } },
+  });
+  if (!attendance || !(await canAccessLesson(session.user, attendance.lesson))) {
+    return { ok: false, error: "Cet émargement ne concerne pas l'un de vos cours." };
   }
 
   try {
@@ -78,7 +87,9 @@ export async function getStudentsForRollCall(
     return { students: [], dispensedStudents: [] };
   }
 
-  if (!classId) return { students: [], dispensedStudents: [] };
+  if (!classId || !(await canAccessClass(session.user, classId))) {
+    return { students: [], dispensedStudents: [] };
+  }
 
   const classData = await prisma.class.findUnique({
     where: { id: classId },
@@ -150,11 +161,16 @@ export async function submitRollCall(payload: SubmitRollPayload): Promise<Submit
   // 1b. Vérification des droits sur la leçon (en cas de remplacement, seul le remplaçant peut faire l'appel)
   const targetLesson = await prisma.lesson.findUnique({
     where: { id: lessonId },
-    select: { teacherId: true, substituteId: true, subjectId: true }
+    select: { teacherId: true, substituteId: true, subjectId: true, classId: true }
   });
 
   if (!targetLesson) {
     return { ok: false, error: "Cours introuvable." };
+  }
+
+  // La classe transmise doit être celle du cours (empêche de faire l'appel d'une autre classe)
+  if (targetLesson.classId !== classId) {
+    return { ok: false, error: "La classe ne correspond pas au cours." };
   }
 
   const effectiveTeacherId = await getEffectiveTeacherId(session.user.id);

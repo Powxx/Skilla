@@ -1,6 +1,7 @@
 "use server";
 
 import { getServerSession } from "next-auth/next";
+import { canAccessLesson } from "@/lib/teacher-access";
 import { authOptions } from "@/lib/auth-options";
 import prisma from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
@@ -107,6 +108,9 @@ export async function getLessonHomeworkStats(lessonId: string) {
 
   if (!lesson) {
     throw new Error("Cours non trouvé");
+  }
+  if (!(await canAccessLesson(session.user, lesson))) {
+    throw new Error("Non autorisé");
   }
 
   const classStudents = lesson.class?.students || [];
