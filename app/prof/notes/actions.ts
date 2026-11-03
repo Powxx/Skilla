@@ -4,6 +4,7 @@ import prisma from "@/lib/prisma";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth-options";
 import { getEffectiveTeacherId } from "@/lib/teacher-utils";
+import { canAccessClass, isAdminRole } from "@/lib/teacher-access";
 
 async function requireTeacherOrAdmin() {
     const session = await getServerSession(authOptions);
@@ -14,7 +15,14 @@ async function requireTeacherOrAdmin() {
 }
 
 export async function getClassDetailsForGrading(classId: string, teacherId: string) {
-    await requireTeacherOrAdmin();
+    const session = await requireTeacherOrAdmin();
+    if (!(await canAccessClass(session.user, classId))) {
+        throw new Error("Vous n'enseignez pas dans cette classe.");
+    }
+    // Un professeur ne consulte que ses propres notes, quel que soit le teacherId transmis
+    if (!isAdminRole(session.user.role)) {
+        teacherId = await getEffectiveTeacherId(session.user.id);
+    }
     const classData = await prisma.class.findUnique({
         where: { id: classId },
         include: {
@@ -44,7 +52,8 @@ export type StudentForGradeEntry = {
 };
 
 export async function getStudentsByClass(classId: string): Promise<StudentForGradeEntry[]> {
-    await requireTeacherOrAdmin();
+    const session = await requireTeacherOrAdmin();
+    if (!(await canAccessClass(session.user, classId))) return [];
     const c = await prisma.class.findUnique({
         where: { id: classId },
         include: {
@@ -92,8 +101,8 @@ export async function getStudentsForClassAndSubject(
     classId: string, 
     subjectId: string
 ): Promise<StudentsForGradingResult> {
-    await requireTeacherOrAdmin();
-    if (!classId || !subjectId) {
+    const session = await requireTeacherOrAdmin();
+    if (!classId || !subjectId || !(await canAccessClass(session.user, classId))) {
         return { enrolledStudents: [], dispensedStudents: [] };
     }
 
