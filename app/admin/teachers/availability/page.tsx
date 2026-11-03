@@ -1,15 +1,10 @@
-import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/lib/auth-options";
-import { redirect } from "next/navigation";
+import { requirePagePermission } from "@/lib/authz";
 import prisma from "@/lib/prisma";
 import TeacherAvailabilityClient from "./availability-client";
 import Link from "next/link";
 
 export default async function TeacherAvailabilityPage() {
-  const session = await getServerSession(authOptions);
-  if (!session?.user?.id || (String(session.user.role) !== "ADMIN" && String(session.user.role) !== "SUPER_ADMIN")) {
-    redirect("/login");
-  }
+  await requirePagePermission("canManagePlanning");
 
   const [teachers, availabilities] = await Promise.all([
     prisma.user.findMany({

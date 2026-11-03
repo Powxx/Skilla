@@ -75,8 +75,8 @@ export default function NotificationBell() {
 
   const fetchNotifications = async () => {
     if (session?.user?.id) {
-      const data = await getNotifications((session.user as any).id);
-      const count = await getUnreadCount((session.user as any).id);
+      const data = await getNotifications(session.user.id);
+      const count = await getUnreadCount(session.user.id);
       setNotifications(data);
       setUnreadCount(count);
     }

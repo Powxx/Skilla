@@ -112,7 +112,7 @@ export async function GET(
     headers: {
       "Content-Type": "text/calendar",
       "Content-Disposition": `inline; filename="calendar.ics"`,
-      "Cache-Control": "public, s-maxage=3600", // Cache for 1 hour
+      "Cache-Control": "private, max-age=3600", // Pas de cache CDN partagé : un jeton révoqué doit cesser de fonctionner
     },
   });
 }

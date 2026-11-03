@@ -1,9 +1,11 @@
 import { prisma } from "@/lib/prisma";
 import { startOfWeek, endOfWeek } from "date-fns";
 import { NextResponse } from "next/server";
+import { apiErrorResponse } from "@/lib/api-errors";
 import { revalidatePath } from "next/cache";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth-options";
+import { hasAdminPermission, permissionDeniedMessage } from "@/lib/authz";
 import { createNotification, checkEventEnabled, notifyClass } from "@/lib/notifications";
 
 export async function GET(request: Request) {
@@ -195,8 +197,8 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   const session = await getServerSession(authOptions);
-  if (!session?.user || (session.user.role !== "ADMIN" && session.user.role !== "SUPER_ADMIN")) {
-    return NextResponse.json({ error: "Non autorisé" }, { status: 403 });
+  if (!hasAdminPermission(session?.user, "canManagePlanning")) {
+    return NextResponse.json({ error: permissionDeniedMessage("canManagePlanning") }, { status: 403 });
   }
 
   try {
@@ -217,8 +219,8 @@ export async function POST(request: Request) {
       }
     });
     return NextResponse.json(newLesson);
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 400 });
+  } catch (error) {
+    return apiErrorResponse(error, 400);
   }
 }
 
@@ -279,8 +281,8 @@ export async function PUT(request: Request) {
       return NextResponse.json(updatedLesson);
     }
 
-    if (session.user.role !== "ADMIN" && session.user.role !== "SUPER_ADMIN") {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    if (!hasAdminPermission(session.user, "canManagePlanning")) {
+      return NextResponse.json({ error: permissionDeniedMessage("canManagePlanning") }, { status: 403 });
     }
 
     if (updateData.startTime) updateData.startTime = new Date(updateData.startTime);
@@ -393,15 +395,15 @@ export async function PUT(request: Request) {
     revalidatePath("/admin/planning");
 
     return NextResponse.json(updatedLesson);
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 400 });
+  } catch (error) {
+    return apiErrorResponse(error, 400);
   }
 }
 
 export async function DELETE(request: Request) {
   const session = await getServerSession(authOptions);
-  if (!session?.user || (session.user.role !== "ADMIN" && session.user.role !== "SUPER_ADMIN")) {
-    return NextResponse.json({ error: "Non autorisé" }, { status: 403 });
+  if (!hasAdminPermission(session?.user, "canManagePlanning")) {
+    return NextResponse.json({ error: permissionDeniedMessage("canManagePlanning") }, { status: 403 });
   }
 
   try {
@@ -446,7 +448,7 @@ export async function DELETE(request: Request) {
     });
 
     return NextResponse.json({ success: true, deletedIds: targetIds });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 400 });
+  } catch (error) {
+    return apiErrorResponse(error, 400);
   }
 }

@@ -1,7 +1,5 @@
 import Link from "next/link";
-import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/lib/auth-options";
-import { redirect } from "next/navigation";
+import { requirePagePermission } from "@/lib/authz";
 import prisma from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
@@ -12,11 +10,7 @@ function getCurrentSchoolYear(schoolYears: { name: string; startDate: Date; endD
 }
 
 export default async function HRDashboardPage() {
-  const session = await getServerSession(authOptions);
-
-  if (!session?.user?.id || (String(session.user.role) !== "ADMIN" && String(session.user.role) !== "SUPER_ADMIN")) {
-    redirect("/login");
-  }
+  await requirePagePermission("canManageRH");
 
   const schoolYears = await prisma.schoolYear.findMany({ orderBy: { startDate: "desc" } });
   const currentSchoolYear = getCurrentSchoolYear(schoolYears);

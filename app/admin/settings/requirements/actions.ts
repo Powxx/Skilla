@@ -1,16 +1,11 @@
 "use server";
 
 import prisma from "@/lib/prisma";
-import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/lib/auth-options";
+import { requirePermission } from "@/lib/authz";
 import { revalidatePath } from "next/cache";
 
 async function requireAdmin() {
-  const session = await getServerSession(authOptions);
-  if (!session?.user?.id || (session.user.role !== "ADMIN" && session.user.role !== "SUPER_ADMIN")) {
-    throw new Error("Action réservée aux administrateurs.");
-  }
-  return session;
+  return requirePermission("canManageSettings");
 }
 
 export async function updateClassRequirement(classId: string, subjectId: string, weeklyHours: number) {

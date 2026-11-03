@@ -3,13 +3,14 @@
 import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth-options";
+import { hasAdminPermission, permissionDeniedMessage } from "@/lib/authz";
 import { revalidatePath } from "next/cache";
 import { addWeeks, isSameDay, setHours, setMinutes } from "date-fns";
 
 export async function massDeleteLessons(afterDateStr: string) {
   const session = await getServerSession(authOptions);
-  if (!session?.user || (session.user.role !== "ADMIN" && session.user.role !== "SUPER_ADMIN")) {
-    throw new Error("Non autorisé");
+  if (!hasAdminPermission(session?.user, "canManagePlanning")) {
+    throw new Error(permissionDeniedMessage("canManagePlanning"));
   }
 
   const afterDate = new Date(afterDateStr);
@@ -45,8 +46,8 @@ export async function massDuplicateLessons(
   intervalWeeks: number
 ) {
   const session = await getServerSession(authOptions);
-  if (!session?.user || (session.user.role !== "ADMIN" && session.user.role !== "SUPER_ADMIN")) {
-    throw new Error("Non autorisé");
+  if (!hasAdminPermission(session?.user, "canManagePlanning")) {
+    throw new Error(permissionDeniedMessage("canManagePlanning"));
   }
 
   const sourceStart = new Date(sourceStartStr);

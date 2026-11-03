@@ -158,6 +158,8 @@ model User {
   // Gamification & Assiduité
   loginStreak    Int                   @default(0)  /// Série de connexions quotidiennes consécutives
   lastLoginAt    DateTime?                          /// Date de dernière connexion
+  failedLoginAttempts Int            @default(0)  /// Échecs de connexion consécutifs (anti brute-force)
+  lockedUntil    DateTime?                          /// Compte verrouillé jusqu'à cette date après trop d'échecs
   availabilities TeacherAvailability[]              /// Grille de disponibilités horaires hebdomadaires du professeur
 
   // Habilitations d'accès spécifiques (Contrôle d'accès fin RBAC)

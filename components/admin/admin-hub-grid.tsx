@@ -55,18 +55,37 @@ export interface HubCategory {
   items: HubMenuItem[];
 }
 
+type HubPermission = "canManageUsers" | "canManageSettings" | "canManagePlanning" | "canManageRH";
+
+/** Liens réservés à une permission fine (même correspondance que les gardes de page côté serveur). */
+const HREF_PERMISSIONS: Record<string, HubPermission> = {
+  "/admin/users": "canManageUsers",
+  "/admin/relations/families": "canManageUsers",
+  "/admin/relations/contracts": "canManageUsers",
+  "/admin/settings": "canManageSettings",
+  "/admin/settings/requirements": "canManageSettings",
+  "/admin/rooms": "canManageSettings",
+  "/admin/planning": "canManagePlanning",
+  "/admin/teachers/subjects": "canManagePlanning",
+  "/admin/teachers/availability": "canManagePlanning",
+  "/admin/hr": "canManageRH",
+};
+
 interface AdminHubGridProps {
   qualiopiEnabled?: boolean;
+  /** Permissions fines de l'utilisateur ; un lien dont la permission manque est masqué. */
+  permissions?: Partial<Record<HubPermission, boolean>>;
 }
 
 export default function AdminHubGrid({
   qualiopiEnabled = false,
+  permissions,
 }: AdminHubGridProps) {
   const [activeHoverGroup, setActiveHoverGroup] = useState<string | null>(null);
   const [hoverTimeout, setHoverTimeout] = useState<NodeJS.Timeout | null>(null);
   const [searchFilter, setSearchFilter] = useState("");
 
-  const categories: HubCategory[] = [
+  const allCategories: HubCategory[] = [
     {
       id: "vie-scolaire",
       title: "Vie Scolaire & Quotidien",
@@ -338,6 +357,17 @@ export default function AdminHubGrid({
       ],
     },
   ];
+
+  // Masque les liens vers des pages dont l'utilisateur n'a pas la permission
+  const categories: HubCategory[] = allCategories
+    .map((cat) => ({
+      ...cat,
+      items: cat.items.filter((item) => {
+        const required = HREF_PERMISSIONS[item.href];
+        return !required || !permissions || Boolean(permissions[required]);
+      }),
+    }))
+    .filter((cat) => cat.items.length > 0);
 
   const handleMouseEnterGroup = (groupId: string) => {
     if (hoverTimeout) clearTimeout(hoverTimeout);
