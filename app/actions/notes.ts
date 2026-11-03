@@ -1,7 +1,7 @@
 "use server";
 
 import prisma from "@/lib/prisma";
-import { createNotification, checkEventEnabled } from "./notifications";
+import { createNotification, checkEventEnabled } from "@/lib/notifications";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth-options";
 import { revalidatePath } from "next/cache";

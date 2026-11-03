@@ -23,7 +23,7 @@ function isGeneralAdminUser(session: any, currentUser?: any) {
   );
 }
 
-import { sendPushNotificationBatch } from "./push";
+import { sendPushNotificationBatch } from "@/lib/push";
 
 /**
  * Créer une nouvelle idée ou un signalement de panne soumis par un membre de l'équipe administrative.

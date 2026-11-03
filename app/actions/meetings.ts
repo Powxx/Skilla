@@ -4,7 +4,7 @@ import prisma from "@/lib/prisma";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth-options";
 import { revalidatePath } from "next/cache";
-import { createNotification, checkEventEnabled } from "./notifications";
+import { createNotification, checkEventEnabled } from "@/lib/notifications";
 
 /**
  * Server Action : Crée une nouvelle demande d'entretien (meeting request).

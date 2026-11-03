@@ -5,7 +5,7 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth-options";
 import { revalidatePath } from "next/cache";
 import { SatisfactionSurveyTarget } from "@prisma/client";
-import { sendPushNotification } from "./push";
+import { sendPushNotification } from "@/lib/push";
 import { isQualiopiEnabled, surveyLinkForRole } from "@/lib/qualiopi";
 import { formatUserName } from "@/lib/user-utils";
 

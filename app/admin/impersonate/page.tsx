@@ -34,10 +34,7 @@ export default async function AdminImpersonatePage() {
 
   const isGeneralAdmin = Boolean(
     currentUser?.isGeneralAdmin ||
-    currentUser?.role === "SUPER_ADMIN" ||
-    currentUser?.email?.toLowerCase() === "admin@skilla.edu" ||
-    currentUser?.username?.toLowerCase() === "admin" ||
-    (currentUser?.firstName?.toLowerCase() === "admin" && currentUser?.lastName?.toLowerCase()?.includes("general"))
+    currentUser?.role === "SUPER_ADMIN"
   );
 
   const hasImpersonateRight = isGeneralAdmin || currentUser?.canImpersonate;
@@ -50,7 +47,9 @@ export default async function AdminImpersonatePage() {
   const users = await prisma.user.findMany({
     where: {
       id: { not: session.user.id },
-      isActive: true
+      isActive: true,
+      // Seul un SUPER_ADMIN peut usurper un autre SUPER_ADMIN (contrôle également appliqué dans le callback JWT)
+      ...(currentUser?.role !== "SUPER_ADMIN" ? { role: { not: "SUPER_ADMIN" as const } } : {})
     },
     select: { id: true, firstName: true, lastName: true, email: true, role: true },
     orderBy: [{ role: 'asc' }, { lastName: 'asc' }]

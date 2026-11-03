@@ -3,43 +3,6 @@
 import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth-options";
-import { startOfDay, subDays, isSameDay } from "date-fns";
-
-export async function updateLoginStreak(userId: string) {
-  const user = await prisma.user.findUnique({
-    where: { id: userId },
-    select: { lastLoginAt: true, loginStreak: true }
-  });
-
-  if (!user) return;
-
-  const now = new Date();
-  const today = startOfDay(now);
-  const lastLogin = user.lastLoginAt ? startOfDay(user.lastLoginAt) : null;
-
-  if (lastLogin && isSameDay(today, lastLogin)) {
-    // Déjà connecté aujourd'hui, on ne fait rien
-    return;
-  }
-
-  const yesterday = subDays(today, 1);
-  let newStreak = 1;
-
-  if (lastLogin && isSameDay(yesterday, lastLogin)) {
-    // Connecté hier, on incrémente la série
-    newStreak = user.loginStreak + 1;
-  }
-
-  await prisma.user.update({
-    where: { id: userId },
-    data: {
-      lastLoginAt: now,
-      loginStreak: newStreak
-    }
-  });
-
-  return newStreak;
-}
 
 export async function saveGameScore(userId: string, gameKey: string, score: number) {
   const session = await getServerSession(authOptions);
@@ -128,6 +91,9 @@ export async function getStudentStats(userId: string) {
 }
 
 export async function getLeaderboard(gameKey: string, classId?: string) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.id) throw new Error("Non autorisé");
+
   const where: any = { gameKey };
   if (classId) {
     where.user = { classId };

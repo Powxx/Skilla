@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 import { authOptions } from "@/lib/auth-options";
 import prisma from "@/lib/prisma";
 import { AttendanceStatus } from "@prisma/client";
-import { createNotification, checkEventEnabled } from "@/app/actions/notifications";
+import { createNotification, checkEventEnabled } from "@/lib/notifications";
 
 import { getEffectiveTeacherId } from "@/lib/teacher-utils";
 

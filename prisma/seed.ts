@@ -5,6 +5,10 @@ import bcrypt from "bcryptjs";
 const prisma = new PrismaClient()
 
 async function main() {
+  // Ce seed efface toute la base et crée des comptes aux mots de passe triviaux : jamais en production
+  if (process.env.NODE_ENV === "production" && process.env.ALLOW_DEMO_SEED !== "true") {
+    throw new Error("Seed de démonstration refusé en production (définir ALLOW_DEMO_SEED=true pour forcer).");
+  }
   console.log("🧹 Nettoyage de la base de données...")
 // Suppression dans l'ordre pour respecter les contraintes de clés étrangères
 await prisma.notification.deleteMany()
@@ -66,7 +70,7 @@ await prisma.room.deleteMany()
   const superAdmin = await prisma.user.create({ data: { firstName: "Super", lastName: "Admin", name: "Super Admin", email: "superadmin@skilla.edu", password: hashPassword("superadmin"), role: Role.SUPER_ADMIN } })
   const admin1 = await prisma.user.create({ data: { firstName: "Sophie", lastName: "Admin", name: "Sophie Admin", email: "sophie@skilla.edu", password: hashPassword("admin"), role: Role.ADMIN } })
   const admin2 = await prisma.user.create({ data: { firstName: "Thomas", lastName: "Directeur", name: "Thomas Directeur", email: "thomas@skilla.edu", password: hashPassword("admin"), role: Role.ADMIN } })
-  const admin3 = await prisma.user.create({ data: { firstName: "Admin", lastName: "General", name: "Admin General", email: "admin@skilla.edu", password: hashPassword("admin"), role: Role.ADMIN } })
+  const admin3 = await prisma.user.create({ data: { firstName: "Admin", lastName: "General", name: "Admin General", email: "admin@skilla.edu", password: hashPassword("admin"), role: Role.ADMIN, isGeneralAdmin: true } })
 
   // TEACHERS
   const t1 = await prisma.user.create({ 
