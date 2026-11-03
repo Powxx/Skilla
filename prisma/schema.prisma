@@ -809,7 +809,8 @@ enum AdminIdeaCategory {
   TOOLS_ERGONOMICS  // Outils & Ergonomie
   ADMIN_PROCESS     // Processus Administratifs & RH
   BREAKDOWN         // Panne & Incident matériel / technique
-  OTHER             // Autre suggestion
+  UPDATE            // Mise à jour publiée par l'administrateur général
+  OTHER            // Autre suggestion
 }
 
 /// Boîte à idées pour l'équipe administrative avec arbitrage de l'Administrateur Général.
