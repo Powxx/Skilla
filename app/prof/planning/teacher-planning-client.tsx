@@ -6,13 +6,32 @@ import WeeklyCalendar from '@/components/WeeklyCalendar';
 import { startOfWeek, format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 
-export default function TeacherPlanningClient({ teacherId, teachers }: { teacherId: string; teachers: any[] }) {
+const REASON_PRESETS = ["Maladie", "Formation", "Rendez-vous", "Raison personnelle"];
+
+type Suggestion = {
+  id: string;
+  name: string;
+  status: "FREE" | "BUSY" | "UNAVAILABLE";
+  teachesSubject: boolean;
+};
+
+type ExistingRequest = {
+  id: string;
+  status: "PENDING" | "APPROVED" | "REJECTED";
+  reason: string | null;
+  substituteTeacher: { firstName: string | null; lastName: string | null } | null;
+};
+
+export default function TeacherPlanningClient({ teacherId }: { teacherId: string }) {
   const [events, setEvents] = useState<any[]>([]);
   const [currentDate, setCurrentDate] = useState(new Date());
   const [loading, setLoading] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<any>(null);
   const [substituteId, setSubstituteId] = useState("");
-  const [subjectId, setSubjectId] = useState("");
+  const [reason, setReason] = useState("");
+  const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
+  const [loadingSuggestions, setLoadingSuggestions] = useState(false);
+  const [existingRequest, setExistingRequest] = useState<ExistingRequest | null>(null);
   const [summary, setSummary] = useState("");
   const [homework, setHomework] = useState("");
   const [notifyStudents, setNotifyStudents] = useState(true);
@@ -52,6 +71,54 @@ export default function TeacherPlanningClient({ teacherId, teachers }: { teacher
       setActiveTab('info');
     }
   }, [selectedEvent]);
+
+  const loadSubstitutionData = async (lessonId: string) => {
+    setLoadingSuggestions(true);
+    try {
+      const [sugRes, reqRes] = await Promise.all([
+        fetch(`/api/substitutions/suggestions?lessonId=${encodeURIComponent(lessonId)}`),
+        fetch("/api/substitutions"),
+      ]);
+      const sug = sugRes.ok ? await sugRes.json() : [];
+      const reqs = reqRes.ok ? await reqRes.json() : [];
+      setSuggestions(Array.isArray(sug) ? sug : []);
+      const mine: ExistingRequest | null = Array.isArray(reqs)
+        ? (reqs as (ExistingRequest & { lessonId: string; createdAt: string })[])
+            .filter((r) => r.lessonId === lessonId)
+            .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1))[0] ?? null
+        : null;
+      setExistingRequest(mine ?? null);
+    } catch {
+      setSuggestions([]);
+      setExistingRequest(null);
+    } finally {
+      setLoadingSuggestions(false);
+    }
+  };
+
+  const openSubstituteTab = () => {
+    setActiveTab('substitute');
+    if (selectedEvent) void loadSubstitutionData(selectedEvent.id);
+  };
+
+  const handleCancelSubstitution = async () => {
+    if (!existingRequest) return;
+    setLoading(true);
+    try {
+      const res = await fetch(`/api/substitutions?id=${encodeURIComponent(existingRequest.id)}`, { method: "DELETE" });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok) {
+        setFeedback({ type: 'success', text: "Demande annulée." });
+        setExistingRequest(null);
+      } else {
+        setFeedback({ type: 'error', text: data.error || "Impossible d'annuler la demande." });
+      }
+    } catch {
+      setFeedback({ type: 'error', text: "Erreur réseau" });
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleSaveContent = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -98,13 +165,18 @@ export default function TeacherPlanningClient({ teacherId, teachers }: { teacher
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           lessonId: selectedEvent.id,
-          substituteTeacherId: substituteId || null
+          substituteTeacherId: substituteId || null,
+          reason: reason.trim() || null
         })
       });
+      const data = await res.json().catch(() => ({}));
       if (res.ok) {
         setFeedback({ type: 'success', text: "Demande de remplacement transmise à l'administration." });
+        setReason("");
+        setSubstituteId("");
+        void loadSubstitutionData(selectedEvent.id);
       } else {
-        setFeedback({ type: 'error', text: "Erreur lors de l'envoi." });
+        setFeedback({ type: 'error', text: data.error || "Erreur lors de l'envoi." });
       }
     } catch (err) {
       setFeedback({ type: 'error', text: "Erreur réseau" });
@@ -133,6 +205,9 @@ export default function TeacherPlanningClient({ teacherId, teachers }: { teacher
           setSelectedEvent(info.event);
           setFeedback(null);
           setSubstituteId("");
+          setReason("");
+          setExistingRequest(null);
+          setSuggestions([]);
         }}
       />
 
@@ -167,7 +242,7 @@ export default function TeacherPlanningClient({ teacherId, teachers }: { teacher
                 Cahier de texte
               </button>
               <button
-                onClick={() => setActiveTab('substitute')}
+                onClick={openSubstituteTab}
                 className={`flex-1 py-3 text-xs font-bold uppercase tracking-wider transition ${activeTab === 'substitute' ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50/30' : 'text-slate-400 hover:text-slate-600'}`}
               >
                 Remplacement
@@ -244,54 +319,114 @@ export default function TeacherPlanningClient({ teacherId, teachers }: { teacher
 
               {activeTab === 'substitute' && (
                 <div className="space-y-4 py-2">
-                  <div>
-                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">
-                      Professeur remplaçant proposé
-                    </label>
-                    <select
-                      className="w-full text-xs rounded-xl border-slate-200 py-2.5 bg-slate-50 focus:bg-white transition"
-                      value={substituteId}
-                      onChange={(e) => setSubstituteId(e.target.value)}
-                    >
-                      <option value="">-- Désigner un professeur --</option>
-                      {teachers.map((t: any) => (
-                        <option key={t.id} value={t.id}>
-                          M./Mme {t.lastName?.toUpperCase()} {t.firstName}
-                        </option>
-                      ))}
-                    </select>
-                    <p className="text-[10px] text-slate-400 mt-1">
-                      Vous pouvez proposer un collègue pressenti pour vous remplacer.
-                    </p>
-                  </div>
+                  {existingRequest && existingRequest.status !== "REJECTED" ? (
+                    <div className={`p-4 rounded-2xl border text-xs font-medium leading-relaxed ${existingRequest.status === "APPROVED" ? "bg-emerald-50 border-emerald-100 text-emerald-800" : "bg-orange-50 border-orange-100 text-orange-800"}`}>
+                      {existingRequest.status === "APPROVED" ? (
+                        <p>
+                          Remplacement validé
+                          {existingRequest.substituteTeacher
+                            ? ` : ${(existingRequest.substituteTeacher.lastName || "").toUpperCase()} ${existingRequest.substituteTeacher.firstName || ""}`
+                            : ""}
+                          .
+                        </p>
+                      ) : (
+                        <>
+                          <p>
+                            Demande en attente de traitement par l&apos;administration
+                            {existingRequest.reason ? ` (motif : ${existingRequest.reason})` : ""}.
+                          </p>
+                          <button
+                            type="button"
+                            onClick={handleCancelSubstitution}
+                            disabled={loading}
+                            className="mt-3 rounded-lg bg-white px-3 py-1.5 text-xs font-bold text-orange-700 border border-orange-200 hover:bg-orange-100 disabled:opacity-50"
+                          >
+                            Annuler ma demande
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  ) : (
+                    <>
+                      {existingRequest?.status === "REJECTED" && (
+                        <div className="p-3 rounded-xl bg-red-50 border border-red-100 text-xs font-medium text-red-700">
+                          Votre précédente demande a été refusée. Vous pouvez en déposer une nouvelle.
+                        </div>
+                      )}
 
-                  <div>
-                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Matière concernée</label>
-                    <select
-                      className="w-full text-xs rounded-xl border-slate-200 py-2.5 bg-slate-50 focus:bg-white transition"
-                      value={subjectId}
-                      onChange={(e) => setSubjectId(e.target.value)}
-                    >
-                      <option value="">{selectedEvent.extendedProps?.subject} (Par défaut)</option>
-                      {teachers.find((t: any) => t.id === teacherId)?.subjects?.map((s: any) => (
-                        <option key={s.id} value={s.id}>{s.name}</option>
-                      ))}
-                    </select>
-                  </div>
+                      <div>
+                        <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Motif</label>
+                        <div className="flex flex-wrap gap-2">
+                          {REASON_PRESETS.map((r) => (
+                            <button
+                              key={r}
+                              type="button"
+                              onClick={() => setReason(r)}
+                              className={`px-3 py-1.5 rounded-full text-xs font-bold border transition ${reason === r ? "bg-orange-600 border-orange-600 text-white" : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"}`}
+                            >
+                              {r}
+                            </button>
+                          ))}
+                        </div>
+                        <input
+                          type="text"
+                          maxLength={500}
+                          value={reason}
+                          onChange={(e) => setReason(e.target.value)}
+                          placeholder="Ou précisez un autre motif (facultatif)"
+                          className="mt-2 w-full text-xs rounded-xl border-slate-200 py-2.5 bg-slate-50 focus:bg-white transition"
+                        />
+                      </div>
 
-                  <div className="p-4 bg-orange-50 border border-orange-100 rounded-2xl">
-                    <p className="text-xs text-orange-800 font-medium leading-relaxed">
-                      Vous ne pouvez pas assurer ce cours ? Cliquez ci-dessous pour transmettre la demande de remplacement à l'administration.
-                    </p>
-                  </div>
+                      <div>
+                        <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">
+                          Remplaçant pressenti (facultatif)
+                        </label>
+                        {loadingSuggestions ? (
+                          <p className="text-xs text-slate-400">Recherche des collègues disponibles…</p>
+                        ) : suggestions.length === 0 ? (
+                          <p className="text-xs text-slate-400">Aucun collègue à proposer : l&apos;administration choisira.</p>
+                        ) : (
+                          <ul className="max-h-52 overflow-y-auto custom-scrollbar divide-y divide-slate-100 rounded-xl border border-slate-200">
+                            {suggestions.map((t) => {
+                              const selectable = t.status !== "BUSY";
+                              return (
+                                <li key={t.id}>
+                                  <button
+                                    type="button"
+                                    disabled={!selectable}
+                                    onClick={() => setSubstituteId(substituteId === t.id ? "" : t.id)}
+                                    className={`flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-xs transition ${substituteId === t.id ? "bg-orange-50" : "hover:bg-slate-50"} disabled:opacity-50 disabled:cursor-not-allowed`}
+                                  >
+                                    <span className="font-semibold text-slate-800">
+                                      {t.name}
+                                      {t.teachesSubject && (
+                                        <span className="ml-2 rounded bg-blue-50 px-1.5 py-0.5 text-[10px] font-bold text-blue-700">Même matière</span>
+                                      )}
+                                    </span>
+                                    <span className={`text-[10px] font-bold ${t.status === "FREE" ? "text-emerald-600" : t.status === "BUSY" ? "text-red-600" : "text-amber-600"}`}>
+                                      {t.status === "FREE" ? "Disponible" : t.status === "BUSY" ? "Occupé" : "Hors disponibilités"}
+                                    </span>
+                                  </button>
+                                </li>
+                              );
+                            })}
+                          </ul>
+                        )}
+                        <p className="text-[10px] text-slate-400 mt-1">
+                          L&apos;administration reste décisionnaire : votre choix est une proposition.
+                        </p>
+                      </div>
 
-                  <button
-                    onClick={handleRequestSubstitution}
-                    disabled={loading}
-                    className="w-full py-3.5 bg-orange-600 text-white rounded-2xl text-xs font-bold shadow-lg hover:bg-orange-700 transition disabled:opacity-50"
-                  >
-                    {loading ? "Envoi..." : "Demander un remplacement"}
-                  </button>
+                      <button
+                        onClick={handleRequestSubstitution}
+                        disabled={loading}
+                        className="w-full py-3.5 bg-orange-600 text-white rounded-2xl text-xs font-bold shadow-lg hover:bg-orange-700 transition disabled:opacity-50"
+                      >
+                        {loading ? "Envoi..." : "Demander un remplacement"}
+                      </button>
+                    </>
+                  )}
                 </div>
               )}
             </div>
