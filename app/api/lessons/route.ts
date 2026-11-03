@@ -4,7 +4,7 @@ import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth-options";
-import { createNotification, checkEventEnabled, sendClassNotification } from "@/app/actions/notifications";
+import { createNotification, checkEventEnabled, notifyClass } from "@/lib/notifications";
 
 export async function GET(request: Request) {
   const session = await getServerSession(authOptions);
@@ -262,7 +262,7 @@ export async function PUT(request: Request) {
           ? (updatedLesson.customSubject || "Cours") 
           : (updatedLesson.subject?.name || "Cours");
 
-        await sendClassNotification({
+        await notifyClass({ id: session.user.id, name: session.user.name }, {
           classId: updatedLesson.classId,
           title: `Nouveau devoir : ${subjectName}`,
           message: `Travail à faire : ${filteredData.homework.trim().length > 120 ? filteredData.homework.trim().substring(0, 120) + "..." : filteredData.homework.trim()}`,
@@ -377,7 +377,7 @@ export async function PUT(request: Request) {
         ? (updatedLesson.customSubject || "Cours") 
         : (updatedLesson.subject?.name || "Cours");
 
-      await sendClassNotification({
+      await notifyClass({ id: session.user.id, name: session.user.name }, {
         classId: updatedLesson.classId,
         title: `Nouveau devoir : ${subjectName}`,
         message: `Travail à faire : ${updateData.homework.trim().length > 120 ? updateData.homework.trim().substring(0, 120) + "..." : updateData.homework.trim()}`,

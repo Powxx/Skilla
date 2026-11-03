@@ -4,8 +4,17 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
-import { sendPushNotification, sendPushNotificationBatch } from "./push";
+import { sendPushNotification, sendPushNotificationBatch } from "@/lib/push";
+import { notifyClass } from "@/lib/notifications";
 import { formatUserName, formatTeacherName } from "@/lib/user-utils";
+
+async function requireAdminSession() {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.id || (session.user.role !== "ADMIN" && session.user.role !== "SUPER_ADMIN")) {
+    throw new Error("Non autorisé");
+  }
+  return session;
+}
 
 async function getUserNotificationIds(userId: string): Promise<string[]> {
   const user = await prisma.user.findUnique({
@@ -371,86 +380,20 @@ export async function sendClassNotification(data: {
 }) {
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) throw new Error("Non autorisé");
-  
-  const senderName = `${session.user.name || 'Enseignant'}`;
 
-  // Récupère les étudiants de la classe ciblée
-  const students = await prisma.user.findMany({
-    where: {
-      classId: data.classId,
-      role: "STUDENT",
-      isActive: true
-    },
-    select: { id: true }
-  });
+  const role = session.user.role;
+  const isAdmin = role === "ADMIN" || role === "SUPER_ADMIN";
+  if (!isAdmin) {
+    if (role !== "TEACHER") throw new Error("Non autorisé");
+    // Un professeur ne peut notifier que les classes auxquelles il enseigne
+    const teachesClass = await prisma.lesson.findFirst({
+      where: { teacherId: session.user.id, classId: data.classId },
+      select: { id: true }
+    });
+    if (!teachesClass) throw new Error("Vous n'enseignez pas dans cette classe.");
+  }
 
-  // Enregistrement transactionnel : création des notifications + log d'envoi classe
-  const [notifications, log] = await prisma.$transaction([
-    prisma.notification.createMany({
-      data: students.map(s => ({
-        userId: s.id,
-        title: data.title,
-        message: data.message,
-        type: data.type || "INFO",
-        senderName: senderName,
-        link: "/"
-      }))
-    }),
-    prisma.classNotificationLog.create({
-      data: {
-        senderId: session.user.id,
-        classId: data.classId,
-        title: data.title,
-        message: data.message,
-      }
-    })
-  ]);
-  
-  // Envoi asynchrone groupé des pushs
-  sendPushNotificationBatch(students.map(s => s.id), {
-    title: data.title,
-    body: data.message,
-    url: "/"
-  }).catch(err => console.error("Push failed for class", data.classId, err));
-
-  revalidatePath("/");
-  return { notifications, log };
-}
-
-/**
- * Fonction utilitaire interne : Crée une notification unique et envoie un push de navigateur.
- * 
- * @param data Destinataire, titre, message, type esthétique, lien de redirection et nom de l'expéditeur optionnel.
- * @returns La notification créée.
- */
-export async function createNotification(data: {
-  userId: string;
-  title: string;
-  message: string;
-  type?: "INFO" | "WARNING" | "SUCCESS" | "ERROR";
-  link?: string;
-  senderName?: string;
-}) {
-  const notification = await prisma.notification.create({
-    data: {
-      userId: data.userId,
-      title: data.title,
-      message: data.message,
-      type: data.type || "INFO",
-      link: data.link,
-      senderName: data.senderName || "Système",
-    },
-  });
-
-  // Déclenche le push de navigateur
-  sendPushNotification(data.userId, {
-    title: data.title,
-    body: data.message,
-    url: data.link || "/"
-  }).catch(err => console.error("Push failed for user", data.userId, err));
-
-  revalidatePath("/");
-  return notification;
+  return notifyClass({ id: session.user.id, name: session.user.name }, data);
 }
 
 /**
@@ -458,6 +401,7 @@ export async function createNotification(data: {
  * Alimente automatiquement les valeurs par défaut dans la BDD s'il s'agit du premier appel.
  */
 export async function getNotificationConfigs() {
+  await requireAdminSession();
   await ensureDefaultConfigs();
   return await prisma.notificationConfig.findMany({
     orderBy: { event: "asc" },
@@ -542,24 +486,18 @@ async function ensureDefaultConfigs() {
  * Server Action : Met à jour la configuration d'activation et de ciblage d'une alerte système.
  */
 export async function updateNotificationConfig(id: string, data: { isEnabled?: boolean; targetRoles?: any[] }) {
+  await requireAdminSession();
+  const allowedRoles = ["SUPER_ADMIN", "ADMIN", "TEACHER", "STUDENT", "RESPONSIBLE", "COMPANY_TUTOR"];
+  const safeData: { isEnabled?: boolean; targetRoles?: any[] } = {};
+  if (typeof data?.isEnabled === "boolean") safeData.isEnabled = data.isEnabled;
+  if (Array.isArray(data?.targetRoles)) {
+    safeData.targetRoles = data.targetRoles.filter((r) => allowedRoles.includes(r));
+  }
   await prisma.notificationConfig.update({
     where: { id },
-    data,
+    data: safeData,
   });
   revalidatePath("/admin/settings");
-}
-
-/**
- * Vérifie si un type d'événement est activé avant de déclencher des envois de notifications.
- * Si l'événement n'est pas renseigné en BDD, il est considéré comme activé par défaut.
- * 
- * @param event Clé de l'événement (ex: "NEW_GRADE").
- */
-export async function checkEventEnabled(event: string) {
-  const config = await prisma.notificationConfig.findUnique({
-    where: { event },
-  });
-  return config?.isEnabled ?? true;
 }
 
 /**

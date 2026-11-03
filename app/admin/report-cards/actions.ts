@@ -4,7 +4,7 @@ import prisma from "@/lib/prisma";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth-options";
 import { revalidatePath } from "next/cache";
-import { createNotification, checkEventEnabled } from "@/app/actions/notifications";
+import { createNotification, checkEventEnabled } from "@/lib/notifications";
 
 async function requireAdmin() {
   const session = await getServerSession(authOptions);

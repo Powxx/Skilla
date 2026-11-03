@@ -2,7 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth-options";
-import { createNotification, checkEventEnabled } from "@/app/actions/notifications";
+import { createNotification, checkEventEnabled } from "@/lib/notifications";
 import { getEffectiveTeacherId } from "@/lib/teacher-utils";
 
 export async function GET(request: Request) {

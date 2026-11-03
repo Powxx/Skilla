@@ -3,7 +3,7 @@ import type { Role } from "@prisma/client";
 import CredentialsProvider from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
 import prisma from "@/lib/prisma";
-import { updateLoginStreak } from "@/app/actions/gamification";
+import { updateLoginStreak } from "@/lib/login-streak";
 import { formatUserName } from "@/lib/user-utils";
 
 /**
@@ -89,11 +89,7 @@ export const authOptions: NextAuthOptions = {
             console.error("Erreur lors de la mise à jour de lastLoginAt:", err);
           });
 
-          const isGenAdmin = Boolean(
-            user.isGeneralAdmin ||
-            user.role === "SUPER_ADMIN" ||
-            user.email?.toLowerCase() === "admin@skilla.edu"
-          );
+          const isGenAdmin = Boolean(user.isGeneralAdmin || user.role === "SUPER_ADMIN");
 
           // Retourne l'objet User décoré de ses habilitations RBAC qui sera encrypté dans le JWT
           return {
@@ -147,7 +143,10 @@ export const authOptions: NextAuthOptions = {
             where: { id: session.impersonateUser.id },
             select: { id: true, role: true, firstName: true, lastName: true, isActive: true }
           });
-          if (target && target.isActive) {
+          // Un SUPER_ADMIN ne peut être usurpé que par un autre SUPER_ADMIN (anti-élévation de privilèges)
+          const actorRole = token.originalUserRole || token.role;
+          const canTarget = target?.role !== "SUPER_ADMIN" || actorRole === "SUPER_ADMIN";
+          if (target && target.isActive && canTarget) {
             token.originalUserId = token.originalUserId || token.id;
             token.originalUserRole = token.originalUserRole || token.role;
             token.originalUserName = token.originalUserName || token.name;

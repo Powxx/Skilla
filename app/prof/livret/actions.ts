@@ -4,6 +4,7 @@ import prisma from "@/lib/prisma";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth-options";
 import { revalidatePath } from "next/cache";
+import { canAccessStudents } from "@/lib/teacher-access";
 
 async function requireLivretEvaluator(studentId: string, category: string = "SCHOOL") {
   const session = await getServerSession(authOptions);
@@ -23,6 +24,9 @@ async function requireLivretEvaluator(studentId: string, category: string = "SCH
     });
     if (user?.canAccessLivrets === false) {
       throw new Error("Accès aux livrets restreint par l'administration.");
+    }
+    if (!(await canAccessStudents(session.user, [studentId]))) {
+      throw new Error("Vous n'enseignez pas dans la classe de cet étudiant.");
     }
     return session;
   }

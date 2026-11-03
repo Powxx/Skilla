@@ -1,8 +1,9 @@
 "use server";
 
 import prisma from "@/lib/prisma";
-import { createNotification, checkEventEnabled } from "./notifications";
+import { createNotification, checkEventEnabled } from "@/lib/notifications";
 import { getServerSession } from "next-auth/next";
+import { canAccessStudents } from "@/lib/teacher-access";
 import { authOptions } from "@/lib/auth-options";
 import { revalidatePath } from "next/cache";
 
@@ -55,6 +56,13 @@ export async function saveGradesBatch(
       return {
         ok: false,
         error: "La liste est vide — rien à enregistrer.",
+      };
+    }
+
+    if (!(await canAccessStudents(session.user, entries.map((e) => e.studentId)))) {
+      return {
+        ok: false,
+        error: "Vous ne pouvez noter que les élèves des classes où vous enseignez.",
       };
     }
 

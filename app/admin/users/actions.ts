@@ -25,6 +25,16 @@ async function requireAdmin() {
   return session;
 }
 
+/** Seul un SUPER_ADMIN ou l'Administrateur Général peut attribuer ou modifier un compte SUPER_ADMIN. */
+function canManageSuperAdmins(session: Awaited<ReturnType<typeof requireAdmin>>): boolean {
+  return Boolean(
+    session?.user?.role === "SUPER_ADMIN" ||
+    (session?.user as any)?.isGeneralAdmin
+  );
+}
+
+const SUPER_ADMIN_FORBIDDEN = "Seul un Super Admin peut attribuer ou modifier un compte Super Admin.";
+
 function roleLabelsFr(r: Role): string {
   const map: Record<Role, string> = {
     SUPER_ADMIN: "Super Admin",
@@ -59,6 +69,13 @@ export async function updateAdminPermissions(input: {
 
   const { userId, ...data } = input;
 
+  if (session?.user?.role !== "SUPER_ADMIN") {
+    const target = await prisma.user.findUnique({ where: { id: userId }, select: { role: true } });
+    if (target?.role === Role.SUPER_ADMIN) {
+      return { ok: false, error: SUPER_ADMIN_FORBIDDEN };
+    }
+  }
+
   try {
     await prisma.user.update({
       where: { id: userId },
@@ -75,7 +92,7 @@ export type MutationResult<T = unknown> =
   | { ok: true; data?: T }
   | { ok: false; error: string };
 
-export async function generateUniqueUsername(firstName: string, lastName: string): Promise<string> {
+async function generateUniqueUsername(firstName: string, lastName: string): Promise<string> {
   const initial = firstName.trim().charAt(0).toLowerCase();
   const cleanLastName = lastName.trim().toLowerCase()
     .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
@@ -117,6 +134,9 @@ export async function createUser(input: {
   }
   if (!ADMIN_ROLES.includes(role)) {
     return { ok: false, error: "Rôle invalide." };
+  }
+  if (role === Role.SUPER_ADMIN && !canManageSuperAdmins(session)) {
+    return { ok: false, error: SUPER_ADMIN_FORBIDDEN };
   }
   const passwordHash = await bcrypt.hash(password, 10);
   const fullName = formatUserName(firstName, lastName);
@@ -260,6 +280,10 @@ export async function updateUser(input: {
 
   if (!existing) {
     return { ok: false, error: "Utilisateur introuvable." };
+  }
+
+  if ((existing.role === Role.SUPER_ADMIN || newRole === Role.SUPER_ADMIN) && !canManageSuperAdmins(session)) {
+    return { ok: false, error: SUPER_ADMIN_FORBIDDEN };
   }
 
   let username = existing.username;
@@ -414,6 +438,10 @@ export async function deleteUserSafe(userId: string): Promise<MutationResult> {
       return { ok: false, error: "Utilisateur introuvable." };
     }
 
+    if (existing.role === Role.SUPER_ADMIN && !canManageSuperAdmins(session)) {
+      return { ok: false, error: SUPER_ADMIN_FORBIDDEN };
+    }
+
     if (existing.contract && existing._count?.lessons > 0) {
       return {
         ok: false,
@@ -557,6 +585,8 @@ export async function importUsersAction(users: Array<{
     const role = user.role;
 
     if (!firstName || !lastName || !role) continue;
+    if (!ADMIN_ROLES.includes(role)) continue;
+    if (role === Role.SUPER_ADMIN && !canManageSuperAdmins(session)) continue;
 
     const passwordHash = user.password && user.password !== "Skilla2026!"
       ? await bcrypt.hash(user.password, 10)
@@ -582,6 +612,7 @@ export async function importUsersAction(users: Array<{
       }
 
       if (existingUser) {
+        if (existingUser.role === Role.SUPER_ADMIN && !canManageSuperAdmins(session)) continue;
         if (role === Role.STUDENT && user.classId) {
           const targetClass = await prisma.class.findFirst({
             where: { OR: [{ id: user.classId }, { name: user.classId }] }
