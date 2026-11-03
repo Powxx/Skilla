@@ -396,69 +396,143 @@ export async function deleteUserSafe(userId: string): Promise<MutationResult> {
     return { ok: false, error: "Vous ne pouvez pas supprimer votre propre compte." };
   }
 
-  const existing = await prisma.user.findUnique({
-    where: { id: userId },
-    include: {
-      // Relation 1 : Le profil étudiant (directement sur User)
-      studentProfile: true, 
-    
-      // Relation 2 : Le contrat prof (directement sur User)
-      contract: true, 
-    
-      // Relation 3 : Le décompte (directement sur User)
-      _count: {
-        select: {
-          lessons: true, 
+  try {
+    const existing = await prisma.user.findUnique({
+      where: { id: userId },
+      include: {
+        studentProfile: true, 
+        contract: true, 
+        _count: {
+          select: {
+            lessons: true, 
+          },
         },
       },
-    },
-  });
-
-  if (!existing) {
-    return { ok: false, error: "Utilisateur introuvable." };
-  }
-
-  if (existing.contract && existing._count?.lessons > 0) {
-    return {
-      ok: false,
-      error: "Ce professeur a encore des cours : suppression impossible.",
-    };
-  }
-
-  const adminCount = await prisma.user.count({ where: { role: Role.ADMIN } });
-  if (existing.role === Role.ADMIN && adminCount <= 1) {
-    return {
-      ok: false,
-      error: "Impossible de supprimer le dernier administrateur.",
-    };
-  }
-
-  await prisma.$transaction(async (tx) => {
-    if (existing.studentProfile) {
-      await tx.studentProfile.delete({ where: { userId } });
-    }
-    if (existing.contract) {
-      await tx.teacherContract.delete({ 
-        where: { teacherId: userId } 
-      });
-    }
-    await tx.companyContract.deleteMany({
-      where: {
-        OR: [
-          { studentId: userId },
-          { tutorId: userId }
-        ]
-      }
     });
-    await tx.evaluation.deleteMany({ where: { studentId: userId } });
-    await tx.complaint.deleteMany({ where: { senderId: userId } });
-    await tx.meetingRequest.deleteMany({ where: { senderId: userId } });
 
-    await tx.user.delete({ where: { id: userId } });
-  });
+    if (!existing) {
+      return { ok: false, error: "Utilisateur introuvable." };
+    }
 
-  revalidatePath("/admin/users");
-  return { ok: true };
+    if (existing.contract && existing._count?.lessons > 0) {
+      return {
+        ok: false,
+        error: "Ce professeur a encore des cours planifiés : suppression impossible.",
+      };
+    }
+
+    const adminCount = await prisma.user.count({ where: { role: Role.ADMIN } });
+    if (existing.role === Role.ADMIN && adminCount <= 1) {
+      return {
+        ok: false,
+        error: "Impossible de supprimer le dernier administrateur.",
+      };
+    }
+
+    await prisma.$transaction(async (tx) => {
+      // 1. Profil étudiant
+      await tx.studentProfile.deleteMany({ where: { userId } });
+
+      // 2. Contrat prof & disponibilités & compétences
+      await tx.teacherContract.deleteMany({ where: { teacherId: userId } });
+      await tx.teacherAvailability.deleteMany({ where: { teacherId: userId } });
+      await tx.skillMatrix.deleteMany({ where: { teacherId: userId } });
+
+      // 3. Contrats entreprise (alternance / stage)
+      await tx.companyContract.deleteMany({
+        where: {
+          OR: [{ studentId: userId }, { tutorId: userId }]
+        }
+      });
+
+      // 4. Pédagogie élève (notes, présences/absences, bulletins, évaluations, dispenses, devoirs)
+      await tx.attendance.deleteMany({ where: { studentId: userId } });
+      await tx.grade.deleteMany({ where: { studentId: userId } });
+      await tx.grade.updateMany({ where: { teacherId: userId }, data: { teacherId: null } });
+      await tx.reportCard.deleteMany({ where: { studentId: userId } });
+      await tx.evaluation.deleteMany({ where: { studentId: userId } });
+      await tx.dispensation.deleteMany({ where: { studentId: userId } });
+      await tx.homeworkCompletion.deleteMany({ where: { studentId: userId } });
+
+      // 5. Qualiopi, Enquêtes, Plaintes, Réunions
+      await tx.complaint.deleteMany({ where: { senderId: userId } });
+      await tx.meetingRequest.deleteMany({ where: { senderId: userId } });
+      await tx.satisfactionSurvey.deleteMany({ where: { userId } });
+      await tx.satisfactionSurveyCampaign.deleteMany({ where: { createdById: userId } });
+
+      // 6. Notifications & Web Push
+      await tx.notification.deleteMany({ where: { userId } });
+      await tx.classNotificationLog.deleteMany({ where: { senderId: userId } });
+      await tx.scheduledNotification.deleteMany({
+        where: { OR: [{ senderId: userId }, { targetUserId: userId }] }
+      });
+      await tx.pushSubscription.deleteMany({ where: { userId } });
+
+      // 7. Sanctions & Discipline
+      await tx.sanctionComment.deleteMany({ where: { authorId: userId } });
+      await tx.sanctionActionEvent.deleteMany({ where: { studentId: userId } });
+      const userSanctionIds = (await tx.sanction.findMany({
+        where: { OR: [{ studentId: userId }, { givenById: userId }] },
+        select: { id: true }
+      })).map(s => s.id);
+
+      if (userSanctionIds.length > 0) {
+        await tx.sanctionComment.deleteMany({ where: { sanctionId: { in: userSanctionIds } } });
+        await tx.sanctionActionEvent.deleteMany({ where: { sanctionId: { in: userSanctionIds } } });
+        await tx.sanction.deleteMany({ where: { id: { in: userSanctionIds } } });
+      }
+
+      // 8. Gamification & Boîte à Idées
+      await tx.gameScore.deleteMany({ where: { userId } });
+      await tx.adminIdeaVote.deleteMany({ where: { userId } });
+      const authorIdeaIds = (await tx.adminIdea.findMany({
+        where: { authorId: userId },
+        select: { id: true }
+      })).map(i => i.id);
+
+      if (authorIdeaIds.length > 0) {
+        await tx.adminIdeaVote.deleteMany({ where: { ideaId: { in: authorIdeaIds } } });
+        await tx.adminIdea.deleteMany({ where: { id: { in: authorIdeaIds } } });
+      }
+
+      // 9. Chat & Messagerie
+      await tx.chatMessage.deleteMany({ where: { senderId: userId } });
+      const userConvs = (await tx.conversation.findMany({
+        where: { OR: [{ participant1Id: userId }, { participant2Id: userId }] },
+        select: { id: true }
+      })).map(c => c.id);
+
+      if (userConvs.length > 0) {
+        await tx.chatMessage.deleteMany({ where: { conversationId: { in: userConvs } } });
+        await tx.conversation.deleteMany({ where: { id: { in: userConvs } } });
+      }
+
+      // 10. Remplacements de cours & liaisons enseignants/admins
+      await tx.substitutionRequest.deleteMany({
+        where: { OR: [{ originalTeacherId: userId }, { substituteTeacherId: userId }] }
+      });
+      await tx.lesson.updateMany({
+        where: { substituteId: userId },
+        data: { substituteId: null }
+      });
+      await tx.user.updateMany({
+        where: { linkedTeacherId: userId },
+        data: { linkedTeacherId: null }
+      });
+
+      // 11. Suppression définitive du compte utilisateur
+      await tx.user.delete({ where: { id: userId } });
+    });
+
+    revalidatePath("/admin/users");
+    return { ok: true };
+  } catch (error) {
+    console.error("Erreur lors de la suppression de l'utilisateur:", error);
+    return {
+      ok: false,
+      error: error instanceof Error ? error.message : "Erreur lors de la suppression de l'utilisateur."
+    };
+  }
 }
 
 export async function importUsersAction(users: Array<{
