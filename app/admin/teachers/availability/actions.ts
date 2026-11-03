@@ -3,12 +3,14 @@
 import prisma from "@/lib/prisma";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth-options";
+import { hasAdminPermission } from "@/lib/authz";
 import { revalidatePath } from "next/cache";
 
 async function requireAdminOrSelf(teacherId?: string) {
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) throw new Error("Non autorisé. Veuillez vous connecter.");
-  const isAdmin = session.user.role === "ADMIN" || session.user.role === "SUPER_ADMIN";
+  // Un admin ne gère les disponibilités des autres enseignants qu'avec la permission planning
+  const isAdmin = hasAdminPermission(session.user, "canManagePlanning");
   const isSelf = Boolean(teacherId && session.user.id === teacherId);
   if (!isAdmin && !isSelf) {
     throw new Error("Action réservée aux administrateurs ou à l'enseignant concerné.");
@@ -28,7 +30,7 @@ export async function addTeacherAvailability(teacherId: string, dayOfWeek: numbe
 
 export async function deleteTeacherAvailability(id: string) {
   const session = await requireAdminOrSelf();
-  const isAdmin = session.user.role === "ADMIN" || session.user.role === "SUPER_ADMIN";
+  const isAdmin = hasAdminPermission(session.user, "canManagePlanning");
 
   if (!isAdmin) {
     const existing = await prisma.teacherAvailability.findUnique({ where: { id } });

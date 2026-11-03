@@ -4,6 +4,9 @@ import AdminActionFeedCollapsible from "@/components/admin/admin-action-feed-col
 import AdminHubGrid from "@/components/admin/admin-hub-grid";
 import { getGlobalSettings } from "@/app/actions/settings";
 import { QUALIOPI_ENABLED_KEY } from "@/lib/qualiopi";
+import { getServerSession } from "next-auth/next";
+import { authOptions } from "@/lib/auth-options";
+import { hasAdminPermission } from "@/lib/authz";
 import { 
   Users, 
   ShieldCheck, 
@@ -15,6 +18,14 @@ import {
 export const dynamic = 'force-dynamic';
 
 export default async function AdminHomePage() {
+  const session = await getServerSession(authOptions);
+  const permissions = {
+    canManageUsers: hasAdminPermission(session?.user, "canManageUsers"),
+    canManageSettings: hasAdminPermission(session?.user, "canManageSettings"),
+    canManagePlanning: hasAdminPermission(session?.user, "canManagePlanning"),
+    canManageRH: hasAdminPermission(session?.user, "canManageRH"),
+  };
+
   const [
     pendingSubsCount,
     pendingMeetings,
@@ -156,7 +167,7 @@ export default async function AdminHomePage() {
 
       {/* Main Full-Width HUB Grid */}
       <main className="w-full">
-        <AdminHubGrid qualiopiEnabled={qualiopiEnabled} />
+        <AdminHubGrid qualiopiEnabled={qualiopiEnabled} permissions={permissions} />
       </main>
     </div>
   );

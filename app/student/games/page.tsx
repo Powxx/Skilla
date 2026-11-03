@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useSession } from 'next-auth/react';
 import { getAllPersonalBests } from '@/app/actions/game-center';
+import { getStudentStats } from '@/app/actions/gamification';
 
 const GAMES = [
   { id: 'vocabulary-sensei', name: 'Vocabulary Sensei', subject: 'Anglais', icon: '🏮', description: 'Traduisez les termes beauté avant le gong.' },
@@ -25,7 +26,8 @@ export default function GameCenter() {
 
   useEffect(() => {
     if (session?.user?.id) {
-      setStreak((session.user as any).loginStreak || 0);
+      // La série n'est pas dans la session : elle est lue en base
+      getStudentStats(session.user.id).then((stats) => setStreak(stats.streak || 0)).catch(() => setStreak(0));
       getAllPersonalBests(session.user.id).then(setBestScores);
     }
   }, [session]);

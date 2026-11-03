@@ -1,6 +1,4 @@
-import { redirect } from "next/navigation";
-import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/lib/auth-options";
+import { requirePagePermission } from "@/lib/authz";
 import prisma from "@/lib/prisma";
 import AdvancedPlanningClient from "./advanced-planning-client";
 import Link from "next/link";
@@ -10,11 +8,7 @@ export const metadata = {
 };
 
 export default async function AdminPlanningPage() {
-  const session = await getServerSession(authOptions);
-
-  if (!session?.user?.id || (session.user.role !== "ADMIN" && session.user.role !== "SUPER_ADMIN" && !session.user.canManagePlanning)) {
-    redirect("/login");
-  }
+  await requirePagePermission("canManagePlanning");
 
   // Load data for the dropdowns
   const classes = await prisma.class.findMany({ select: { id: true, name: true } });

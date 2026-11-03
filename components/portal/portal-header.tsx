@@ -19,7 +19,7 @@ export default function PortalHeader({ variant, parentChildren = [] }: Props) {
   const searchParams = useSearchParams();
   const { data: session, update } = useSession();
 
-  const isImpersonated = (session as any)?.impersonated === true;
+  const isImpersonated = session?.impersonated === true;
 
   const handleStopImpersonation = async () => {
     await update({ stopImpersonation: true });
@@ -85,7 +85,7 @@ export default function PortalHeader({ variant, parentChildren = [] }: Props) {
       {isImpersonated && (
         <div className="bg-orange-600 text-white text-[10px] font-bold px-4 py-2 flex items-center justify-between">
           <p className="tracking-wide">
-            MODE IMPERSONNALISATION : Contrôle de <span className="underline decoration-2 underline-offset-4">{(session?.user as any)?.name}</span>
+            MODE IMPERSONNALISATION : Contrôle de <span className="underline decoration-2 underline-offset-4">{session?.user?.name}</span>
           </p>
           <button 
             onClick={handleStopImpersonation} 

@@ -225,13 +225,13 @@ export const authOptions: NextAuthOptions = {
         token.role = user.role as Role;
         token.id = user.id;
         token.name = user.name;
-        token.canAccessLivrets = (user as any).canAccessLivrets ?? false;
-        token.canManageUsers = (user as any).canManageUsers ?? false;
-        token.canManageSettings = (user as any).canManageSettings ?? false;
-        token.canManagePlanning = (user as any).canManagePlanning ?? false;
-        token.canManageRH = (user as any).canManageRH ?? false;
-        token.canImpersonate = (user as any).canImpersonate ?? false;
-        token.isGeneralAdmin = (user as any).isGeneralAdmin ?? false;
+        token.canAccessLivrets = user.canAccessLivrets ?? false;
+        token.canManageUsers = user.canManageUsers ?? false;
+        token.canManageSettings = user.canManageSettings ?? false;
+        token.canManagePlanning = user.canManagePlanning ?? false;
+        token.canManageRH = user.canManageRH ?? false;
+        token.canImpersonate = user.canImpersonate ?? false;
+        token.isGeneralAdmin = user.isGeneralAdmin ?? false;
         token.refreshedAt = Date.now();
       }
 
@@ -254,7 +254,7 @@ export const authOptions: NextAuthOptions = {
           if (target && target.isActive && canTarget) {
             token.originalUserId = token.originalUserId || token.id;
             token.originalUserRole = token.originalUserRole || token.role;
-            token.originalUserName = token.originalUserName || token.name;
+            token.originalUserName = token.originalUserName || token.name || undefined;
 
             token.id = target.id;
             token.role = target.role;
@@ -308,15 +308,15 @@ export const authOptions: NextAuthOptions = {
         if (token.name) {
           session.user.name = token.name as string;
         }
-        (session.user as any).canAccessLivrets = token.canAccessLivrets ?? false;
-        (session.user as any).canManageUsers = token.canManageUsers ?? false;
-        (session.user as any).canManageSettings = token.canManageSettings ?? false;
-        (session.user as any).canManagePlanning = token.canManagePlanning ?? false;
-        (session.user as any).canManageRH = token.canManageRH ?? false;
-        (session.user as any).canImpersonate = token.canImpersonate ?? false;
-        (session.user as any).isGeneralAdmin = token.isGeneralAdmin ?? false;
-        (session as any).impersonated = !!token.impersonated;
-        (session as any).originalUserId = token.originalUserId as string | undefined;
+        session.user.canAccessLivrets = token.canAccessLivrets ?? false;
+        session.user.canManageUsers = token.canManageUsers ?? false;
+        session.user.canManageSettings = token.canManageSettings ?? false;
+        session.user.canManagePlanning = token.canManagePlanning ?? false;
+        session.user.canManageRH = token.canManageRH ?? false;
+        session.user.canImpersonate = token.canImpersonate ?? false;
+        session.user.isGeneralAdmin = token.isGeneralAdmin ?? false;
+        session.impersonated = !!token.impersonated;
+        session.originalUserId = token.originalUserId as string | undefined;
       }
       return session;
     },

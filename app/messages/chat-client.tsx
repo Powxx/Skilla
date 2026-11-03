@@ -87,7 +87,7 @@ export default function ChatClient() {
     const textToSend = content.trim();
     if (!textToSend || !selectedConversation) return;
 
-    const currentUserId = (session?.user as any)?.id || "me";
+    const currentUserId = session?.user?.id || "me";
     const tempId = `temp-${Date.now()}`;
     const optimisticMessage = {
       id: tempId,

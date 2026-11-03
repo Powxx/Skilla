@@ -1,6 +1,4 @@
-import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/lib/auth-options";
-import { redirect } from "next/navigation";
+import { requirePagePermission } from "@/lib/authz";
 import prisma from "@/lib/prisma";
 import Link from "next/link";
 import CompanyContractsClient from "./company-contracts-client";
@@ -8,11 +6,7 @@ import CompanyContractsClient from "./company-contracts-client";
 export const dynamic = 'force-dynamic';
 
 export default async function AdminContractsPage() {
-  const session = await getServerSession(authOptions);
-
-  if (!session?.user?.id || (String(session.user.role) !== "ADMIN" && String(session.user.role) !== "SUPER_ADMIN")) {
-    redirect("/login");
-  }
+  await requirePagePermission("canManageUsers");
 
   const [contracts, students, tutors] = await Promise.all([
     prisma.companyContract.findMany({

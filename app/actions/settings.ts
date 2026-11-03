@@ -2,6 +2,7 @@
 
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth-options";
+import { requirePermission } from "@/lib/authz";
 import prisma from "@/lib/prisma";
 import bcrypt from "bcryptjs";
 import { randomBytes } from "crypto";
@@ -28,10 +29,7 @@ export const getGlobalSettings = unstable_cache(
 );
 
 export async function updateGlobalSetting(key: string, value: string) {
-  const session = await getServerSession(authOptions);
-  if (!session?.user || (session.user.role !== "ADMIN" && session.user.role !== "SUPER_ADMIN")) {
-    throw new Error("Non autorisé.");
-  }
+  await requirePermission("canManageSettings");
   await prisma.globalSetting.upsert({
     where: { key },
     update: { value },
@@ -44,10 +42,7 @@ export async function updateGlobalSetting(key: string, value: string) {
 }
 
 export async function updateTeacherLivretAccess(teacherId: string, canAccess: boolean) {
-  const session = await getServerSession(authOptions);
-  if (!session?.user || (session.user.role !== "ADMIN" && session.user.role !== "SUPER_ADMIN")) {
-    throw new Error("Non autorisé.");
-  }
+  await requirePermission("canManageSettings");
   await prisma.user.update({ where: { id: teacherId }, data: { canAccessLivrets: canAccess } });
 }
 

@@ -9,7 +9,7 @@ export default async function Home() {
   const session = await getServerSession(authOptions);
 
   if (session?.user) {
-    const role = (session.user as any).role;
+    const role = session.user.role;
     if (role === 'STUDENT') redirect('/student/dashboard');
     if (role === 'TEACHER') redirect('/prof');
     if (role === 'ADMIN' || role === 'SUPER_ADMIN') redirect('/admin');

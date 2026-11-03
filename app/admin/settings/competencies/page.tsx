@@ -1,16 +1,11 @@
-import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/lib/auth-options";
-import { redirect } from "next/navigation";
+import { requirePagePermission } from "@/lib/authz";
 import prisma from "@/lib/prisma";
 import ClassCompetenciesClient from "./class-competencies-client";
 
 export const dynamic = 'force-dynamic';
 
 export default async function AdminCompetenciesPage() {
-  const session = await getServerSession(authOptions);
-  if (!session?.user?.id || (String(session.user.role) !== "ADMIN" && String(session.user.role) !== "SUPER_ADMIN")) {
-    redirect("/login");
-  }
+  await requirePagePermission("canManageSettings");
 
   const [classes, competencies] = await Promise.all([
     prisma.class.findMany({ orderBy: { name: 'asc' } }),

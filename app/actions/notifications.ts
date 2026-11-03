@@ -2,6 +2,7 @@
 
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth-options";
+import { requirePermission } from "@/lib/authz";
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { sendPushNotification, sendPushNotificationBatch } from "@/lib/push";
@@ -486,7 +487,7 @@ async function ensureDefaultConfigs() {
  * Server Action : Met à jour la configuration d'activation et de ciblage d'une alerte système.
  */
 export async function updateNotificationConfig(id: string, data: { isEnabled?: boolean; targetRoles?: any[] }) {
-  await requireAdminSession();
+  await requirePermission("canManageSettings");
   const allowedRoles = ["SUPER_ADMIN", "ADMIN", "TEACHER", "STUDENT", "RESPONSIBLE", "COMPANY_TUTOR"];
   const safeData: { isEnabled?: boolean; targetRoles?: any[] } = {};
   if (typeof data?.isEnabled === "boolean") safeData.isEnabled = data.isEnabled;

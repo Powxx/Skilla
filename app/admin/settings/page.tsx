@@ -1,6 +1,4 @@
-import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/lib/auth-options";
-import { redirect } from "next/navigation";
+import { requirePagePermission } from "@/lib/authz";
 import prisma from "@/lib/prisma";
 import Link from "next/link";
 import CoreSettingsClient from "./core-settings-client";
@@ -10,11 +8,7 @@ import { getGlobalSettings } from "@/app/actions/settings";
 export const dynamic = 'force-dynamic';
 
 export default async function AdminSettingsPage() {
-  const session = await getServerSession(authOptions);
-
-  if (!session?.user?.id || (String(session.user.role) !== "ADMIN" && String(session.user.role) !== "SUPER_ADMIN")) {
-    redirect("/login");
-  }
+  await requirePagePermission("canManageSettings");
 
   const [classes, subjects, semesters, notificationConfigs, holidays, globalSettings, teachers, schoolYears] = await Promise.all([
     prisma.class.findMany({ orderBy: { name: 'asc' } }),

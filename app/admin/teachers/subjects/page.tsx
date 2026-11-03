@@ -1,6 +1,4 @@
-import { redirect } from "next/navigation";
-import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/lib/auth-options";
+import { requirePagePermission } from "@/lib/authz";
 import prisma from "@/lib/prisma";
 import TeacherSubjectsClient from "./teacher-subjects-client";
 import Link from "next/link";
@@ -10,11 +8,7 @@ export const metadata = {
 };
 
 export default async function AdminTeacherSubjectsPage() {
-  const session = await getServerSession(authOptions);
-
-  if (!session?.user?.id || (String(session.user.role) !== "ADMIN" && String(session.user.role) !== "SUPER_ADMIN")) {
-    redirect("/login");
-  }
+  await requirePagePermission("canManagePlanning");
 
   const teachers = await prisma.user.findMany({
     where: { role: "TEACHER", isActive: true },
