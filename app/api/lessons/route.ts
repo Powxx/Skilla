@@ -264,6 +264,7 @@ export async function PUT(request: Request) {
 
         await sendClassNotification({
           classId: updatedLesson.classId,
+          subjectId: updatedLesson.subjectId,
           title: `Nouveau devoir : ${subjectName}`,
           message: `Travail à faire : ${filteredData.homework.trim().length > 120 ? filteredData.homework.trim().substring(0, 120) + "..." : filteredData.homework.trim()}`,
           type: "INFO"
@@ -315,8 +316,17 @@ export async function PUT(request: Request) {
     // Update target lessons
     const lessonsToNotify = await prisma.lesson.findMany({
       where: { id: { in: targetLessonIds } },
-      include: { class: { include: { students: true } }, subject: true }
+      include: {
+        class: { include: { students: { include: { dispensations: { select: { subjectId: true } } } } } },
+        subject: true
+      }
     });
+    // Les élèves dispensés de la matière ne reçoivent aucune notification liée au cours
+    for (const l of lessonsToNotify) {
+      l.class.students = l.class.students.filter(
+        (s) => !(l.subjectId && s.dispensations.some((d) => d.subjectId === l.subjectId))
+      );
+    }
 
     for (const lesson of lessonsToNotify) {
       const isRoomChanged = updateData.roomId !== undefined && updateData.roomId !== lesson.roomId;
@@ -379,6 +389,7 @@ export async function PUT(request: Request) {
 
       await sendClassNotification({
         classId: updatedLesson.classId,
+        subjectId: updatedLesson.subjectId,
         title: `Nouveau devoir : ${subjectName}`,
         message: `Travail à faire : ${updateData.homework.trim().length > 120 ? updateData.homework.trim().substring(0, 120) + "..." : updateData.homework.trim()}`,
         type: "INFO"

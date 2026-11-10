@@ -495,7 +495,11 @@ export default function AdminAbsencesClient({
 
     setAddStudentLoading(true);
     try {
-      await addStudentToCourseCard(addStudentModalLessonId, selectedStudentForCard, selectedStatusForCard);
+      const res = await addStudentToCourseCard(addStudentModalLessonId, selectedStudentForCard, selectedStatusForCard);
+      if (!res.ok) {
+        alert("Erreur: " + ("error" in res ? res.error : "Action impossible."));
+        return;
+      }
       setAddStudentModalLessonId(null);
       setSelectedStudentForCard("");
       setStudentSearchQuery("");

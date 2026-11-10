@@ -112,6 +112,22 @@ export async function saveGradesBatch(
       }
     }
 
+    // Refus des notes pour les élèves dispensés de la matière
+    const dispensedRows = await prisma.dispensation.findMany({
+      where: {
+        studentId: { in: distinctStudentIds },
+        subjectId: { in: distinctSubjectIds },
+      },
+      select: { studentId: true, subjectId: true },
+    });
+    const dispensedKeys = new Set(dispensedRows.map((d) => `${d.studentId}:${d.subjectId}`));
+    if (entries.some((e) => dispensedKeys.has(`${e.studentId}:${e.matiereId}`))) {
+      return {
+        ok: false,
+        error: "Un ou plusieurs élèves sont dispensés de cette matière : aucune note ne peut leur être attribuée.",
+      };
+    }
+
     // Resolve Semesters - Détection automatique prioritaire selon la date de la note
     const semCache = new Map<string, string>(); // date(iso) -> semesterId
 

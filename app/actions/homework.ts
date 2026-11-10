@@ -5,6 +5,7 @@ import { authOptions } from "@/lib/auth-options";
 import prisma from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { formatStudentName } from "@/lib/user-utils";
+import { getDispensedStudentIds, isStudentDispensed, DISPENSED_ERROR } from "@/lib/dispensations";
 
 /**
  * Permet à un élève de cocher / décocher un devoir comme fait.
@@ -109,11 +110,14 @@ export async function getLessonHomeworkStats(lessonId: string) {
     throw new Error("Cours non trouvé");
   }
 
-  const classStudents = lesson.class?.students || [];
+  // Les élèves dispensés de la matière ne sont pas concernés par le devoir
+  const dispensedIds = await getDispensedStudentIds(lesson.subjectId);
+  const classStudents = (lesson.class?.students || []).filter((s) => !dispensedIds.has(s.id));
   const completedList: { id: string; name: string; completedAt: string }[] = [];
   const completedStudentIds = new Set<string>();
 
   lesson.homeworkCompletions.forEach((hc) => {
+    if (dispensedIds.has(hc.studentId)) return;
     const studentName = hc.student
       ? formatStudentName(hc.student.firstName, hc.student.lastName, "Élève")
       : "Élève";
@@ -156,9 +160,13 @@ export async function adminToggleStudentHomeworkDone(lessonId: string, targetStu
   const isAdmin = session.user.role === "ADMIN" || session.user.role === "SUPER_ADMIN";
   const lesson = await prisma.lesson.findUnique({
     where: { id: lessonId },
-    select: { id: true, teacherId: true, substituteId: true, classId: true }
+    select: { id: true, teacherId: true, substituteId: true, classId: true, subjectId: true }
   });
   if (!lesson) throw new Error("Cours introuvable.");
+
+  if (await isStudentDispensed(targetStudentId, lesson.subjectId)) {
+    throw new Error(DISPENSED_ERROR);
+  }
 
   if (!isAdmin && lesson.teacherId !== session.user.id && lesson.substituteId !== session.user.id) {
     throw new Error("Vous ne pouvez modifier les devoirs que pour vos propres cours.");

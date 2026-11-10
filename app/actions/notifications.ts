@@ -368,18 +368,21 @@ export async function sendClassNotification(data: {
   title: string;
   message: string;
   type?: "INFO" | "WARNING" | "SUCCESS" | "ERROR";
+  /** Si fourni, les élèves dispensés de cette matière ne sont pas notifiés. */
+  subjectId?: string | null;
 }) {
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) throw new Error("Non autorisé");
-  
+
   const senderName = `${session.user.name || 'Enseignant'}`;
 
-  // Récupère les étudiants de la classe ciblée
+  // Récupère les étudiants de la classe ciblée (hors élèves dispensés de la matière)
   const students = await prisma.user.findMany({
     where: {
       classId: data.classId,
       role: "STUDENT",
-      isActive: true
+      isActive: true,
+      ...(data.subjectId ? { dispensations: { none: { subjectId: data.subjectId } } } : {})
     },
     select: { id: true }
   });

@@ -93,7 +93,25 @@ export default async function ProfDevoirsPage() {
     name,
   }));
 
-  const formatLesson = (l: any): TeacherLessonHomework => ({
+  // Nombre d'élèves dispensés par couple (classe, matière) : ils ne sont pas concernés par les devoirs
+  const allLessons = [...lessonsWithHw, ...upcomingLessons];
+  const subjectIds = [...new Set(allLessons.map((l) => l.subjectId).filter((id): id is string => !!id))];
+  const dispensations = subjectIds.length
+    ? await prisma.dispensation.findMany({
+        where: { subjectId: { in: subjectIds }, student: { classId: { in: Array.from(classMap.keys()) } } },
+        select: { studentId: true, subjectId: true, student: { select: { classId: true } } },
+      })
+    : [];
+  const dispensedByKey = new Map<string, Set<string>>();
+  for (const d of dispensations) {
+    const key = `${d.student.classId}:${d.subjectId}`;
+    if (!dispensedByKey.has(key)) dispensedByKey.set(key, new Set());
+    dispensedByKey.get(key)!.add(d.studentId);
+  }
+
+  const formatLesson = (l: any): TeacherLessonHomework => {
+    const dispensed = dispensedByKey.get(`${l.classId}:${l.subjectId}`) ?? new Set<string>();
+    return {
     id: l.id,
     startTime: l.startTime.toISOString(),
     endTime: l.endTime.toISOString(),
@@ -105,9 +123,10 @@ export default async function ProfDevoirsPage() {
       : l.subject?.name || "Sans matière",
     homework: l.homework?.trim() || null,
     summary: l.summary?.trim() || null,
-    totalStudents: l.class?._count?.students || 0,
-    completedCount: l.homeworkCompletions?.length || 0,
-  });
+    totalStudents: Math.max(0, (l.class?._count?.students || 0) - dispensed.size),
+    completedCount: (l.homeworkCompletions || []).filter((hc: { studentId: string }) => !dispensed.has(hc.studentId)).length,
+    };
+  };
 
   const formattedWithHomework: TeacherLessonHomework[] = lessonsWithHw
     .filter((l) => l.homework && l.homework.trim().length > 0)

@@ -6,6 +6,12 @@ import { authOptions } from "@/lib/auth-options";
 import { revalidatePath } from "next/cache";
 import { AttendanceStatus } from "@prisma/client";
 import { createNotification, checkEventEnabled } from "@/app/actions/notifications";
+import { getDispensedStudentIds, isStudentDispensed, DISPENSED_ERROR } from "@/lib/dispensations";
+
+async function lessonSubjectId(lessonId: string) {
+  const l = await prisma.lesson.findUnique({ where: { id: lessonId }, select: { subjectId: true } });
+  return l?.subjectId ?? null;
+}
 
 async function requireAdmin() {
   const session = await getServerSession(authOptions);
@@ -89,7 +95,12 @@ export async function getAdminLessonsWithAttendance(filters?: {
         include: {
           students: {
             where: { isActive: true },
-            select: { id: true, firstName: true, lastName: true },
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              dispensations: { select: { subjectId: true } }
+            },
             orderBy: [{ lastName: 'asc' }, { firstName: 'asc' }]
           }
         }
@@ -99,7 +110,14 @@ export async function getAdminLessonsWithAttendance(filters?: {
       room: { select: { name: true } },
       attendances: {
         include: {
-          student: { select: { id: true, firstName: true, lastName: true } }
+          student: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              dispensations: { select: { subjectId: true } }
+            }
+          }
         }
       }
     },
@@ -113,20 +131,26 @@ export async function getAdminLessonsWithAttendance(filters?: {
     const subjectName = lesson.isFreeLesson ? (lesson.customSubject || "Cours libre") : (lesson.subject?.name || "Sans matière");
     const className = lesson.class?.name || "Sans classe";
     const roomName = lesson.room?.name || "Non assignée";
-    const isAttendanceValidated = lesson.isAttendanceValidated || lesson.attendances.length > 0;
+    // Les élèves dispensés de la matière du cours sont totalement exclus de l'appel
+    const isDispensed = (dispensations?: { subjectId: string }[]) =>
+      Boolean(lesson.subjectId && dispensations?.some((d) => d.subjectId === lesson.subjectId));
+    const classStudents = (lesson.class?.students || []).filter((s) => !isDispensed(s.dispensations));
+    const lessonAttendances = lesson.attendances.filter((att) => !isDispensed(att.student?.dispensations));
+
+    const isAttendanceValidated = lesson.isAttendanceValidated || lessonAttendances.length > 0;
     const isAttendanceFinalized = lesson.isAttendanceFinalized ?? false;
     const attendanceFinalizedAt = lesson.attendanceFinalizedAt ? lesson.attendanceFinalizedAt.toISOString() : null;
 
     // Map d'émargement existant
     const attendanceMap = new Map<string, { id: string; status: AttendanceStatus; lateDuration?: number | null; reason?: string | null; isConfirmed: boolean }>();
-    lesson.attendances.forEach((att) => {
+    lessonAttendances.forEach((att) => {
       attendanceMap.set(att.studentId, { id: att.id, status: att.status, lateDuration: att.lateDuration, reason: att.reason, isConfirmed: att.isConfirmed ?? false });
     });
 
     // Combiner les élèves de la classe + tout élève supplémentaire qui aurait une présence enregistrée sur cette leçon
     const allStudentsMap = new Map<string, { firstName: string; lastName: string }>();
-    lesson.class?.students.forEach((s) => allStudentsMap.set(s.id, { firstName: s.firstName || "", lastName: s.lastName || "" }));
-    lesson.attendances.forEach((att) => {
+    classStudents.forEach((s) => allStudentsMap.set(s.id, { firstName: s.firstName || "", lastName: s.lastName || "" }));
+    lessonAttendances.forEach((att) => {
       if (att.student && !allStudentsMap.has(att.student.id)) {
         allStudentsMap.set(att.student.id, { firstName: att.student.firstName || "", lastName: att.student.lastName || "" });
       }
@@ -278,6 +302,10 @@ export async function updateStudentAttendance(
 ) {
   await requireAdmin();
 
+  if (await isStudentDispensed(studentId, await lessonSubjectId(lessonId))) {
+    return { ok: false, error: DISPENSED_ERROR };
+  }
+
   const existing = await prisma.attendance.findFirst({
     where: { lessonId, studentId }
   });
@@ -382,6 +410,10 @@ export async function updateAttendanceJustification(
 ) {
   await requireAdmin();
 
+  if (await isStudentDispensed(studentId, await lessonSubjectId(lessonId))) {
+    return { ok: false, error: DISPENSED_ERROR };
+  }
+
   const existing = await prisma.attendance.findFirst({
     where: { lessonId, studentId }
   });
@@ -424,7 +456,11 @@ export async function markAllStudentsPresent(lessonId: string) {
     return { ok: false, error: "Cours introuvable" };
   }
 
-  const students = lesson.class.students;
+  const dispensedIds = await getDispensedStudentIds(
+    lesson.subjectId,
+    lesson.class.students.map((s) => s.id)
+  );
+  const students = lesson.class.students.filter((s) => !dispensedIds.has(s.id));
 
   for (const s of students) {
     const existing = await prisma.attendance.findFirst({
@@ -456,6 +492,10 @@ export async function markAllStudentsPresent(lessonId: string) {
  */
 export async function addStudentToCourseCard(lessonId: string, studentId: string, status: "PRESENT" | "ABSENT" | "LATE" | "EXCUSED" = "PRESENT") {
   await requireAdmin();
+
+  if (await isStudentDispensed(studentId, await lessonSubjectId(lessonId))) {
+    return { ok: false, error: DISPENSED_ERROR };
+  }
 
   const existing = await prisma.attendance.findFirst({
     where: { studentId, lessonId }
