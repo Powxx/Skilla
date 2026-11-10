@@ -383,21 +383,7 @@ export async function sendClassNotification(data: {
 }) {
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) throw new Error("Non autorisé");
-<<<<<<< HEAD
 
-  const senderName = `${session.user.name || 'Enseignant'}`;
-
-  // Récupère les étudiants de la classe ciblée (hors élèves dispensés de la matière)
-  const students = await prisma.user.findMany({
-    where: {
-      classId: data.classId,
-      role: "STUDENT",
-      isActive: true,
-      ...(data.subjectId ? { dispensations: { none: { subjectId: data.subjectId } } } : {})
-    },
-    select: { id: true }
-  });
-=======
 
   const role = session.user.role;
   const isAdmin = role === "ADMIN" || role === "SUPER_ADMIN";
@@ -410,7 +396,6 @@ export async function sendClassNotification(data: {
     });
     if (!teachesClass) throw new Error("Vous n'enseignez pas dans cette classe.");
   }
->>>>>>> 9a79c82c8e9767ce8790a5c0e2d29b3b27777aa2
 
   return notifyClass({ id: session.user.id, name: session.user.name }, data);
 }
