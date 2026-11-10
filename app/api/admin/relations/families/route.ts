@@ -1,11 +1,13 @@
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
+import { apiErrorResponse } from "@/lib/api-errors";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth-options";
+import { hasAdminPermission, permissionDeniedMessage } from "@/lib/authz";
 
 export async function POST(request: Request) {
   const session = await getServerSession(authOptions);
-  if (!session?.user || (session.user.role !== "ADMIN" && session.user.role !== "SUPER_ADMIN")) return NextResponse.json({ error: "Non autorisé" }, { status: 403 });
+  if (!hasAdminPermission(session?.user, "canManageUsers")) return NextResponse.json({ error: permissionDeniedMessage("canManageUsers") }, { status: 403 });
 
   try {
     const { parentId, studentId } = await request.json();
@@ -18,14 +20,14 @@ export async function POST(request: Request) {
     });
 
     return NextResponse.json({ ok: true });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 400 });
+  } catch (error) {
+    return apiErrorResponse(error, 400);
   }
 }
 
 export async function DELETE(request: Request) {
   const session = await getServerSession(authOptions);
-  if (!session?.user || (session.user.role !== "ADMIN" && session.user.role !== "SUPER_ADMIN")) return NextResponse.json({ error: "Non autorisé" }, { status: 403 });
+  if (!hasAdminPermission(session?.user, "canManageUsers")) return NextResponse.json({ error: permissionDeniedMessage("canManageUsers") }, { status: 403 });
 
   try {
     const { searchParams } = new URL(request.url);
@@ -42,7 +44,7 @@ export async function DELETE(request: Request) {
     });
 
     return NextResponse.json({ ok: true });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 400 });
+  } catch (error) {
+    return apiErrorResponse(error, 400);
   }
 }

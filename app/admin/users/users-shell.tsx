@@ -94,8 +94,8 @@ export default function UsersShell(props: Props) {
   const { users, total, page, pageSize, classes, initialQuery, initialRole, initialConn } = props;
   const router = useRouter();
   const { data: session, update: updateSession } = useSession();
-  const isSuperAdmin = session?.user?.role === Role.SUPER_ADMIN || (session?.user as any)?.isGeneralAdmin === true;
-  const canImpersonate = isSuperAdmin || (session?.user as any)?.canImpersonate === true;
+  const isSuperAdmin = session?.user?.role === Role.SUPER_ADMIN || session?.user?.isGeneralAdmin === true;
+  const canImpersonate = isSuperAdmin || session?.user?.canImpersonate === true;
 
   const handleQuickImpersonate = async (u: ListedUserRow) => {
     try {

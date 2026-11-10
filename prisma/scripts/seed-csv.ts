@@ -3,6 +3,7 @@ import fs from 'fs';
 import path from 'path';
 import Papa from 'papaparse';
 import bcrypt from 'bcryptjs';
+import { randomBytes } from 'crypto';
 
 const prisma = new PrismaClient();
 const IMPORT_DIR = path.join(process.cwd(), 'data', 'import');
@@ -26,6 +27,9 @@ async function parseCSV<T>(filename: string): Promise<T[]> {
 }
 
 async function main() {
+  if (process.env.NODE_ENV === "production" && process.env.ALLOW_DEMO_SEED !== "true") {
+    throw new Error("Import CSV de démonstration refusé en production (définir ALLOW_DEMO_SEED=true pour forcer).");
+  }
   console.log("🚀 Début du peuplement via CSV...");
 
   // 1. Salles
@@ -87,7 +91,12 @@ async function main() {
 
   for (const row of usersData) {
     const role = (row.role as Role) || Role.STUDENT;
-    const password = row.password || (role.toLowerCase());
+    // Sans mot de passe fourni, on génère un mot de passe aléatoire (plus de mot de passe = nom du rôle)
+    let password = row.password;
+    if (!password) {
+      password = randomBytes(12).toString('base64url');
+      console.log(`🔑 Mot de passe généré pour ${row.email} : ${password}`);
+    }
     
     // Find class if student
     let classId: string | undefined;

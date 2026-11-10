@@ -1,6 +1,4 @@
-import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/lib/auth-options";
-import { redirect } from "next/navigation";
+import { requirePagePermission } from "@/lib/authz";
 import prisma from "@/lib/prisma";
 import Link from "next/link";
 import HRTeachersClient from "./hr-teachers-client";
@@ -9,11 +7,7 @@ import { startOfMonth, endOfMonth } from "date-fns";
 export const dynamic = 'force-dynamic';
 
 export default async function AdminHRTeachersPage() {
-  const session = await getServerSession(authOptions);
-
-  if (!session?.user?.id || (String(session.user.role) !== "ADMIN" && String(session.user.role) !== "SUPER_ADMIN")) {
-    redirect("/login");
-  }
+  await requirePagePermission("canManageRH");
 
   const now = new Date();
   const monthStart = startOfMonth(now);

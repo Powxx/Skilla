@@ -158,6 +158,8 @@ model User {
   // Gamification & Assiduité
   loginStreak    Int                   @default(0)  /// Série de connexions quotidiennes consécutives
   lastLoginAt    DateTime?                          /// Date de dernière connexion
+  failedLoginAttempts Int            @default(0)  /// Échecs de connexion consécutifs (anti brute-force)
+  lockedUntil    DateTime?                          /// Compte verrouillé jusqu'à cette date après trop d'échecs
   availabilities TeacherAvailability[]              /// Grille de disponibilités horaires hebdomadaires du professeur
 
   // Habilitations d'accès spécifiques (Contrôle d'accès fin RBAC)
@@ -514,6 +516,7 @@ model SubstitutionRequest {
   substituteTeacherId String?
   substituteTeacher   User?              @relation("SubstituteTeacherReq", fields: [substituteTeacherId], references: [id])
   status              SubstitutionStatus @default(PENDING)
+  reason              String?            /// Motif indiqué par l'enseignant (maladie, formation, etc.)
   createdAt           DateTime           @default(now())
 }
 
@@ -806,7 +809,8 @@ enum AdminIdeaCategory {
   TOOLS_ERGONOMICS  // Outils & Ergonomie
   ADMIN_PROCESS     // Processus Administratifs & RH
   BREAKDOWN         // Panne & Incident matériel / technique
-  OTHER             // Autre suggestion
+  UPDATE            // Mise à jour publiée par l'administrateur général
+  OTHER            // Autre suggestion
 }
 
 /// Boîte à idées pour l'équipe administrative avec arbitrage de l'Administrateur Général.

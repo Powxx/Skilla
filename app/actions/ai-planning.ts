@@ -5,11 +5,12 @@ import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth-options";
+import { hasAdminPermission, permissionDeniedMessage } from "@/lib/authz";
 
 async function assertPlanningAccess() {
   const session = await getServerSession(authOptions);
-  if (!session?.user || (session.user.role !== "ADMIN" && session.user.role !== "SUPER_ADMIN" && !session.user.canManagePlanning)) {
-    throw new Error("Non autorisé. Droit de gestion du planning requis.");
+  if (!hasAdminPermission(session?.user, "canManagePlanning")) {
+    throw new Error(permissionDeniedMessage("canManagePlanning"));
   }
   return session;
 }

@@ -1,10 +1,89 @@
 import type { NextAuthOptions } from "next-auth";
+import type { JWT } from "next-auth/jwt";
 import type { Role } from "@prisma/client";
 import CredentialsProvider from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
 import prisma from "@/lib/prisma";
-import { updateLoginStreak } from "@/app/actions/gamification";
+import { updateLoginStreak } from "@/lib/login-streak";
 import { formatUserName } from "@/lib/user-utils";
+
+/** Message renvoyé au formulaire de connexion pour un compte désactivé (mot de passe correct). */
+export const ACCOUNT_DISABLED_ERROR = "Compte désactivé. Veuillez contacter l'administration.";
+
+/** Nombre d'échecs de connexion consécutifs avant verrouillage temporaire du compte. */
+const MAX_FAILED_LOGIN_ATTEMPTS = 5;
+/** Durée du verrouillage du compte après trop d'échecs. */
+const LOGIN_LOCK_DURATION_MS = 15 * 60 * 1000;
+
+/** Intervalle de revalidation des droits du JWT en base (rôle, permissions, compte actif). */
+const TOKEN_REFRESH_INTERVAL_MS = 60 * 1000;
+
+const PERMISSION_SELECT = {
+  role: true,
+  firstName: true,
+  lastName: true,
+  isActive: true,
+  canAccessLivrets: true,
+  canManageUsers: true,
+  canManageSettings: true,
+  canManagePlanning: true,
+  canManageRH: true,
+  canImpersonate: true,
+  isGeneralAdmin: true,
+} as const;
+
+/**
+ * Recharge depuis la base les droits portés par le JWT.
+ * Sans cela, un compte désactivé ou rétrogradé conserverait ses droits jusqu'à l'expiration du jeton (24h).
+ * Retourne `null` si la session doit être révoquée.
+ */
+async function refreshTokenFromDb(token: JWT): Promise<JWT | null> {
+  const actorId = (token.originalUserId as string | undefined) || token.id;
+  if (!actorId) return null;
+
+  const actor = await prisma.user.findUnique({ where: { id: actorId }, select: PERMISSION_SELECT });
+  if (!actor || !actor.isActive) return null;
+
+  const isGenAdmin = Boolean(actor.isGeneralAdmin || actor.role === "SUPER_ADMIN");
+  token.canAccessLivrets = actor.canAccessLivrets;
+  token.canManageUsers = actor.canManageUsers;
+  token.canManageSettings = actor.canManageSettings;
+  token.canManagePlanning = actor.canManagePlanning;
+  token.canManageRH = actor.canManageRH;
+  token.canImpersonate = actor.canImpersonate || isGenAdmin;
+  token.isGeneralAdmin = isGenAdmin;
+
+  if (token.impersonated && token.originalUserId) {
+    token.originalUserRole = actor.role;
+    token.originalUserName = formatUserName(actor.firstName, actor.lastName);
+
+    const target = await prisma.user.findUnique({ where: { id: token.id }, select: PERMISSION_SELECT });
+    const stillAllowed =
+      Boolean(token.canImpersonate) &&
+      target?.isActive &&
+      (target.role !== "SUPER_ADMIN" || actor.role === "SUPER_ADMIN");
+
+    if (target && stillAllowed) {
+      token.role = target.role;
+      token.name = formatUserName(target.firstName, target.lastName);
+    } else {
+      // Usurpation plus autorisée : retour à l'identité d'origine
+      token.id = actorId;
+      token.role = actor.role;
+      token.name = token.originalUserName as string;
+      token.impersonated = false;
+      token.originalUserId = undefined;
+      token.originalUserRole = undefined;
+      token.originalUserName = undefined;
+    }
+  } else {
+    token.role = actor.role;
+    token.name = formatUserName(actor.firstName, actor.lastName);
+  }
+
+  token.refreshedAt = Date.now();
+  return token;
+}
 
 /**
  * Options de configuration de NextAuth pour la plateforme Skilla.
@@ -65,35 +144,51 @@ export const authOptions: NextAuthOptions = {
               canManageRH: true,
               canImpersonate: true,
               isGeneralAdmin: true,
-              isActive: true
+              isActive: true,
+              failedLoginAttempts: true,
+              lockedUntil: true
             }
           });
 
           if (!user || !user.password) return null;
           
-          // Vérification si le compte a été suspendu par l'administration
-          if (user.isActive === false) {
-            throw new Error("Compte désactivé. Veuillez contacter l'administration.");
+          // Compte temporairement verrouillé après trop d'échecs (anti brute-force)
+          if (user.lockedUntil && user.lockedUntil > new Date()) {
+            return null;
           }
 
           // Comparaison du hash du mot de passe stocké en BDD
           const isPasswordValid = await bcrypt.compare(password, user.password);
           
-          if (!isPasswordValid) return null;
+          if (!isPasswordValid) {
+            const attempts = (user.failedLoginAttempts ?? 0) + 1;
+            const shouldLock = attempts >= MAX_FAILED_LOGIN_ATTEMPTS;
+            await prisma.user.update({
+              where: { id: user.id },
+              data: shouldLock
+                ? { failedLoginAttempts: 0, lockedUntil: new Date(Date.now() + LOGIN_LOCK_DURATION_MS) }
+                : { failedLoginAttempts: attempts },
+            }).catch((err) => {
+              console.error("Erreur lors de l'enregistrement de l'échec de connexion:", err);
+            });
+            return null;
+          }
 
-          // Mise à jour de la date de dernière connexion
+          // Vérification si le compte a été suspendu par l'administration.
+          // Fait APRÈS la vérification du mot de passe pour ne pas révéler l'état d'un compte sans ses identifiants.
+          if (user.isActive === false) {
+            throw new Error(ACCOUNT_DISABLED_ERROR);
+          }
+
+          // Remise à zéro des échecs (lastLoginAt est mis à jour par updateLoginStreak dans events.signIn)
           await prisma.user.update({
             where: { id: user.id },
-            data: { lastLoginAt: new Date() },
+            data: { failedLoginAttempts: 0, lockedUntil: null },
           }).catch((err) => {
             console.error("Erreur lors de la mise à jour de lastLoginAt:", err);
           });
 
-          const isGenAdmin = Boolean(
-            user.isGeneralAdmin ||
-            user.role === "SUPER_ADMIN" ||
-            user.email?.toLowerCase() === "admin@skilla.edu"
-          );
+          const isGenAdmin = Boolean(user.isGeneralAdmin || user.role === "SUPER_ADMIN");
 
           // Retourne l'objet User décoré de ses habilitations RBAC qui sera encrypté dans le JWT
           return {
@@ -111,6 +206,11 @@ export const authOptions: NextAuthOptions = {
           };
           
         } catch (error) {
+          // Seul le message de compte désactivé est remonté au formulaire ; toute autre erreur reste générique
+          if (error instanceof Error && error.message === ACCOUNT_DISABLED_ERROR) {
+            throw error;
+          }
+          console.error("[auth] Erreur lors de la connexion:", error);
           return null;
         }
       },
@@ -125,13 +225,14 @@ export const authOptions: NextAuthOptions = {
         token.role = user.role as Role;
         token.id = user.id;
         token.name = user.name;
-        token.canAccessLivrets = (user as any).canAccessLivrets ?? false;
-        token.canManageUsers = (user as any).canManageUsers ?? false;
-        token.canManageSettings = (user as any).canManageSettings ?? false;
-        token.canManagePlanning = (user as any).canManagePlanning ?? false;
-        token.canManageRH = (user as any).canManageRH ?? false;
-        token.canImpersonate = (user as any).canImpersonate ?? false;
-        token.isGeneralAdmin = (user as any).isGeneralAdmin ?? false;
+        token.canAccessLivrets = user.canAccessLivrets ?? false;
+        token.canManageUsers = user.canManageUsers ?? false;
+        token.canManageSettings = user.canManageSettings ?? false;
+        token.canManagePlanning = user.canManagePlanning ?? false;
+        token.canManageRH = user.canManageRH ?? false;
+        token.canImpersonate = user.canImpersonate ?? false;
+        token.isGeneralAdmin = user.isGeneralAdmin ?? false;
+        token.refreshedAt = Date.now();
       }
 
       // Mécanisme d'usurpation d'identité (Impersonate) :
@@ -147,10 +248,13 @@ export const authOptions: NextAuthOptions = {
             where: { id: session.impersonateUser.id },
             select: { id: true, role: true, firstName: true, lastName: true, isActive: true }
           });
-          if (target && target.isActive) {
+          // Un SUPER_ADMIN ne peut être usurpé que par un autre SUPER_ADMIN (anti-élévation de privilèges)
+          const actorRole = token.originalUserRole || token.role;
+          const canTarget = target?.role !== "SUPER_ADMIN" || actorRole === "SUPER_ADMIN";
+          if (target && target.isActive && canTarget) {
             token.originalUserId = token.originalUserId || token.id;
             token.originalUserRole = token.originalUserRole || token.role;
-            token.originalUserName = token.originalUserName || token.name;
+            token.originalUserName = token.originalUserName || token.name || undefined;
 
             token.id = target.id;
             token.role = target.role;
@@ -173,25 +277,46 @@ export const authOptions: NextAuthOptions = {
         }
       }
 
+      // Revalidation périodique des droits en base (compte désactivé, rôle ou permissions modifiés)
+      const forceRefresh = trigger === "update";
+      const lastRefresh = typeof token.refreshedAt === "number" ? token.refreshedAt : 0;
+      if (token.id && !token.revoked && (forceRefresh || Date.now() - lastRefresh > TOKEN_REFRESH_INTERVAL_MS)) {
+        try {
+          const refreshed = await refreshTokenFromDb(token);
+          if (!refreshed) {
+            // Session révoquée : on ne conserve aucune identité ni aucun droit
+            return { revoked: true } as unknown as JWT;
+          }
+          return refreshed;
+        } catch (err) {
+          // En cas d'indisponibilité de la base, on conserve le jeton existant jusqu'à la prochaine tentative
+          console.error("[auth] Revalidation du jeton impossible:", err);
+        }
+      }
+
       return token;
     },
     // Exécuté lors de la vérification de la session par le client
     async session({ session, token }) {
+      if (token.revoked || !token.id) {
+        // Session révoquée (compte désactivé ou supprimé) : aucune identité exposée
+        return { ...session, user: undefined } as unknown as typeof session;
+      }
       if (session.user) {
         session.user.id = token.id as string;
         session.user.role = token.role as Role;
         if (token.name) {
           session.user.name = token.name as string;
         }
-        (session.user as any).canAccessLivrets = token.canAccessLivrets ?? false;
-        (session.user as any).canManageUsers = token.canManageUsers ?? false;
-        (session.user as any).canManageSettings = token.canManageSettings ?? false;
-        (session.user as any).canManagePlanning = token.canManagePlanning ?? false;
-        (session.user as any).canManageRH = token.canManageRH ?? false;
-        (session.user as any).canImpersonate = token.canImpersonate ?? false;
-        (session.user as any).isGeneralAdmin = token.isGeneralAdmin ?? false;
-        (session as any).impersonated = !!token.impersonated;
-        (session as any).originalUserId = token.originalUserId as string | undefined;
+        session.user.canAccessLivrets = token.canAccessLivrets ?? false;
+        session.user.canManageUsers = token.canManageUsers ?? false;
+        session.user.canManageSettings = token.canManageSettings ?? false;
+        session.user.canManagePlanning = token.canManagePlanning ?? false;
+        session.user.canManageRH = token.canManageRH ?? false;
+        session.user.canImpersonate = token.canImpersonate ?? false;
+        session.user.isGeneralAdmin = token.isGeneralAdmin ?? false;
+        session.impersonated = !!token.impersonated;
+        session.originalUserId = token.originalUserId as string | undefined;
       }
       return session;
     },

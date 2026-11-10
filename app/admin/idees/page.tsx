@@ -18,7 +18,7 @@ export default async function AdminIdeesPage() {
     !session?.user?.id ||
     (session.user.role !== "ADMIN" &&
       session.user.role !== "SUPER_ADMIN" &&
-      !(session.user as any).isGeneralAdmin)
+      !session.user.isGeneralAdmin)
   ) {
     redirect("/login");
   }
@@ -37,7 +37,7 @@ export default async function AdminIdeesPage() {
   const isGeneralAdmin = Boolean(
     currentUser?.isGeneralAdmin ||
     session.user.role === "SUPER_ADMIN" ||
-    (session.user as any).isGeneralAdmin
+    session.user.isGeneralAdmin
   );
 
   const rawIdeas = (prisma as any).adminIdea?.findMany

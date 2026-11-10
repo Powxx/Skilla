@@ -31,7 +31,9 @@ export async function GET(request: Request) {
       message: `Nettoyage automatique réussi : ${result.count} notifications supprimées.`,
       date: new Date().toISOString()
     });
-  } catch (error: any) {
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+  } catch (error) {
+    // Le détail de l'erreur reste dans les logs serveur, il n'est pas renvoyé au client
+    console.error("[cron/cleanup-notifications] Échec du nettoyage:", error);
+    return NextResponse.json({ success: false, error: "Erreur lors du nettoyage." }, { status: 500 });
   }
 }

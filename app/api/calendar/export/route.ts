@@ -36,7 +36,9 @@ export async function GET(request: Request) {
         dispensedSubjectIds: user.dispensations.map((d) => d.subjectId),
       });
     }
-    return exportCalendar({ classId: classId || undefined, teacherId: teacherId || undefined });
+    // Autres rôles : uniquement leur propre contexte (les paramètres de requête sont ignorés)
+    if (user.classId) return exportCalendar({ classId: user.classId });
+    return exportCalendar({ teacherId: user.id });
   }
 
   // 2. Export manuel depuis l'interface web (authentifié par cookie de session)
@@ -77,7 +79,7 @@ export async function GET(request: Request) {
     }
   }
 
-  if (role === "ADMIN") {
+  if (role === "ADMIN" || role === "SUPER_ADMIN") {
      if (classId) return exportCalendar({ classId });
      if (teacherId) return exportCalendar({ teacherId });
   }

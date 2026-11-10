@@ -2,6 +2,7 @@
 
 import { prisma } from "@/lib/prisma";
 import { authOptions } from "@/lib/auth-options";
+import { hasAdminPermission, permissionDeniedMessage } from "@/lib/authz";
 import { getServerSession } from "next-auth/next";
 import { subMonths } from "date-fns";
 import { revalidatePath } from "next/cache";
@@ -13,8 +14,8 @@ import { revalidatePath } from "next/cache";
 export async function cleanupOldNotifications() {
   const session = await getServerSession(authOptions);
   
-  if (!session?.user || (String(session.user.role) !== "ADMIN" && String(session.user.role) !== "SUPER_ADMIN")) {
-    return { ok: false, error: "Non autorisé" };
+  if (!hasAdminPermission(session?.user, "canManageSettings")) {
+    return { ok: false, error: permissionDeniedMessage("canManageSettings") };
   }
 
   const oneMonthAgo = subMonths(new Date(), 1);

@@ -71,6 +71,13 @@ const CATEGORY_CONFIG: Record<
     border: "border-rose-200",
     icon: Wrench,
   },
+  UPDATE: {
+    label: "Mise à jour",
+    color: "text-indigo-700",
+    bg: "bg-indigo-50",
+    border: "border-indigo-200",
+    icon: Sparkles,
+  },
   PEDAGOGY: {
     label: "Pédagogie & Évaluations",
     color: "text-violet-700",
@@ -183,7 +190,7 @@ export default function AdminIdeesClient({
   // KPIs
   const totalCount = ideas.length;
   const breakdownCount = ideas.filter((i) => i.category === "BREAKDOWN").length;
-  const ideasOnlyCount = ideas.filter((i) => i.category !== "BREAKDOWN").length;
+  const ideasOnlyCount = ideas.filter((i) => i.category !== "BREAKDOWN" && i.category !== "UPDATE").length;
   const pendingCount = ideas.filter((i) => i.status === "SUBMITTED").length;
   const underReviewCount = ideas.filter((i) => i.status === "UNDER_REVIEW").length;
   const acceptedOrImplementedCount = ideas.filter(
@@ -389,6 +396,16 @@ export default function AdminIdeesClient({
           >
             ← Retour au Hub
           </Link>
+          {isGeneralAdmin && (
+            <button
+              type="button"
+              onClick={() => openCreateModal("UPDATE")}
+              className="flex items-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-black transition shadow-md active:scale-95"
+            >
+              <Sparkles className="w-4 h-4 text-white" />
+              Publier une mise à jour
+            </button>
+          )}
           <button
             type="button"
             onClick={() => openCreateModal("BREAKDOWN")}
@@ -600,6 +617,7 @@ export default function AdminIdeesClient({
             const canDelete = isGeneralAdmin || idea.isOwnIdea;
 
             const isBreakdown = idea.category === "BREAKDOWN";
+            const isUpdate = idea.category === "UPDATE";
             const CatIcon = cat.icon;
 
             return (
@@ -608,7 +626,9 @@ export default function AdminIdeesClient({
                 className={`rounded-3xl border p-6 shadow-sm transition-all flex flex-col justify-between ${
                   isBreakdown
                     ? "bg-rose-50/15 border-rose-200 hover:border-rose-400 hover:shadow-rose-100/50"
-                    : "bg-white border-slate-200 hover:border-blue-300 hover:shadow-md"
+                    : isUpdate
+                      ? "bg-indigo-50/20 border-indigo-200 hover:border-indigo-400 hover:shadow-indigo-100/50"
+                      : "bg-white border-slate-200 hover:border-blue-300 hover:shadow-md"
                 }`}
               >
                 <div>
@@ -633,6 +653,9 @@ export default function AdminIdeesClient({
                   <h3 className="text-base sm:text-lg font-black text-slate-900 leading-snug mb-2 flex items-start gap-2">
                     {isBreakdown && (
                       <span className="text-rose-600 font-bold shrink-0">🚨</span>
+                    )}
+                    {isUpdate && (
+                      <span className="text-indigo-600 font-bold shrink-0">🆕</span>
                     )}
                     <span>{idea.title}</span>
                   </h3>
@@ -760,6 +783,11 @@ export default function AdminIdeesClient({
                     <AlertTriangle className="w-3.5 h-3.5 text-rose-600" />
                     Signalement d'Incident / Panne
                   </span>
+                ) : newCategory === "UPDATE" ? (
+                  <span className="text-xs font-black uppercase tracking-wider text-indigo-700 bg-indigo-50 px-2.5 py-1 rounded-full border border-indigo-200 flex items-center gap-1.5 w-fit">
+                    <Sparkles className="w-3.5 h-3.5 text-indigo-600" />
+                    Mise à jour
+                  </span>
                 ) : (
                   <span className="text-xs font-black uppercase tracking-wider text-amber-700 bg-amber-50 px-2.5 py-1 rounded-full border border-amber-200">
                     Nouvelle Proposition
@@ -768,12 +796,16 @@ export default function AdminIdeesClient({
                 <h2 className="text-xl font-black text-slate-900 mt-2">
                   {newCategory === "BREAKDOWN"
                     ? "Signaler une panne ou un incident matériel"
-                    : "Déposer une idée dans la boîte à idées"}
+                    : newCategory === "UPDATE"
+                      ? "Publier une mise à jour"
+                      : "Déposer une idée dans la boîte à idées"}
                 </h2>
                 <p className="text-xs text-slate-500 mt-0.5">
                   {newCategory === "BREAKDOWN"
                     ? "Une alerte prioritaire sera directement envoyée à l'Administrateur Général"
-                    : "Votre proposition sera transmise directement à l'Administrateur Général pour étude"}
+                    : newCategory === "UPDATE"
+                      ? "La carte sera publiée comme déployée et tous les administrateurs seront notifiés"
+                      : "Votre proposition sera transmise directement à l'Administrateur Général pour étude"}
                 </p>
               </div>
 
@@ -802,11 +834,13 @@ export default function AdminIdeesClient({
                     onChange={(e) => setNewCategory(e.target.value as AdminIdeaCategory)}
                     className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white cursor-pointer transition"
                   >
-                    {Object.entries(CATEGORY_CONFIG).map(([key, cfg]) => (
-                      <option key={key} value={key}>
-                        {cfg.label}
-                      </option>
-                    ))}
+                    {Object.entries(CATEGORY_CONFIG)
+                      .filter(([key]) => key !== "UPDATE" || isGeneralAdmin)
+                      .map(([key, cfg]) => (
+                        <option key={key} value={key}>
+                          {cfg.label}
+                        </option>
+                      ))}
                   </select>
                 </div>
 
@@ -814,7 +848,9 @@ export default function AdminIdeesClient({
                   <label className="block text-xs font-black uppercase tracking-wider text-slate-700 mb-1">
                     {newCategory === "BREAKDOWN"
                       ? "Objet / Équipement ou salle concernée"
-                      : "Titre de la proposition"}
+                      : newCategory === "UPDATE"
+                        ? "Titre de la mise à jour"
+                        : "Titre de la proposition"}
                   </label>
                   <input
                     type="text"
@@ -822,7 +858,9 @@ export default function AdminIdeesClient({
                     placeholder={
                       newCategory === "BREAKDOWN"
                         ? "Ex: Vidéoprojecteur HS en salle 204, Panne Wi-Fi Bâtiment B..."
-                        : "Ex: Automatiser les relances d'assiduité par SMS..."
+                        : newCategory === "UPDATE"
+                          ? "Ex: Version 1.2 — nouveau calendrier d'alternance"
+                          : "Ex: Automatiser les relances d'assiduité par SMS..."
                     }
                     value={newTitle}
                     onChange={(e) => setNewTitle(e.target.value)}
@@ -834,7 +872,9 @@ export default function AdminIdeesClient({
                   <label className="block text-xs font-black uppercase tracking-wider text-slate-700 mb-1">
                     {newCategory === "BREAKDOWN"
                       ? "Description de la panne, symptômes & urgence"
-                      : "Description & Bénéfices attendus"}
+                      : newCategory === "UPDATE"
+                        ? "Nouveautés, corrections & points d'attention"
+                        : "Description & Bénéfices attendus"}
                   </label>
                   <textarea
                     required
@@ -842,7 +882,9 @@ export default function AdminIdeesClient({
                     placeholder={
                       newCategory === "BREAKDOWN"
                         ? "Précisez l'incident, depuis quand il survient, la salle/matériel impacté et le degré de blocage pour les cours..."
-                        : "Expliquez en détail l'idée, le problème qu'elle résout et comment la mettre en place..."
+                        : newCategory === "UPDATE"
+                          ? "Listez ce qui change, ce qui est corrigé et ce que les équipes doivent savoir..."
+                          : "Expliquez en détail l'idée, le problème qu'elle résout et comment la mettre en place..."
                     }
                     value={newDescription}
                     onChange={(e) => setNewDescription(e.target.value)}
@@ -864,7 +906,9 @@ export default function AdminIdeesClient({
                     className={`flex items-center gap-2 px-5 py-2.5 text-white rounded-xl text-xs font-black transition shadow-sm ${
                       newCategory === "BREAKDOWN"
                         ? "bg-rose-600 hover:bg-rose-700 active:scale-95"
-                        : "bg-slate-900 hover:bg-slate-800"
+                        : newCategory === "UPDATE"
+                          ? "bg-indigo-600 hover:bg-indigo-700 active:scale-95"
+                          : "bg-slate-900 hover:bg-slate-800"
                     }`}
                   >
                     {isSubmitting ? (
@@ -877,7 +921,9 @@ export default function AdminIdeesClient({
                     <span>
                       {newCategory === "BREAKDOWN"
                         ? "Signaler la panne à l'Admin Général"
-                        : "Soumettre l'idée"}
+                        : newCategory === "UPDATE"
+                          ? "Publier la mise à jour"
+                          : "Soumettre l'idée"}
                     </span>
                   </button>
                 </div>

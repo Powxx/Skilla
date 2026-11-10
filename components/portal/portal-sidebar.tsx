@@ -23,7 +23,8 @@ import {
   MessageSquareWarning,
   ShieldAlert,
   FileCheck,
-  Lightbulb
+  Lightbulb,
+  CalendarRange
 } from "lucide-react";
 
 type NavItem = {
@@ -152,6 +153,9 @@ export default function PortalSidebar({ variant, resolvedChildId, schoolName = "
       navItems.push(
         { href: `${prefix}/dashboard${suffix}`, label: "Synthèse", icon: LayoutDashboard },
         { href: `${prefix}/planning${suffix}`, label: "Emploi du temps", icon: Calendar },
+        ...(resolvedVariant === "employer"
+          ? [{ href: `${prefix}/alternance${suffix}`, label: "Calendrier alternance", icon: CalendarRange }]
+          : []),
         { href: `${prefix}/devoirs${suffix}`, label: "Devoirs", icon: BookMarked },
         { href: `${prefix}/grades${suffix}`, label: "Notes", icon: GraduationCap },
         { href: `${prefix}/livret${suffix}`, label: "Livret", icon: BookOpen },

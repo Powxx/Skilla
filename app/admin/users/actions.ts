@@ -2,6 +2,7 @@
 
 import prisma from "@/lib/prisma";
 import { authOptions } from "@/lib/auth-options";
+import { getSessionWithPermission, permissionDeniedMessage } from "@/lib/authz";
 import { Prisma, Role } from "@prisma/client";
 import bcrypt from "bcryptjs";
 import { getServerSession } from "next-auth/next";
@@ -17,13 +18,24 @@ const ADMIN_ROLES: Role[] = [
   Role.COMPANY_TUTOR,
 ];
 
+/** Session d'un admin disposant de la permission « Gestion des utilisateurs », sinon `null`. */
 async function requireAdmin() {
-  const session = await getServerSession(authOptions);
-  if (session?.user?.role !== "ADMIN" && session?.user?.role !== "SUPER_ADMIN") {
-    return null;
-  }
-  return session;
+  return getSessionWithPermission("canManageUsers");
 }
+
+const USERS_PERMISSION_DENIED = permissionDeniedMessage("canManageUsers");
+
+/** Seul un SUPER_ADMIN ou l'Administrateur Général peut attribuer ou modifier un compte SUPER_ADMIN. */
+function canManageSuperAdmins(session: Awaited<ReturnType<typeof requireAdmin>>): boolean {
+  return Boolean(
+    session?.user?.role === "SUPER_ADMIN" ||
+    session?.user?.isGeneralAdmin
+  );
+}
+
+const MIN_PASSWORD_LENGTH = 8;
+
+const SUPER_ADMIN_FORBIDDEN = "Seul un Super Admin peut attribuer ou modifier un compte Super Admin.";
 
 function roleLabelsFr(r: Role): string {
   const map: Record<Role, string> = {
@@ -50,7 +62,7 @@ export async function updateAdminPermissions(input: {
 }): Promise<MutationResult> {
   const session = await requireAdmin();
   const isGenAdmin = Boolean(
-    (session?.user as any)?.isGeneralAdmin ||
+    session?.user?.isGeneralAdmin ||
     session?.user?.role === "SUPER_ADMIN"
   );
   if (!isGenAdmin) {
@@ -58,6 +70,13 @@ export async function updateAdminPermissions(input: {
   }
 
   const { userId, ...data } = input;
+
+  if (session?.user?.role !== "SUPER_ADMIN") {
+    const target = await prisma.user.findUnique({ where: { id: userId }, select: { role: true } });
+    if (target?.role === Role.SUPER_ADMIN) {
+      return { ok: false, error: SUPER_ADMIN_FORBIDDEN };
+    }
+  }
 
   try {
     await prisma.user.update({
@@ -75,7 +94,7 @@ export type MutationResult<T = unknown> =
   | { ok: true; data?: T }
   | { ok: false; error: string };
 
-export async function generateUniqueUsername(firstName: string, lastName: string): Promise<string> {
+async function generateUniqueUsername(firstName: string, lastName: string): Promise<string> {
   const initial = firstName.trim().charAt(0).toLowerCase();
   const cleanLastName = lastName.trim().toLowerCase()
     .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
@@ -104,7 +123,7 @@ export async function createUser(input: {
   company?: string;
 }): Promise<MutationResult> {
   const session = await requireAdmin();
-  if (!session) return { ok: false, error: "Accès réservé aux administrateurs." };
+  if (!session) return { ok: false, error: USERS_PERMISSION_DENIED };
 
   const email = input.email?.trim() ? input.email.trim().toLowerCase() : null;
   const password = input.password;
@@ -115,8 +134,14 @@ export async function createUser(input: {
   if (!password || !firstName || !lastName) {
     return { ok: false, error: "Champs obligatoires manquants." };
   }
+  if (password.length < MIN_PASSWORD_LENGTH) {
+    return { ok: false, error: `Le mot de passe doit faire au moins ${MIN_PASSWORD_LENGTH} caractères.` };
+  }
   if (!ADMIN_ROLES.includes(role)) {
     return { ok: false, error: "Rôle invalide." };
+  }
+  if (role === Role.SUPER_ADMIN && !canManageSuperAdmins(session)) {
+    return { ok: false, error: SUPER_ADMIN_FORBIDDEN };
   }
   const passwordHash = await bcrypt.hash(password, 10);
   const fullName = formatUserName(firstName, lastName);
@@ -224,7 +249,7 @@ export async function updateUser(input: {
   company?: string;
 }): Promise<MutationResult> {
   const session = await requireAdmin();
-  if (!session) return { ok: false, error: "Accès réservé aux administrateurs." };
+  if (!session) return { ok: false, error: USERS_PERMISSION_DENIED };
 
   const {
     userId,
@@ -260,6 +285,10 @@ export async function updateUser(input: {
 
   if (!existing) {
     return { ok: false, error: "Utilisateur introuvable." };
+  }
+
+  if ((existing.role === Role.SUPER_ADMIN || newRole === Role.SUPER_ADMIN) && !canManageSuperAdmins(session)) {
+    return { ok: false, error: SUPER_ADMIN_FORBIDDEN };
   }
 
   let username = existing.username;
@@ -324,6 +353,9 @@ export async function updateUser(input: {
     company: newRole === Role.COMPANY_TUTOR ? (company?.trim() || null) : null,
   };
 
+  if (newPassword?.trim() && newPassword.trim().length < MIN_PASSWORD_LENGTH) {
+    return { ok: false, error: `Le mot de passe doit faire au moins ${MIN_PASSWORD_LENGTH} caractères.` };
+  }
   if (newPassword?.trim()) {
     data.password = await bcrypt.hash(newPassword.trim(), 10);
   }
@@ -386,7 +418,7 @@ export async function updateUser(input: {
 
 export async function deleteUserSafe(userId: string): Promise<MutationResult> {
   const session = await requireAdmin();
-  if (!session) return { ok: false, error: "Accès réservé aux administrateurs." };
+  if (!session) return { ok: false, error: USERS_PERMISSION_DENIED };
 
   if (!userId?.trim()) {
     return { ok: false, error: "Utilisateur invalide." };
@@ -412,6 +444,10 @@ export async function deleteUserSafe(userId: string): Promise<MutationResult> {
 
     if (!existing) {
       return { ok: false, error: "Utilisateur introuvable." };
+    }
+
+    if (existing.role === Role.SUPER_ADMIN && !canManageSuperAdmins(session)) {
+      return { ok: false, error: SUPER_ADMIN_FORBIDDEN };
     }
 
     if (existing.contract && existing._count?.lessons > 0) {
@@ -544,7 +580,7 @@ export async function importUsersAction(users: Array<{
   password?: string;
 }>): Promise<MutationResult<{ count: number }>> {
   const session = await requireAdmin();
-  if (!session) return { ok: false, error: "Accès réservé aux administrateurs." };
+  if (!session) return { ok: false, error: USERS_PERMISSION_DENIED };
 
   let count = 0;
   const defaultPasswordHash = await bcrypt.hash("Skilla2026!", 10);
@@ -557,8 +593,11 @@ export async function importUsersAction(users: Array<{
     const role = user.role;
 
     if (!firstName || !lastName || !role) continue;
+    if (!ADMIN_ROLES.includes(role)) continue;
+    if (role === Role.SUPER_ADMIN && !canManageSuperAdmins(session)) continue;
 
-    const passwordHash = user.password && user.password !== "Skilla2026!"
+    // Un mot de passe fourni trop court est ignoré au profit du mot de passe par défaut
+    const passwordHash = user.password && user.password !== "Skilla2026!" && user.password.length >= MIN_PASSWORD_LENGTH
       ? await bcrypt.hash(user.password, 10)
       : defaultPasswordHash;
 
@@ -582,6 +621,7 @@ export async function importUsersAction(users: Array<{
       }
 
       if (existingUser) {
+        if (existingUser.role === Role.SUPER_ADMIN && !canManageSuperAdmins(session)) continue;
         if (role === Role.STUDENT && user.classId) {
           const targetClass = await prisma.class.findFirst({
             where: { OR: [{ id: user.classId }, { name: user.classId }] }

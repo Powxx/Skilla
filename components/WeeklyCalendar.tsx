@@ -5,7 +5,7 @@ import interactionPlugin from "@fullcalendar/interaction";
 import frLocale from '@fullcalendar/core/locales/fr';
 import { useState, useRef, useEffect } from "react";
 import { useSession } from "next-auth/react";
-import { getCalendarToken } from "@/app/actions/settings";
+import { getCalendarToken, regenerateCalendarToken } from "@/app/actions/settings";
 import { Calendar, Download, Link2, Check, Copy, FileText } from "lucide-react";
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
@@ -46,6 +46,16 @@ export default function WeeklyCalendar({ events, onDateChange, onEventClick, onD
       } catch (err) {
         console.error("Failed to get sync token", err);
       }
+    }
+  };
+
+  const handleRegenerateToken = async () => {
+    if (!confirm("Régénérer le lien ? L'ancien lien cessera de fonctionner dans vos agendas.")) return;
+    try {
+      const token = await regenerateCalendarToken();
+      setSyncUrl(`${window.location.origin}/api/calendar/sync/${token}`);
+    } catch (err) {
+      console.error("Failed to regenerate sync token", err);
     }
   };
 
@@ -262,6 +272,13 @@ export default function WeeklyCalendar({ events, onDateChange, onEventClick, onD
                     {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
                   </button>
                 </div>
+                <button
+                  onClick={handleRegenerateToken}
+                  disabled={!syncUrl}
+                  className="text-[11px] font-semibold text-slate-500 underline hover:text-slate-700 disabled:opacity-50"
+                >
+                  Régénérer le lien (révoque l&apos;ancien)
+                </button>
               </div>
 
               <button 

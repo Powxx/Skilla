@@ -2,18 +2,18 @@
 
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth-options";
+import { requirePermission } from "@/lib/authz";
 import prisma from "@/lib/prisma";
 import bcrypt from "bcryptjs";
+import { randomBytes } from "crypto";
 import { unstable_cache, revalidateTag, revalidatePath } from "next/cache";
 
 // --- EXISTING FUNCTIONS ---
 
 export const getGlobalSettings = unstable_cache(
   async () => {
-    console.log("[SettingsAction] Fetching global settings...");
     try {
       const settings = await prisma.globalSetting.findMany();
-      console.log(`[SettingsAction] Successfully fetched ${settings.length} settings`);
       return settings;
     } catch (e) {
       console.error("[SettingsAction] CRITICAL ERROR FETCHING SETTINGS:", e);
@@ -29,10 +29,7 @@ export const getGlobalSettings = unstable_cache(
 );
 
 export async function updateGlobalSetting(key: string, value: string) {
-  const session = await getServerSession(authOptions);
-  if (!session?.user || (session.user.role !== "ADMIN" && session.user.role !== "SUPER_ADMIN")) {
-    throw new Error("Non autorisé.");
-  }
+  await requirePermission("canManageSettings");
   await prisma.globalSetting.upsert({
     where: { key },
     update: { value },
@@ -45,10 +42,7 @@ export async function updateGlobalSetting(key: string, value: string) {
 }
 
 export async function updateTeacherLivretAccess(teacherId: string, canAccess: boolean) {
-  const session = await getServerSession(authOptions);
-  if (!session?.user || (session.user.role !== "ADMIN" && session.user.role !== "SUPER_ADMIN")) {
-    throw new Error("Non autorisé.");
-  }
+  await requirePermission("canManageSettings");
   await prisma.user.update({ where: { id: teacherId }, data: { canAccessLivrets: canAccess } });
 }
 
@@ -60,6 +54,18 @@ export async function getCalendarToken(userId: string) {
   }
   const user = await prisma.user.findUnique({ where: { id: userId }, select: { calendarToken: true } });
   return user?.calendarToken;
+}
+
+/**
+ * Régénère le jeton d'abonnement calendrier de l'utilisateur connecté.
+ * L'ancien lien de synchronisation cesse immédiatement de fonctionner (ex. lien partagé par erreur).
+ */
+export async function regenerateCalendarToken() {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.id) throw new Error("Non autorisé.");
+  const calendarToken = randomBytes(24).toString("base64url");
+  await prisma.user.update({ where: { id: session.user.id }, data: { calendarToken } });
+  return calendarToken;
 }
 
 export async function changePassword(formData: FormData) {

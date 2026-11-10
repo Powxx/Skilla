@@ -3,7 +3,7 @@
 import { useEffect, useState, useTransition } from "react";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
-import { ShieldAlert } from "lucide-react";
+import { ShieldAlert, Search, CheckCheck } from "lucide-react";
 import {
   submitRollCall,
   updateAttendanceStatus,
@@ -27,6 +27,8 @@ export default function AppelClient({ initialLessons }: { initialLessons: any[] 
   const [states, setStates] = useState<Record<string, PresenceState>>({});
   const [lateDurations, setLateDurations] = useState<Record<string, number>>({});
   const [loadErr, setLoadErr] = useState<string | null>(null);
+  const [query, setQuery] = useState("");
+  const [doneIds, setDoneIds] = useState<string[]>([]);
   const [feedback, setFeedback] = useState<{
     type: "success" | "error";
     text: string;
@@ -39,7 +41,8 @@ export default function AppelClient({ initialLessons }: { initialLessons: any[] 
     setSelectedLesson(lesson);
     setFeedback(null);
     setLoadErr(null);
-    
+    setQuery("");
+
     loadStudents(() => {
       void (async () => {
         try {
@@ -67,7 +70,38 @@ export default function AppelClient({ initialLessons }: { initialLessons: any[] 
     setFeedback(null);
   };
 
-// ... dans le composant AppelClient ...
+  // Un appui sur la ligne fait défiler : présent → absent → retard → présent
+  const cyclePresence = (studentId: string) => {
+    const cur = states[studentId] || "present";
+    const next: PresenceState =
+      cur === "present" ? "absent" : cur === "absent" ? "late" : "present";
+    setStates((prev) => ({ ...prev, [studentId]: next }));
+    if (next !== "late") {
+      setLateDurations((prev) => {
+        const { [studentId]: _removed, ...rest } = prev;
+        return rest;
+      });
+    }
+    setFeedback(null);
+  };
+
+  const resetAllPresent = () => {
+    setStates(initStates(students.map((r) => r.id)));
+    setLateDurations({});
+    setFeedback(null);
+  };
+
+  const counts = students.reduce(
+    (acc, s) => {
+      acc[states[s.id] || "present"] += 1;
+      return acc;
+    },
+    { present: 0, absent: 0, late: 0, excused: 0 } as Record<PresenceState, number>,
+  );
+
+  const nextLesson = initialLessons.find(
+    (l) => l.id !== selectedLesson?.id && !l.isAttendanceValidated && !doneIds.includes(l.id),
+  );
 
   const handleValidate = () => {
     if (!selectedLesson) return;
@@ -81,6 +115,7 @@ export default function AppelClient({ initialLessons }: { initialLessons: any[] 
         lateDurations
       }).then((res) => {
         if (res.ok) {
+          setDoneIds((prev) => [...prev, selectedLesson.id]);
           setFeedback({
             type: "success",
             text: res.created === 0
@@ -128,7 +163,7 @@ export default function AppelClient({ initialLessons }: { initialLessons: any[] 
                 <div className="text-xs font-bold uppercase tracking-wider text-blue-600 mb-1">
                   {format(new Date(lesson.startTime), 'HH:mm')} - {format(new Date(lesson.endTime), 'HH:mm')}
                 </div>
-                {lesson.isAttendanceValidated && (
+                {(lesson.isAttendanceValidated || doneIds.includes(lesson.id)) && (
                   <span className="bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded text-[10px] font-bold uppercase">Appel fait</span>
                 )}
               </div>
@@ -208,18 +243,51 @@ export default function AppelClient({ initialLessons }: { initialLessons: any[] 
             : "Aucun élève actif trouvé pour cette classe."}
         </div>
       ) : (
-        <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden ring-1 ring-slate-900/[0.04]">
+        <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-clip ring-1 ring-slate-900/[0.04]">
           <div className="bg-slate-50 px-6 py-3 border-b border-slate-100 flex justify-between items-center">
             <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Élève ({students.length})</span>
             <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Présence</span>
           </div>
+          <div className="flex flex-wrap items-center gap-3 border-b border-slate-100 px-4 sm:px-6 py-3">
+            <div className="relative flex-1 min-w-[160px]">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+              <input
+                type="search"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Rechercher un élève…"
+                className="w-full rounded-lg border border-slate-200 py-2 pl-9 pr-3 text-sm"
+              />
+            </div>
+            <button
+              type="button"
+              onClick={resetAllPresent}
+              className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-50 px-3 py-2 text-xs font-bold text-emerald-700 hover:bg-emerald-100"
+            >
+              <CheckCheck className="h-4 w-4" /> Tous présents
+            </button>
+          </div>
+          <p className="px-4 sm:px-6 pt-3 text-[11px] text-slate-400">
+            Tous les élèves sont présents par défaut : touchez un nom pour le marquer absent, puis en retard.
+          </p>
           <ul className="divide-y divide-slate-100">
-            {students.map((s) => {
+            {students
+              .filter((s) => {
+                const q = query.trim().toLowerCase();
+                if (!q) return true;
+                return `${s.user.lastName ?? ""} ${s.user.firstName ?? ""}`.toLowerCase().includes(q);
+              })
+              .map((s) => {
               const st = states[s.id] || "present";
 
               return (
-                <li key={s.id} className="flex items-center justify-between gap-3 px-4 sm:px-6 py-3 sm:py-4 hover:bg-slate-50/50 transition">
-                  <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+                <li key={s.id} className={`flex items-center justify-between gap-3 px-4 sm:px-6 py-3 sm:py-4 transition ${st === "absent" ? "bg-red-50/40" : st === "late" ? "bg-orange-50/40" : "hover:bg-slate-50/50"}`}>
+                  <button
+                    type="button"
+                    onClick={() => cyclePresence(s.id)}
+                    className="flex flex-1 items-center gap-2.5 sm:gap-3 min-w-0 text-left"
+                    title="Appuyer pour changer : présent → absent → retard"
+                  >
                     <div className="h-8 w-8 rounded-full bg-slate-100 flex items-center justify-center text-xs font-bold text-slate-500 shrink-0">
                       {s.user.lastName?.[0]}{s.user.firstName?.[0]}
                     </div>
@@ -227,12 +295,12 @@ export default function AppelClient({ initialLessons }: { initialLessons: any[] 
                       <p className="font-bold text-slate-900 text-xs sm:text-sm truncate" title={`${(s.user.lastName || '').toUpperCase()} ${s.user.firstName || ''}`}>
                         <span className="uppercase">{s.user.lastName}</span> {s.user.firstName}
                       </p>
-                      <p className={`text-[10px] font-bold uppercase ${st === 'present' ? 'text-emerald-600' : st === 'absent' ? 'text-red-600' : 'text-orange-600'}`}>
-                        {st === 'present' ? 'Présent' : st === 'absent' ? 'Absent' : 'En retard'}
+                      <p className={`text-[10px] font-bold uppercase ${st === 'present' ? 'text-emerald-600' : st === 'absent' ? 'text-red-600' : st === 'excused' ? 'text-emerald-700' : 'text-orange-600'}`}>
+                        {st === 'present' ? 'Présent' : st === 'absent' ? 'Absent' : st === 'excused' ? 'Justifié' : 'En retard'}
                       </p>
                     </div>
-                  </div>
-                  <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+                  </button>
+                  <div className="flex flex-wrap items-center justify-end gap-1.5 sm:gap-2 shrink-0">
                     <button
                       onClick={() => setPresence(s.id, st === "absent" ? "present" : "absent")}
                       className={`px-4 py-1.5 rounded-lg text-xs font-bold transition ${st === "absent" ? "bg-red-600 text-white shadow-md" : "bg-red-50 text-red-700 hover:bg-red-100"}`}
@@ -272,18 +340,27 @@ export default function AppelClient({ initialLessons }: { initialLessons: any[] 
                         Justifier
                       </button>
                     )}
-                    
-                    {st === "late" && !lateDurations[s.id] && (
+
+                    {st === "late" && (
                       <div className="flex items-center gap-1">
-                        <input 
-                          type="number" 
-                          min="0" 
+                        {[5, 10, 15, 30].map((m) => (
+                          <button
+                            key={m}
+                            type="button"
+                            onClick={() => setLateDurations((prev) => ({ ...prev, [s.id]: m }))}
+                            className={`px-2 py-1 rounded-md text-[11px] font-bold ${lateDurations[s.id] === m ? "bg-orange-600 text-white" : "bg-orange-50 text-orange-700 hover:bg-orange-100"}`}
+                          >
+                            {m}
+                          </button>
+                        ))}
+                        <input
+                          type="number"
+                          min="0"
                           placeholder="min"
-                          className="w-16 rounded-lg border-slate-200 p-1 text-xs text-slate-900"
+                          className="w-14 rounded-lg border-slate-200 p-1 text-xs text-slate-900"
                           value={lateDurations[s.id] || ""}
                           onChange={(e) => setLateDurations(prev => ({ ...prev, [s.id]: parseInt(e.target.value) || 0 }))}
                         />
-                        <span className="text-[10px] text-slate-400 font-bold">min</span>
                       </div>
                     )}
                   </div>
@@ -291,14 +368,42 @@ export default function AppelClient({ initialLessons }: { initialLessons: any[] 
               );
             })}
           </ul>
-          <div className="p-6 bg-slate-50 border-t border-slate-100">
-            <button
-              onClick={handleValidate}
-              disabled={pendingSave || students.length === 0}
-              className="w-full sm:w-auto px-8 py-3 bg-slate-900 text-white rounded-xl text-sm font-bold shadow-lg hover:bg-slate-800 transition transform active:scale-95 disabled:opacity-50 disabled:scale-100"
-            >
-              {pendingSave ? "Enregistrement..." : "Valider l'appel définitif"}
-            </button>
+          <div className="sticky bottom-0 flex flex-wrap items-center justify-between gap-3 p-4 sm:p-6 bg-slate-50/95 backdrop-blur border-t border-slate-100">
+            <p className="text-xs font-semibold text-slate-600">
+              <span className="text-emerald-700">{counts.present} présent{counts.present > 1 ? "s" : ""}</span>
+              {" · "}
+              <span className="text-red-700">{counts.absent} absent{counts.absent > 1 ? "s" : ""}</span>
+              {" · "}
+              <span className="text-orange-700">{counts.late} retard{counts.late > 1 ? "s" : ""}</span>
+              {counts.excused > 0 && (
+                <>
+                  {" · "}
+                  <span className="text-emerald-800">{counts.excused} justifié{counts.excused > 1 ? "s" : ""}</span>
+                </>
+              )}
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {feedback?.type === "success" && nextLesson && (
+                <button
+                  type="button"
+                  onClick={() => handleSelectLesson(nextLesson)}
+                  className="px-5 py-3 bg-blue-600 text-white rounded-xl text-sm font-bold shadow-lg hover:bg-blue-700 transition"
+                >
+                  Cours suivant →
+                </button>
+              )}
+              <button
+                onClick={handleValidate}
+                disabled={pendingSave || students.length === 0}
+                className="px-8 py-3 bg-slate-900 text-white rounded-xl text-sm font-bold shadow-lg hover:bg-slate-800 transition transform active:scale-95 disabled:opacity-50 disabled:scale-100"
+              >
+                {pendingSave
+                  ? "Enregistrement..."
+                  : counts.absent + counts.late === 0
+                    ? "Valider : tous présents"
+                    : "Valider l'appel définitif"}
+              </button>
+            </div>
           </div>
         </div>
       )}

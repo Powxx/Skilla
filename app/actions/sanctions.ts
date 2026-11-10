@@ -4,7 +4,7 @@ import prisma from "@/lib/prisma";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth-options";
 import { revalidatePath, unstable_cache } from "next/cache";
-import { sendPushNotification } from "./push";
+import { sendPushNotification } from "@/lib/push";
 import { SanctionStatus } from "@prisma/client";
 
 // ==========================================

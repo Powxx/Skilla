@@ -5,6 +5,7 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth-options";
 import { revalidatePath } from "next/cache";
 import { AttendanceStatus } from "@prisma/client";
+<<<<<<< HEAD
 import { createNotification, checkEventEnabled } from "@/app/actions/notifications";
 import { getDispensedStudentIds, isStudentDispensed, DISPENSED_ERROR } from "@/lib/dispensations";
 
@@ -12,6 +13,9 @@ async function lessonSubjectId(lessonId: string) {
   const l = await prisma.lesson.findUnique({ where: { id: lessonId }, select: { subjectId: true } });
   return l?.subjectId ?? null;
 }
+=======
+import { createNotification, checkEventEnabled } from "@/lib/notifications";
+>>>>>>> 9a79c82c8e9767ce8790a5c0e2d29b3b27777aa2
 
 async function requireAdmin() {
   const session = await getServerSession(authOptions);

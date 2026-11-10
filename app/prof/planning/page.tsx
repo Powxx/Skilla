@@ -21,16 +21,6 @@ export default async function ProfPlanningPage() {
 
   const effectiveTeacherId = await getEffectiveTeacherId(session.user.id);
 
-  // Fetch other teachers for replacement options
-  const otherTeachers = await prisma.user.findMany({
-    where: {
-      role: "TEACHER",
-      isActive: true,
-      id: { not: effectiveTeacherId }
-    },
-    select: { id: true, firstName: true, lastName: true }
-  });
-
   return (
     <div className="min-h-screen bg-white text-slate-900">
       <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
@@ -44,10 +34,7 @@ export default async function ProfPlanningPage() {
         </header>
 
         <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm ring-1 ring-slate-900/[0.04]">
-          <TeacherPlanningClient 
-            teacherId={effectiveTeacherId} 
-            teachers={otherTeachers} 
-          />
+          <TeacherPlanningClient teacherId={effectiveTeacherId} />
         </div>
       </div>
     </div>

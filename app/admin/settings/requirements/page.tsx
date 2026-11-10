@@ -1,15 +1,10 @@
-import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/lib/auth-options";
-import { redirect } from "next/navigation";
+import { requirePagePermission } from "@/lib/authz";
 import prisma from "@/lib/prisma";
 import RequirementsClient from "./requirements-client";
 import Link from "next/link";
 
 export default async function ClassRequirementsPage() {
-  const session = await getServerSession(authOptions);
-  if (!session?.user?.id || (String(session.user.role) !== "ADMIN" && String(session.user.role) !== "SUPER_ADMIN")) {
-    redirect("/login");
-  }
+  await requirePagePermission("canManageSettings");
 
   const [classes, subjects, requirements] = await Promise.all([
     prisma.class.findMany({ orderBy: { name: 'asc' } }),

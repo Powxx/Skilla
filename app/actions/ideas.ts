@@ -23,7 +23,7 @@ function isGeneralAdminUser(session: any, currentUser?: any) {
   );
 }
 
-import { sendPushNotificationBatch } from "./push";
+import { sendPushNotificationBatch } from "@/lib/push";
 
 /**
  * Créer une nouvelle idée ou un signalement de panne soumis par un membre de l'équipe administrative.
@@ -45,19 +45,60 @@ export async function createAdminIdea(data: {
 
   const author = await prisma.user.findUnique({
     where: { id: session.user.id },
-    select: { firstName: true, lastName: true },
+    select: { firstName: true, lastName: true, isGeneralAdmin: true },
   });
   const authorName = author ? formatUserName(author.firstName, author.lastName, "Un administrateur") : "Un administrateur";
+
+  const isUpdate = data.category === "UPDATE";
+  if (isUpdate && !isGeneralAdminUser(session, author)) {
+    throw new Error("Seul l'Administrateur Général peut publier une mise à jour.");
+  }
 
   const idea = await prisma.adminIdea.create({
     data: {
       title: data.title.trim(),
       description: data.description.trim(),
       category: data.category || "OTHER",
-      status: "SUBMITTED",
+      // Une mise à jour est une annonce : elle est publiée directement comme « déployée »
+      status: isUpdate ? "IMPLEMENTED" : "SUBMITTED",
+      respondedAt: isUpdate ? new Date() : null,
       authorId: session.user.id,
     },
   });
+
+  if (isUpdate) {
+    const notifTitle = `🆕 Mise à jour : ${idea.title}`;
+    const notifMessage = idea.description.length > 160 ? idea.description.substring(0, 160) + "..." : idea.description;
+
+    const recipients = await prisma.user.findMany({
+      where: {
+        isActive: true,
+        id: { not: session.user.id },
+        role: { in: ["ADMIN", "SUPER_ADMIN"] },
+      },
+      select: { id: true },
+    });
+
+    if (recipients.length > 0) {
+      const ids = recipients.map((r) => r.id);
+      await prisma.notification.createMany({
+        data: ids.map((userId) => ({
+          userId,
+          title: notifTitle,
+          message: notifMessage,
+          type: "SUCCESS",
+          senderName: authorName,
+          link: "/admin/idees",
+        })),
+      });
+      sendPushNotificationBatch(ids, { title: notifTitle, body: notifMessage, url: "/admin/idees" })
+        .catch((err) => console.error("[createAdminIdea] Push error:", err));
+    }
+
+    revalidatePath("/admin/idees");
+    revalidatePath("/admin");
+    return idea;
+  }
 
   const isBreakdown = (data.category as string) === "BREAKDOWN";
   const notifTitle = isBreakdown
