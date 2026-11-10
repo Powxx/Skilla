@@ -1,0 +1,19 @@
+{
+    "logs": [
+        {
+            "outputFile": "fr.ecmacademie.skilla.app-mergeReleaseResources-26:/values-h720dp-v13/values-h720dp-v13.xml",
+            "map": [
+                {
+                    "source": "C:\\Users\\rosse\\.gradle\\caches\\9.6.0\\transforms\\ff223eb0bdcde326696f30308a5c1c69\\transformed\\appcompat-1.7.1\\res\\values-h720dp-v13\\values-h720dp-v13.xml",
+                    "from": {
+                        "startLines": "2",
+                        "startColumns": "4",
+                        "startOffsets": "55",
+                        "endColumns": "66",
+                        "endOffsets": "117"
+                    }
+                }
+            ]
+        }
+    ]
+}

@@ -1,0 +1,9 @@
+fr.ecmacademie.skilla.app-pngs-0 C:\Users\rosse\OneDrive\Bureau\Prog\Skilla\android\app\build\generated\res\pngs\release
+fr.ecmacademie.skilla.app-resValues-1 C:\Users\rosse\OneDrive\Bureau\Prog\Skilla\android\app\build\generated\res\resValues\release
+fr.ecmacademie.skilla.app-updated_navigation_xml-2 C:\Users\rosse\OneDrive\Bureau\Prog\Skilla\android\app\build\generated\updated_navigation_xml\release
+fr.ecmacademie.skilla.app-packageReleaseResources-3 C:\Users\rosse\OneDrive\Bureau\Prog\Skilla\android\app\build\intermediates\incremental\release\packageReleaseResources\merged.dir
+fr.ecmacademie.skilla.app-packageReleaseResources-4 C:\Users\rosse\OneDrive\Bureau\Prog\Skilla\android\app\build\intermediates\incremental\release\packageReleaseResources\stripped.dir
+fr.ecmacademie.skilla.app-release-5 C:\Users\rosse\OneDrive\Bureau\Prog\Skilla\android\app\build\intermediates\merged_res\release\mergeReleaseResources
+fr.ecmacademie.skilla.app-main-6 C:\Users\rosse\OneDrive\Bureau\Prog\Skilla\android\app\src\main\res
+fr.ecmacademie.skilla.app-release-7 C:\Users\rosse\OneDrive\Bureau\Prog\Skilla\android\app\src\release\res
+gradleHome-0 C:\Users\rosse\.gradle

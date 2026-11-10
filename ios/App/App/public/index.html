@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Skilla - ECM Académie</title>
+  <style>
+    :root {
+      color-scheme: dark;
+    }
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background-color: #0f172a;
+      color: #f8fafc;
+      min-height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      text-align: center;
+    }
+    .card {
+      max-width: 380px;
+      width: 100%;
+      background: rgba(30, 41, 59, 0.85);
+      border: 1px solid rgba(148, 163, 184, 0.2);
+      border-radius: 20px;
+      padding: 32px 24px;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+    }
+    .badge {
+      display: inline-block;
+      padding: 4px 12px;
+      border-radius: 9999px;
+      background: rgba(245, 158, 11, 0.15);
+      color: #fbbf24;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      margin-bottom: 16px;
+    }
+    h1 {
+      font-size: 22px;
+      font-weight: 800;
+      margin-bottom: 10px;
+      color: #ffffff;
+    }
+    p {
+      font-size: 14px;
+      line-height: 1.5;
+      color: #94a3b8;
+      margin-bottom: 24px;
+    }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      padding: 13px 20px;
+      border-radius: 12px;
+      border: none;
+      background: #f59e0b;
+      color: #0f172a;
+      font-size: 14px;
+      font-weight: 800;
+      cursor: pointer;
+      transition: transform 0.15s ease, opacity 0.15s ease;
+    }
+    .btn:active {
+      transform: scale(0.97);
+    }
+    .code {
+      display: block;
+      margin-top: 16px;
+      padding: 10px;
+      border-radius: 8px;
+      background: rgba(15, 23, 42, 0.8);
+      font-family: monospace;
+      font-size: 11px;
+      color: #cbd5e1;
+      word-break: break-all;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <span class="badge">Skilla Mobile</span>
+    <h1>Connexion au serveur</h1>
+    <p>
+      Vérifiez votre connexion Internet ou configurez la variable
+      <strong>CAPACITOR_SERVER_URL</strong> avant de synchroniser l'application native.
+    </p>
+    <button class="btn" onclick="window.location.reload()">
+      Réessayer la connexion
+    </button>
+    <span class="code">CAPACITOR_SERVER_URL=https://votre-domaine.fr npx cap sync</span>
+  </div>
+</body>
+</html>

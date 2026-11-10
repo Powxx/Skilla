@@ -5,6 +5,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
 import NotificationBell from "@/components/notifications/notification-bell";
 import AdminTeacherLinkButton from "./admin-teacher-link-button";
+import { Menu } from "lucide-react";
 
 export type PortalParentChild = { id: string; label: string };
 
@@ -100,6 +101,14 @@ export default function PortalHeader({ variant, parentChildren = [] }: Props) {
         <div className="flex h-16 items-center justify-between gap-4">
           {/* Breadcrumbs / Mobile Menu Toggle */}
           <div className="flex items-center gap-3 min-w-0">
+            <button
+              type="button"
+              onClick={() => window.dispatchEvent(new Event("portal-sidebar-toggle"))}
+              className="lg:hidden h-9 w-9 shrink-0 rounded-xl bg-slate-50 border border-slate-200 text-slate-700 flex items-center justify-center hover:bg-slate-100 active:scale-95 transition shadow-sm"
+              aria-label="Ouvrir le menu"
+            >
+              <Menu className="h-5 w-5" />
+            </button>
             <Link href="/" className="lg:hidden h-9 w-9 shrink-0 rounded-xl bg-slate-900 flex items-center justify-center overflow-hidden shadow-lg">
               <img src="/SKILLA-Logo.png" alt="SKILLA" className="h-full w-full object-contain" />
             </Link>

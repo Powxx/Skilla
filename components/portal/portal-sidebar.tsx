@@ -16,7 +16,6 @@ import {
   FileText, 
   BarChart, 
   UserCircle,
-  Menu,
   X,
   Key,
   Gamepad2,
@@ -46,6 +45,20 @@ export default function PortalSidebar({ variant, resolvedChildId, schoolName = "
   const pathname = usePathname() ?? "";
   const [isOpen, setIsOpen] = useState(false);
   const [unreadChatCount, setUnreadChatCount] = useState(0);
+
+  // Le bouton d'ouverture vit dans l'en-tête (PortalHeader) sur mobile
+  useEffect(() => {
+    const toggle = () => setIsOpen((v) => !v);
+    window.addEventListener("portal-sidebar-toggle", toggle);
+    return () => window.removeEventListener("portal-sidebar-toggle", toggle);
+  }, []);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setIsOpen(false); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [isOpen]);
 
   useEffect(() => {
     let isMounted = true;
@@ -153,17 +166,9 @@ export default function PortalSidebar({ variant, resolvedChildId, schoolName = "
 
   return (
     <>
-      <button 
-        onClick={() => setIsOpen(!isOpen)}
-        className="lg:hidden fixed bottom-6 right-6 z-[100] h-14 w-14 bg-slate-900 text-white rounded-full shadow-2xl flex items-center justify-center hover:scale-110 active:scale-95 transition-all duration-200 border border-white/10"
-        aria-label={isOpen ? "Fermer le menu" : "Ouvrir le menu"}
-      >
-        {isOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
-      </button>
-
       <aside className={`fixed inset-y-0 left-0 z-[90] w-72 bg-slate-900 text-white flex flex-col h-screen transform transition-all duration-300 ease-in-out lg:translate-x-0 lg:static ${isOpen ? 'translate-x-0' : '-translate-x-full shadow-none'}`}>
-        <div className="p-8 border-b border-white/10">
-          <Link href="/" className="flex items-center gap-4 group">
+        <div className="p-8 border-b border-white/10 flex items-center justify-between gap-3">
+          <Link href="/" className="flex items-center gap-4 group min-w-0">
             <div className="h-10 w-10 rounded-xl bg-blue-600 flex items-center justify-center text-white font-bold text-sm transition group-hover:rotate-6 shadow-lg shadow-blue-500/30">
               <img src="/SKILLA-Logo.png" alt="SKILLA" className="h-full w-full object-contain" />
             </div>
@@ -172,6 +177,14 @@ export default function PortalSidebar({ variant, resolvedChildId, schoolName = "
               <span className="text-[10px] text-blue-400 font-bold uppercase tracking-widest mt-1">Plateforme</span>
             </div>
           </Link>
+          <button
+            type="button"
+            onClick={() => setIsOpen(false)}
+            className="lg:hidden h-9 w-9 shrink-0 rounded-xl bg-white/5 hover:bg-white/10 flex items-center justify-center transition"
+            aria-label="Fermer le menu"
+          >
+            <X className="h-5 w-5" />
+          </button>
         </div>
 
         <nav className="flex-1 p-6 space-y-1.5 overflow-y-auto custom-scrollbar">

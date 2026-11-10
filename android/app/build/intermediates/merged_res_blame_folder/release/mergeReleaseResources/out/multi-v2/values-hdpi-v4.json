@@ -1,0 +1,20 @@
+{
+    "logs": [
+        {
+            "outputFile": "fr.ecmacademie.skilla.app-mergeReleaseResources-26:/values-hdpi-v4/values-hdpi-v4.xml",
+            "map": [
+                {
+                    "source": "C:\\Users\\rosse\\.gradle\\caches\\9.6.0\\transforms\\ff223eb0bdcde326696f30308a5c1c69\\transformed\\appcompat-1.7.1\\res\\values-hdpi-v4\\values-hdpi-v4.xml",
+                    "from": {
+                        "startLines": "2",
+                        "startColumns": "4",
+                        "startOffsets": "55",
+                        "endLines": "6",
+                        "endColumns": "13",
+                        "endOffsets": "327"
+                    }
+                }
+            ]
+        }
+    ]
+}
